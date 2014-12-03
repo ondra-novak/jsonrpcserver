@@ -6,8 +6,11 @@
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/jsonrpcserver"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/libjsonrpcserver"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/jsonrpcserver/Debug"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/libjsonrpcserver/Debug"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="jsonrpcserver" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="RESOLVED" kind="libraryFile" name="libjsonrpcserver" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -62,7 +65,7 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="RESTApi"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="client"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="httpserver"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="jsonrpc"/>
+						<entry excluding="ServiceContext.cpp|db.cpp" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="jsonrpc"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -73,8 +76,11 @@
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/jsonrpcserver"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/libjsonrpcserver"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/jsonrpcserver/Release"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/libjsonrpcserver/Release"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="jsonrpcserver" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="RESOLVED" kind="libraryFile" name="libjsonrpcserver" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -116,7 +122,7 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="RESTApi"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="client"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="httpserver"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="jsonrpc"/>
+						<entry excluding="ServiceContext.cpp|db.cpp" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="jsonrpc"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -127,8 +133,11 @@
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/jsonrpcserver"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/libjsonrpcserver"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/jsonrpcserver/Build"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/libjsonrpcserver/Build"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="jsonrpcserver" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="RESOLVED" kind="libraryFile" name="libjsonrpcserver" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -171,7 +180,7 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="RESTApi"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="client"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="httpserver"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="jsonrpc"/>
+						<entry excluding="ServiceContext.cpp|db.cpp" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="jsonrpc"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
