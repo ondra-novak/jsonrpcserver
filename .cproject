@@ -60,12 +60,22 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
+					<folderInfo id="cdt.managedbuild.config.gnu.cross.lib.debug.185073766.663214353" name="/" resourcePath="dbhelpers">
+						<toolChain id="cdt.managedbuild.toolchain.gnu.base.1152116794" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.base" unusedChildren="">
+							<tool id="cdt.managedbuild.tool.gnu.archiver.base.2146275707" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base.2125748017"/>
+							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.413482695" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base.1370300207"/>
+							<tool id="cdt.managedbuild.tool.gnu.c.compiler.base.429295368" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.base.545070482"/>
+							<tool id="cdt.managedbuild.tool.gnu.c.linker.base.725476119" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.base.1397755737"/>
+							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.base.1559561029" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.base.1820612950"/>
+							<tool id="cdt.managedbuild.tool.gnu.assembler.base.217106475" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base.829287542"/>
+						</toolChain>
+					</folderInfo>
 					<sourceEntries>
-						<entry excluding="RESTApi|httpserver|jsonrpc|client" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="dbhelpers|RESTApi|httpserver|jsonrpc|client" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="RESTApi"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="client"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="httpserver"/>
-						<entry excluding="ServiceContext.cpp|db.cpp" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="jsonrpc"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="httpserver"/>
+						<entry excluding="ServiceContext.cpp|db.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="jsonrpc"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -188,7 +198,7 @@
 		</cconfiguration>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-		<project id="jsonrpcserver.cdt.managedbuild.target.gnu.cross.lib.1915694710" name="Static Library"/>
+		<project id="libjsonrpcserver.cdt.managedbuild.target.gnu.cross.lib.1915694710" name="Static Library"/>
 	</storageModule>
 	<storageModule moduleId="refreshScope" versionNumber="2">
 		<configuration configurationName="Build">
