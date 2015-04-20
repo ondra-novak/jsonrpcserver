@@ -15,6 +15,15 @@
 #include "../httpserver/httprequest.h"
 
 
+#undef GET
+#undef HEAD
+#undef POST
+#undef PUT
+#undef DELETE
+#undef OPTIONS
+#undef PATCH
+#undef TRACE
+
 namespace jsonsrv {
 
 using namespace LightSpeed;
@@ -33,23 +42,19 @@ public:
 		///parsed query
 		BredyHttpSrv::QueryParser &q;
 
-		///virtual path
-		/** Path relative to endpoint (with starting /). Doesn't contain query */
-		ConstStrA vpath;
-
 		enum Method {
 			GET, HEAD, POST, PUT, DELETE, OPTIONS, PATCH, TRACE
 		};
 
 		Method method;
 
-		Request(BredyHttpSrv::IHttpRequest &r,BredyHttpSrv::QueryParser &q, ConstStrA vpath, Method method)
-			:r(r),q(q),vpath(vpath),method(method) {}
+		Request(BredyHttpSrv::IHttpRequest &r,BredyHttpSrv::QueryParser &q, Method method)
+			:r(r),q(q),method(method) {}
 
 		void setResponseVLocation(ConstStrA vpath) {
 			ConstStrA path = r.getPath();
-			natural vpathpos = this->vpath.data() - path.data();
-			StringA newpath = path.head(vpathpos) + vpath;
+			natural vpathpos = q.getPath().data() - path.data();
+			StringA newpath = r.getBaseUrl() + path.head(vpathpos) + vpath;
 			r.header(BredyHttpSrv::IHttpRequest::fldLocation, newpath);
 		}
 	};

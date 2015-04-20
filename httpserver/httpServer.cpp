@@ -310,9 +310,9 @@ natural LiveLogHandler::showFilterForm(IHttpRequest &request) {
 			"var eventSource = null;\n"
 			"function addToLog(data) {\n"
 			"logBox.value += data + '\\n';\n"
-			"if (document.getElementById('autoscroll').checked) logBox.scrollTop = 1000000;\n"
-			"if (logBox.value.length > 1000000) \n"
-			"   logBox.value = logBox.value.substr(logBox.value.length - 500000);\n"
+			"if (document.getElementById('autoscroll').checked) logBox.scrollTop = 200000;\n"
+			"if (logBox.value.length > 200000) \n"
+			"   logBox.value = logBox.value.substr(logBox.value.length - 180000);\n"
 			"}\n"
 			"function init(path) {\n"
 			"logBox = document.getElementById('log');\n"
@@ -369,8 +369,8 @@ inline natural LiveLogHandler::onRequest(IHttpRequest& request,ConstStrA vpath) 
     else if (levelDesc == ConstStrA("all"))  t = ILogOutput::logDebug;
 	else return stNotFound;
 
-	const ConstStrA *accept = request.getHeaderField(IHttpRequest::fldAccept);
-	bool asEventStream = accept && *accept == "text/event-stream";
+	IHttpRequest::HeaderValue accept = request.getHeaderField(IHttpRequest::fldAccept);
+	bool asEventStream = accept.defined && accept == "text/event-stream";
 
 
 	StringA strfilter;
@@ -450,9 +450,9 @@ protected:
 };
 
 natural LiveLogAuthHandler::onRequest(IHttpRequest &request, ConstStrA vpath) {
-	const ConstStrA *auth = request.getHeaderField(IHttpRequest::fldAuthorization);
-	if (auth  != 0 && vpath!="/logout") {
-		StringCore<byte> bident = convertString<Base64Decoder,char,byte>(Base64Decoder(),auth->offset(6));
+	HeaderValue auth = request.getHeaderField(IHttpRequest::fldAuthorization);
+	if (auth.defined && vpath!="/logout") {
+		StringCore<byte> bident = convertString<Base64Decoder,char,byte>(Base64Decoder(),auth.offset(6));
 		ConstStrA ident((const char *)bident.data(),bident.length());
 		for (StringA::SplitIterator uiter = userlist.split(','); uiter.hasItems();) {
 			ConstStrA user = uiter.getNext();

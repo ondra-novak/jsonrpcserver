@@ -26,14 +26,16 @@ void RestHandler::removeEndpoint(ConstStrA name) {
 natural RestHandler::onRequest(BredyHttpSrv::IHttpRequest& request,ConstStrA vpath) {
 	BredyHttpSrv::QueryParser p(vpath);
 	ConstStrA path = p.getPath();
-	ConstStrA::SplitIterator piter = path.split('/');
-	ConstStrA endpointName = piter.getNext();
-	if (endpointName.empty() && piter.hasItems()) endpointName = piter.getNext();
 
-	BredyHttpSrv::QueryParser p2(vpath.offset(endpointName.length() + (endpointName.data() - vpath.data()) ));
 
-	const Action *a = endpoints.find(StringKey<StringA>(endpointName));
-	if (a == 0) return stNotFound;
+	EndpointMap::Iterator found = endpoints.seek(StringKey<StringA>(path),NULL);
+	if (!found.hasItems()) return stNotFound;
+	const EndpointMap::Entity &e = found.getNext();
+	if (path.head(e.key.length()) != e.key) return stNotFound;
+	const Action *a = &e.value;
+
+	BredyHttpSrv::QueryParser p2(vpath.offset(e.key.length()));
+
 
 	Request::Method m;
 	StrCmpCI<char> cmp;
@@ -51,11 +53,14 @@ natural RestHandler::onRequest(BredyHttpSrv::IHttpRequest& request,ConstStrA vpa
 	}
 
 
-	ConstStrA restPath = vpath.offset(endpointName.length()+1);
-	if (!restPath.empty() && restPath[0] =='/') restPath = restPath.offset(1);
-	Request r(request,p2, restPath,m);
+	Request r(request,p2, m);
 	return a->deliver(&r);
+}
+
+bool RestHandler::Cmp::operator ()(ConstStrA a, ConstStrA b) const {
+	return a > b;
 }
 
 
 } /* namespace coinstock */
+

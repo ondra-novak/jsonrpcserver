@@ -9,6 +9,7 @@
 #include <lightspeed/base/actions/directExecutor.h>
 #include "lightspeed/base/exceptions/invalidParamException.h"
 #include "lightspeed/base/debug/dbglog.h"
+#include <time.h>
 
 namespace BredyHttpSrv {
 
@@ -32,7 +33,7 @@ protected:
 
 };
 
-class ScheduledActionReject: public ScheduledAction, public DynObject {
+class ScheduledActionReject: public ScheduledAction {
 public:
 
 	ScheduledActionReject(const LightSpeed::Action::Ifc &msg, const LightSpeed::Action::Ifc &cancelMsg, IExecutor *executor, IRuntimeAlloc &alloc);
@@ -52,7 +53,7 @@ JobSchedulerImpl::~JobSchedulerImpl() {
 LightSpeed::natural JobSchedulerImpl::getCurTime() const {
 	time_t curTime;
 	time(&curTime);
-	return  curTime - startTime;
+	return  (natural)curTime - (natural)startTime;
 }
 
 IExecutor* JobSchedulerImpl::chooseExecutor(ThreadMode::Type threadMode) {

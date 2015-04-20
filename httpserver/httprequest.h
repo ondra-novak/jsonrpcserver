@@ -70,11 +70,18 @@ using namespace LightSpeed;
 			fldTransferEncoding,
 			fldExpect,
 			fldUnknown,
-			fldUpgrade
+			fldUpgrade,
+			fldAccessControlAllowMethods
 
 
 		};
 
+		class HeaderValue: public ConstStrA {
+		public:
+			const bool defined;
+			HeaderValue():defined(false) {}
+			HeaderValue(ConstStrA value):ConstStrA(value),defined(true) {}
+		};
 
 		typedef std::pair<ConstStrA,ConstStrA> HeaderFieldPair;
 		typedef Message<bool,HeaderFieldPair > HdrEnumFn;
@@ -102,29 +109,19 @@ using namespace LightSpeed;
 		///Retrieves header field
 		/**
 		 * @param field header field name. Note that field names are case sensitive
-		 * @return pointer to string contains content of the field. If field doesn't exists, function returns NULL
+		 * @return HeaderValue object which is compatible with ConstStrA. It contains member variable
+		 *  "defined" which is true when field is defined. If "defined" is false, header
+		 *  doesn't exists
 		 */
-		virtual const ConstStrA *getHeaderField(ConstStrA field) const = 0;
+		virtual HeaderValue getHeaderField(ConstStrA field) const = 0;
 		///Retrieves header field
 		/**
 		 * @param field one of standard field defined by HeaderField enum
-		 * @return pointer to string contains content of the field. If field doesn't exists, function returns NULL
+		 * @return HeaderValue object which is compatible with ConstStrA. It contains member variable
+		 *  "defined" which is true when field is defined. If "defined" is false, header
+		 *  doesn't exists
 		 */
-		virtual const ConstStrA *getHeaderField(HeaderField field) const = 0;
-		///Retrieves header field
-		/**
-		 * @param field header field name. Note that field names are case sensitive
-		 * @param index specifies order of the header in case, that there is multiple headers of the same name
-		 * @return pointer to string contains content of the field. If field doesn't exists, function returns NULL
-		 */
-		virtual const ConstStrA *getHeaderField(ConstStrA field, natural index) const = 0;
-		///Retrieves header field
-		/**
-		 * @param field one of standard field defined by HeaderField enum
-		 * @param index specifies order of the header in case, that there is multiple headers of the same name
-		 * @return pointer to string contains content of the field. If field doesn't exists, function returns NULL
-		 */
-		virtual const ConstStrA *getHeaderField(HeaderField field, natural index) const = 0;
+		virtual HeaderValue getHeaderField(HeaderField field) const = 0;
 
 		///Processes all headers
 		/**
@@ -367,16 +364,6 @@ using namespace LightSpeed;
 		///Retrieves context associated with this connection
 		virtual IHttpHandlerContext *getConnectionContext() const = 0;
 
-		///Retrieves reference to context allocator
-		/**
-		 * Context allocator can use unused space in buffers for allocation instance. If requested size is bigger than space in the buffer,
-		 * allocator uses StdAlloc. This is transparent. contextAllocator can be used only for request contexts, because unused space can
-		 * vary from request to request. If context allocated by context allocator is used with setConnectionContext, this context is
-		 * destroyed at the end of the request
-		 * @return context allocator
-		 */
-		virtual IRuntimeAlloc &getContextAllocator() = 0;
-
 
 		///Retrieves size of POST body
 		/**
@@ -447,6 +434,7 @@ using namespace LightSpeed;
 	class IHttpHandler {
 	public:
 
+		typedef IHttpRequest::HeaderValue HeaderValue;
 
 		enum Status {
 		///Request has been processed

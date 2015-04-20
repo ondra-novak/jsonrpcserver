@@ -52,6 +52,14 @@ public:
 	virtual void addLiveLog(ConstStrA path);
 	virtual void addLiveLog(ConstStrA path, ConstStrA realm, ConstStrA userList ) ;
 
+
+	virtual const void *proxyInterface(const IInterfaceRequest &p) const {
+		return  BredyHttpSrv::ConnHandler::proxyInterface(p);
+	}
+	virtual void *proxyInterface(IInterfaceRequest &p)  {
+		return  BredyHttpSrv::ConnHandler::proxyInterface(p);
+	}
+
 protected:
 
 	class LocalParallelExecutor: public ParallelExecutor2 {

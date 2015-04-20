@@ -24,9 +24,9 @@ using namespace LightSpeed;
 
 class ConnContext;
 
-class ConnHandler: public ITCPServerConnHandler, public IHttpMapper {
+
+class ConnHandler: public ITCPServerConnHandler, public IHttpMapper, public INetworkResource::WaitHandler {
 public:
-	typedef NetworkStream<4096> NStream;
 
 	ConnHandler(StringA baseUrl, StringA serverIdent, natural maxBusyThreads)
 		:serverIdent(serverIdent),baseUrl(baseUrl),busySemaphore((atomic)maxBusyThreads) {}
@@ -34,6 +34,7 @@ public:
 	virtual Command onDataReady(const PNetworkStream &stream, ITCPServerContext *context) throw();
 	virtual Command onWriteReady(const PNetworkStream &stream, ITCPServerContext *context) throw();
 	virtual Command onTimeout(const PNetworkStream &stream, ITCPServerContext *context) throw ();
+	virtual Command onUserWakeup(const PNetworkStream &stream, ITCPServerContext *context) throw();
 	virtual void onDisconnectByPeer(ITCPServerContext *context) throw ();
 	virtual ITCPServerContext *onIncome(const NetworkAddress &addr) throw();
 	virtual Command onAccept(ITCPServerConnControl *controlObject, ITCPServerContext *context);
@@ -49,17 +50,19 @@ public:
 
 	virtual void recordRequestDuration(natural ) {}
 
+	///wait handler
+	virtual natural wait(const INetworkResource *res, natural waitFor, natural timeout) const;
+
 
 protected:
 	StringA serverIdent;
 	StringA baseUrl;
 	PathMapper pathMap;
 	natural numThreads;
-	Semaphore busySemaphore;
-
-
-
+	mutable Semaphore busySemaphore;
 };
+
+
 
 class ConnContext: public ITCPServerContext, public HttpReqImpl, public IHttpPeerInfo  {
 public:
@@ -67,6 +70,8 @@ public:
 	NetworkAddress peerAddr;
 	mutable StringA peerAddrStr;
 	Pointer<ITCPServerConnControl> controlObject;
+	Optional<NStream> nstream;
+	StringA ctxName;
 
 	ConnContext(ConnHandler &owner, const NetworkAddress &addr);
 	~ConnContext();
@@ -79,6 +84,7 @@ public:
 	virtual ConstStrA getPeerAddrStr() const;
 	virtual natural getSourceId() const;
 	void setControlObject(Pointer<ITCPServerConnControl> controlObject);
+	void prepareToDisconnect();
 
 };
 

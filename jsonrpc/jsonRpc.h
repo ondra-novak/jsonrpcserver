@@ -12,7 +12,6 @@
 #include "lightspeed/base/streams/fileio.h"
 #include "lightspeed/utils/json.h"
 #include "lightspeed/base/sync/threadVar.h"
-#include "lightspeed/base/sync/threadObject.h"
 #include "rpchandler.h"
 #include "lightspeed/base/containers/stringpool.h"
 #include "lightspeed/base/containers/map.h"
@@ -73,11 +72,13 @@ public:
     virtual void setRequestMaxSize(natural bytes);
     virtual RpcError onException(JSON::IFactory *json, const std::exception &e);
 
+
+
 protected:
     natural loadHTMLClient(IHttpRequest& request);
     natural initJSONRPC(IHttpRequest& request);
     String clientPage;
-    ThreadObj<JSON::PFactory> jsonFactory;
+    ThreadVarInitDefault<JSON::PFactory> jsonFactory;
     StrPool strings;
     HandlerMap methodMap;
     MethodHelp methodHelp;
@@ -99,8 +100,11 @@ protected:
 	JSON::PNode rpcMulticallN( RpcRequest *rq);
 	JSON::PNode rpcStats( RpcRequest *rq);
 
+	natural dumpMethods(ConstStrA name, IHttpRequest &request);
+	natural sendClientJs(IHttpRequest &request);
 
 
+	StringA methodListTag;
 };
 
 

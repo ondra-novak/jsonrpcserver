@@ -18,6 +18,8 @@
 #include "lightspeed/base/interface.tcc"
 
 #include "lightspeed/base/exceptions/httpStatusException.h"
+#include "lightspeed/utils/md5iter.h"
+#include "rpc.js.h"
 
 using LightSpeed::IInterface;
 
@@ -26,7 +28,15 @@ namespace jsonsrv {
 
 
 natural JsonRpc::onRequest(IHttpRequest& request, ConstStrA vpath) {
-	if (!vpath.empty()) return 404;
+	if (!vpath.empty()) {
+		if (vpath.head(9)==ConstStrA("/methods/")) {
+			return dumpMethods(vpath.offset(9),request);
+		} else if (vpath == ConstStrA("/client.js")) {
+			return sendClientJs(request);
+		}
+		return 404;
+
+	}
 	if (request.getMethod() == "GET") {
 		return loadHTMLClient(request);
 	} else if (request.getMethod() == "POST") {
@@ -72,9 +82,9 @@ void JsonRpc::replyError(String msg, IHttpRequest& request, JSON::PNode idnode =
 static bool findPragma(IHttpRequest &r) {
 
 	using namespace LightSpeed;
-	const ConstStrA *p = r.getHeaderField(IHttpRequest::fldPragma);
-	if (p != 0) {
-		if (p->find(ConstStrA("json-escape-utf")) != naturalNull) return true;
+	IHttpRequest::HeaderValue p = r.getHeaderField(IHttpRequest::fldPragma);
+	if (p.defined != 0) {
+		if (p.find(ConstStrA("json-escape-utf")) != naturalNull) return true;
 	}
 	return false;
 
@@ -267,10 +277,9 @@ void JsonRpc::eraseMethod(ConstStrA methodName) {
 }
 
 JSON::PFactory JsonRpc::getFactory() {
-	JSON::PFactory f = *jsonFactory;
+	JSON::PFactory &f = jsonFactory[ITLSTable::getInstance()];
 	if (f == nil) {
 		f = JSON::createFast();
-		*jsonFactory = f;
 	}
 	return f;
 
@@ -505,7 +514,7 @@ JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA met
 			//report success
 			lg.info("RPC: %1 succeeded") << methodName;
 
-		} catch (RpcCallError &e) {
+		} catch (RpcCallError &) {
 			throw;
 		} catch (std::exception &e) {
 			RpcError err = onException(f,e);
@@ -637,6 +646,63 @@ bool JsonRpc::CmpMethodPrototype::operator ()(ConstStrA a, ConstStrA b) const {
 	}
 	return a.length() < b.length();
 }
+
+
+
+natural JsonRpc::dumpMethods(ConstStrA name, IHttpRequest& request) {
+
+	if (name.tail(3) != ConstStrA(".js")) return 404;
+	ConstStrA varname = name.crop(0,3);
+
+	HeaderValue income_etag = request.getHeaderField(IHttpRequest::fldIfNoneMatch);
+	if (income_etag.defined) {
+		StringA chkTag = varname+methodListTag;
+		if (income_etag == chkTag) return stNotModified;
+	}
+
+
+	JSON::PFactory fact = JSON::create();
+	JSON::PNode arr = fact->array();
+	ConstStrA prevMethod;
+	for (HandlerMap::Iterator iter = methodMap.getFwIter(); iter.hasItems(); ) {
+		const HandlerMap::Entity &e = iter.getNext();
+		natural dots = e.key.find(':');
+		ConstStrA mname;
+		if (dots == naturalNull) mname = e.key;
+		else mname = e.key.head(dots);
+		if (mname != prevMethod) {
+			arr->add(fact->newValue(mname));
+			prevMethod = mname;
+		}
+	}
+	ConstStrA jsonstr = fact->toString(*arr);
+	HashMD5<char> hash;
+	hash.blockWrite(jsonstr,true);
+	hash.finish();
+	StringA digest = hash.hexdigest();
+	methodListTag = digest.getMT();
+	StringA etag = varname+methodListTag;
+	StringA result = ConstStrA("var ") + varname + ConstStrA("=") + jsonstr + ConstStrA(";\r\n");
+
+	request.header(IHttpRequest::fldContentType,"application/javascript");
+	request.header(IHttpRequest::fldContentLength,ToString<natural>(result.length()));
+	request.header(IHttpRequest::fldETag,etag);
+	request.writeAll(result.data(),result.length());
+
+	return stOK;
+
+
+}
+
+natural JsonRpc::sendClientJs(IHttpRequest& request) {
+	ConstBin data(reinterpret_cast<const byte *>(jsonrpcserver_rpc_js),jsonrpcserver_rpc_js_length);
+	request.header(IHttpRequest::fldContentType,"application/javascript");
+	request.header(IHttpRequest::fldContentLength,ToString<natural>(data.length()));
+	request.header(IHttpRequest::fldCacheControl,"max-age=31556926");
+	request.writeAll(data.data(),data.length());
+	return stOK;
+}
+
 
 }
 

@@ -5,12 +5,15 @@
  *      Author: ondra
  */
 
+#include <algorithm>
 #include "statBuffer.h"
 
 namespace BredyHttpSrv {
 
 using namespace LightSpeed;
 
+#undef max
+#undef min
 
 StatAvg::StatAvg(double val):value(val),minval(val),maxval(val),count(1) {
 }

@@ -18,9 +18,12 @@
 #include "lightspeed/base/sync/synchronize.h"
 #include "lightspeed/base/interface.tcc"
 #include "lightspeed/base/debug/livelog.h"
+
+#ifdef LIGHTSPEED_PLATFORM_LINUX
 #include <pwd.h>
 #include <unistd.h>
 #include <grp.h>
+#endif
 
 
 
@@ -297,7 +300,7 @@ integer AbstractJSONRPCServer::startService() {
 	if (!helpdir.empty()) {
 		try {
 			FilePath help = p / helpdir;
-	    		PDirectoryIterator iter = IFileIOServices::getIOServices().openDirectory(help);
+	    	PFolderIterator iter = IFileIOServices::getIOServices().openFolder(help);
 			while (iter->getNext()) {
 			    try {
 				    srv.loadHelp(iter->getFullPath());
@@ -334,11 +337,13 @@ integer AbstractJSONRPCServer::startService() {
 		lg.progress("Added port (id:%2) : %1") << port << k;
 	}
 
+#ifdef LIGHTSPEED_PLATFORM_LINUX
 	if (!usergroup.empty()) {
 		setUserGroup(usergroup);
 	} else if (getuid() == 0) {
 		lg.warning("STARTING UNDER root ACCOUNT! Consider to specify user and group in server.setusergroup config options");
 	}
+#endif
 
 	natural res = onStartServer(srv,srv);
 	if (res != 0) {
@@ -449,6 +454,7 @@ void AbstractJSONRPCServer::readMainConfig(const IniConfig& cfg) {
 }
 
 void AbstractJSONRPCServer::setUserGroup(ConstStrA usergroup) {
+#ifdef LIGHTSPEED_PLATFORM_LINUX
 	LogObject lg(THISLOCATION);
 	ConstStrA::SplitIterator splt = usergroup.split(':');
 	StringA tmp;
@@ -484,7 +490,7 @@ void AbstractJSONRPCServer::setUserGroup(ConstStrA usergroup) {
 					String(ConstStrA("Can't switch to user: ") + username));
 		}
 	}
-
+#endif
 }
 
 RpcError AbstractJSONRPCServer::customRPCException(JSON::IFactory *json, const std::exception& e) {

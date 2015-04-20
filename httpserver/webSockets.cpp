@@ -19,7 +19,7 @@
 
 namespace BredyHttpSrv {
 
-template class AbstractWebSocketConnection<WebSocketConnection, true>;
+//template class AbstractWebSocketConnection<WebSocketConnection, true>;
 
 
 natural AbstractWebSocketsHandler::onRequest(IHttpRequest& request,
@@ -28,16 +28,13 @@ natural AbstractWebSocketsHandler::onRequest(IHttpRequest& request,
 	ITCPServerConnControl &connControl = request.getIfc<ITCPServerConnControl>();
 
 
-	const ConstStrA *upgrade = request.getHeaderField(IHttpRequest::fldUpgrade);
-	const ConstStrA *connection = request.getHeaderField(
-			IHttpRequest::fldConnection);
-	if (upgrade == 0 || *upgrade != "websocket" || connection == 0
-			|| (connection->find(ConstStrA("Upgrade")) == naturalNull && connection->find(ConstStrA("upgrade")) == naturalNull))
-		return stBadRequest;
-	const ConstStrA *secKey = request.getHeaderField("Sec-WebSocket-Key");
+	HeaderValue upgrade = request.getHeaderField(IHttpRequest::fldUpgrade);
+	HeaderValue connection = request.getHeaderField(IHttpRequest::fldConnection);
+	if (upgrade != "websocket" || (connection.find(ConstStrA("Upgrade")) == naturalNull && connection.find(ConstStrA("upgrade")) == naturalNull))
+		return 0;
+	HeaderValue secKey = request.getHeaderField("Sec-WebSocket-Key");
 
-	WebSocketConnection *websoc = onNewConnection(
-			request.getContextAllocator(), request, vpath);
+	WebSocketConnection *websoc = onNewConnection(StdAlloc::getInstance(), request, vpath);
 
 	if (websoc == 0)
 		return stReject;
@@ -45,11 +42,10 @@ natural AbstractWebSocketsHandler::onRequest(IHttpRequest& request,
 	request.setRequestContext(websoc);
 
 	request.status(101, "Switching Protocols");
-	request.header(IHttpRequest::fldUpgrade, *upgrade);
-	request.header(IHttpRequest::fldConnection, *connection);
+	request.header(IHttpRequest::fldUpgrade, upgrade);
+	request.header(IHttpRequest::fldConnection, connection);
 
-	StringA testStr = *secKey
-			+ ConstStrA("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+	StringA testStr = secKey + ConstStrA("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 
 	SHA1 sha1;
 	sha1.update(std::string(testStr.data(), testStr.length()));

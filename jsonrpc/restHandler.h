@@ -37,7 +37,11 @@ public:
 
 protected:
 
-	typedef Map<StringKey<StringA>, Action> EndpointMap;
+	struct Cmp {
+		bool operator()(ConstStrA a, ConstStrA b) const;
+	};
+
+	typedef Map<StringKey<StringA>, Action, Cmp> EndpointMap;
 	EndpointMap endpoints;
 
 };

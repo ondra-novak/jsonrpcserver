@@ -10,6 +10,7 @@ CPP_SRCS += \
 ../httpserver/httpServer.cpp \
 ../httpserver/pathMapper.cpp \
 ../httpserver/queryParser.cpp \
+../httpserver/serverMain.cpp \
 ../httpserver/sha1.cpp \
 ../httpserver/simpleWebSite.cpp \
 ../httpserver/statBuffer.cpp \
@@ -22,6 +23,7 @@ OBJS += \
 ./httpserver/httpServer.o \
 ./httpserver/pathMapper.o \
 ./httpserver/queryParser.o \
+./httpserver/serverMain.o \
 ./httpserver/sha1.o \
 ./httpserver/simpleWebSite.o \
 ./httpserver/statBuffer.o \
@@ -34,6 +36,7 @@ CPP_DEPS += \
 ./httpserver/httpServer.d \
 ./httpserver/pathMapper.d \
 ./httpserver/queryParser.d \
+./httpserver/serverMain.d \
 ./httpserver/sha1.d \
 ./httpserver/simpleWebSite.d \
 ./httpserver/statBuffer.d \

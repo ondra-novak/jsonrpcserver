@@ -12,39 +12,72 @@
 #include "lightspeed/base/text/textFormat.tcc"
 #include "HttpReqImpl.h"
 #include "lightspeed/base/debug/dbglog.h"
+#include "lightspeed/base/streams/netio.tcc"
 
 
 
 namespace BredyHttpSrv {
 
 
+
+static atomic contextCounter = 0;
+
 ConnHandler::Command ConnHandler::onDataReady(const PNetworkStream &stream, ITCPServerContext *context) throw() {
 	try {
-		ConnContext *ctx = static_cast<ConnContext *>(context);
-		char buff[100];
-		LightSpeed::_intr::numberToString((natural)ctx,buff,100,36);
-		DbgLog::setThreadName(buff,false);
+		Synchronized<Semaphore> _(busySemaphore);
 
-		NStream str(stream);
-		bool r = ctx->onData(str);
-		while (r && str.dataReady()) {
-			if (str.hasItems()) r = ctx->onData(str);
-			else r = false;
+		stream->setWaitHandler(this);
+
+		ConnContext *ctx = static_cast<ConnContext *>(context);
+		DbgLog::setThreadName(ctx->ctxName,false);
+
+		if (ctx->nstream == nil) {
+			ctx->nstream = Constructor1<NStream,PNetworkStream>(stream);
 		}
-		return r?cmdWaitRead:cmdRemove;
+
+		ConnHandler::Command cmd =  ctx->onData(ctx->nstream);
+		while (cmd == ConnHandler::cmdWaitRead && ctx->nstream->dataReady() > 0) {
+			cmd =  ctx->onData(ctx->nstream);
+		}
+		return cmd;
 	} catch (std::exception &e) {
 		LogObject(THISLOCATION).note("Uncaught exception: %1") << e.what();
 		return cmdRemove;
 	}
 
 }
-ConnHandler::Command ConnHandler::onWriteReady(const PNetworkStream &, ITCPServerContext *context) throw() {
-	return cmdRemove;
+
+natural ConnHandler::wait(const INetworkResource *res, natural waitFor, natural timeout) const {
+	natural k = INetworkResource::WaitHandler::wait(res,waitFor,0);
+	if (k == 0 && timeout != 0) {
+		SyncReleased<Semaphore> _(busySemaphore);
+		k = INetworkResource::WaitHandler::wait(res,waitFor,timeout);
+	}
+	return k;
+
+
+}
+
+
+ConnHandler::Command ConnHandler::onWriteReady(const PNetworkStream &stream, ITCPServerContext *context) throw() {
+	//because handler can't wait for both reading or writing, it is always known, what expected
+	//so we can route onWriteReady through onDataReady
+	return onDataReady(stream,context);
 }
 ConnHandler::Command ConnHandler::onTimeout(const PNetworkStream &, ITCPServerContext *context) throw () {
+	//when timeout - remove connection
 	return cmdRemove;
 }
-void ConnHandler::onDisconnectByPeer(ITCPServerContext *) throw () {}
+void ConnHandler::onDisconnectByPeer(ITCPServerContext *context) throw () {
+	//while stream is disconnected, we need to close all contexts
+	//before rest part of object becomes invalud
+	//contexts can be accessed from other threads
+	//so it is responsibility of they creators to use proper synchronization
+	//and perform any cleanup before contexts are destroyed
+	ConnContext *ctx = static_cast<ConnContext *>(context);
+	ctx->prepareToDisconnect();
+
+}
 
 ITCPServerContext *ConnHandler::onIncome(const NetworkAddress &addr) throw() {
 	DbgLog::setThreadName("server",false);
@@ -98,14 +131,14 @@ natural ConnContext::callHandler(IHttpRequest &request, ConstStrA path, IHttpHan
 	PathMapper::MappingIter iter = owner.pathMap.findPathMapping(path);
 	while (iter.hasItems()) {
 		const PathMapper::Record &rc = iter.getNext();
-		ConstStrA vpath = request.getPath().offset(rc.key.length());
+		ConstStrA vpath = path.offset(rc.key.length());
 		natural res = rc.value->onRequest(request,vpath);
 		if (request.headersSent() || res != 0) {
-			*h = rc.value;
+			if (h) *h = rc.value;
 			return res;
 		}
 	}
-	*h = 0;
+	if (h) *h = 0;
 	return 404;
 }
 
@@ -113,14 +146,23 @@ natural ConnContext::callHandler(IHttpRequest &request, ConstStrA path, IHttpHan
 
 ConnContext::ConnContext(ConnHandler &owner, const NetworkAddress &addr)
 	:HttpReqImpl(owner.baseUrl,owner.serverIdent, owner.busySemaphore), owner(owner) {
+	natural contextId = lockInc(contextCounter);
 	peerAddr = addr;
 	peerAddrStr = addr.asString(false);
-	(LogObject(THISLOCATION).progress("New connection %1 - address: %2 ") << setBase(36)
-			<< (natural)this << peerAddrStr) << setBase(10);
+
+	TextFormatBuff<char, StaticAlloc<100> > fmt;
+	fmt("Http:%1") << contextId;
+	ctxName = fmt.write();
+
+
+	(LogObject(THISLOCATION).progress("New connection %1 - address: %2 ") 
+			<< ctxName << peerAddrStr) ;
 }
 
 ConnContext::~ConnContext() {
-	(LogObject(THISLOCATION).progress("Connection closed %1") << setBase(36) << (natural)this) << setBase(10);
+	prepareToDisconnect();
+	DbgLog::setThreadName("",true);
+	LogObject(THISLOCATION).progress("Connection closed %1") << ctxName ;
 
 }
 
@@ -149,6 +191,12 @@ void* ConnHandler::proxyInterface(IInterfaceRequest& p) {
 const void* ConnHandler::proxyInterface(const IInterfaceRequest& p) const {
 	return IHttpMapper::proxyInterface(p);
 }
+
+ConnHandler::Command ConnHandler::onUserWakeup( const PNetworkStream &stream, ITCPServerContext *context ) throw()
+{
+	return ConnHandler::cmdWaitRead;
+}
+
 ConstStrA ConnContext::getPeerAddrStr() const {
 	return peerAddrStr;
 }
@@ -161,4 +209,13 @@ natural ConnContext::getSourceId() const {
 void ConnContext::setControlObject(Pointer<ITCPServerConnControl> controlObject) {
 	 this->controlObject = controlObject;
 }
+
+void ConnContext::prepareToDisconnect() {
+	//destroy context, because there still can be other thread accessing it
+	setRequestContext(0);
+	//destroy context, because there still can be other thread accessing it
+	setConnectionContext(0);
+
+}
+
 }

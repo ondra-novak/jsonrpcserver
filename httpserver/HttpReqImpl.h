@@ -14,6 +14,9 @@
 #include "lightspeed/base/containers/map.h"
 #include "lightspeed/base/framework/ITCPServer.h"
 
+#include "lightspeed/base/containers/stringpool.h"
+#include "nstream.h"
+
 namespace LightSpeed {
 	class Semaphore;
 }
@@ -22,11 +25,8 @@ namespace BredyHttpSrv {
 
 class ConnContext;
 
-class HttpReqImpl: public IHttpRequest, public IRuntimeAlloc {
+class HttpReqImpl: public IHttpRequest{
 public:
-	LIGHTSPEED_NOT_CLONEABLECLASS;
-
-	typedef NetworkStream<4096> NStream;
 
 	HttpReqImpl(ConstStrA baseUrl, ConstStrA serverIdent, Semaphore &busySemaphore);
 
@@ -34,10 +34,8 @@ public:
 	virtual ConstStrA getMethod();
 	virtual ConstStrA getPath();
 	virtual ConstStrA getProtocol();
-	virtual const ConstStrA *getHeaderField(ConstStrA field) const;
-	virtual const ConstStrA *getHeaderField(ConstStrA field, natural index) const;
-	virtual const ConstStrA *getHeaderField(HeaderField field) const ;
-	virtual const ConstStrA *getHeaderField(HeaderField field,natural index) const ;
+	virtual HeaderValue getHeaderField(ConstStrA field) const;
+	virtual HeaderValue getHeaderField(HeaderField field) const ;
 	virtual bool enumHeader(Message<bool,HeaderFieldPair > caller)const;
 	virtual void sendHeaders();
 	virtual void header(ConstStrA field, ConstStrA value);
@@ -70,19 +68,15 @@ public:
 	void finishChunk();
 
 
-	bool onData(NStream &stream);
-	bool readHeader();
-	bool finishReadHeader();
+	ITCPServerConnHandler::Command onData(NStream &stream);
+	ITCPServerConnHandler::Command  readHeader();
+	ITCPServerConnHandler::Command  finishReadHeader();
 	void clear();
 
-	virtual void *alloc(natural objSize);
-	virtual void dealloc(void *ptr, natural objSize);
-	virtual void *alloc(natural objSize, IRuntimeAlloc * &owner);
 	virtual void setRequestContext(IHttpHandlerContext *context) ;
 	virtual void setConnectionContext(IHttpHandlerContext *context) ;
 	virtual IHttpHandlerContext *getRequestContext() const ;
 	virtual IHttpHandlerContext *getConnectionContext() const ;
-	virtual IRuntimeAlloc &getContextAllocator() ;
 	virtual natural getPostBodySize() const;
 
 	virtual PNetworkStream getConnection();
@@ -96,28 +90,29 @@ public:
 	virtual void setMaxPostSize(natural bytes) ;
 
 protected:
-	typedef AutoArray<char, StaticAlloc<8196> > OutHdrBuff;
-	typedef FlatArrMid<const OutHdrBuff &> OutHdrBuffPart;
-	typedef std::pair<OutHdrBuffPart,OutHdrBuffPart> OutHdrPair;
-	typedef AutoArray<OutHdrPair,StaticAlloc<64> > OutHdr;
 
 	struct HttpHeaderCmpKeys {
 	public:
 		bool operator()(ConstStrA a, ConstStrA b) const;
 	};
 
-	typedef MultiMap<ConstStrA, ConstStrA, HttpHeaderCmpKeys> HttpHeader;
-	typedef AutoArray<char, StaticAlloc<8196> > HeaderData;
+
+	typedef StringPool<char, SmallAlloc<256> > StrPool;
+	typedef AutoArray<byte, SmallAlloc<256> > ChunkBuff;
+	typedef StrPool::Str HdrStr;
+	typedef Map<HdrStr, HdrStr, HttpHeaderCmpKeys> HeaderMap;
 
 
-	OutHdrBuffPart addString(ConstStrA str);
+
+
 	void writeChunk(const void *data, natural len);
-	bool errorPageKA(natural code, ConstStrA expl = ConstStrA());
+	ITCPServerConnHandler::Command  errorPageKA(natural code, ConstStrA expl = ConstStrA());
 	void send100continue() const;
-	bool processHandlerResponse(natural res);
+	ITCPServerConnHandler::Command  processHandlerResponse(natural res);
+	bool isInputAvailable() const;
 
 protected:
-	Pointer<NStream> inout;
+	NStream *inout;
 	ConstStrA serverIdent;
 	ConstStrA baseUrl;
 	unsigned short httpMajVer;
@@ -128,17 +123,19 @@ protected:
 	bool useChunked;
 	bool closeConn;
 	bool outputClosed;
+	mutable bool inputClosed;
 	mutable bool bNeedContinue;
 	mutable bool chunkedPost;
 
-	OutHdrBuff outBuff;
-	OutHdr outHdr;
-	Optional<OutHdrBuffPart> statusMsg;
+	StrPool hdrPool,responseHdrPool;
+	HeaderMap requestHdrs, responseHdrs;
 	natural statusCode;
+	HdrStr statusMsg;
+	ChunkBuff chunkBuff;
 
-	HeaderData headerData;
-	HttpHeader inHeader;
-	ConstStrA method,path,protocol;
+	POutputStream curOutput;
+
+	HdrStr method,path,protocol;
 	Pointer<IHttpHandler> curHandler;
 	AllocPointer<IHttpHandlerContext> requestContext;
 	AllocPointer<IHttpHandlerContext> connectionContext;

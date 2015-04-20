@@ -24,8 +24,14 @@ SimpleWebSite::SimpleWebSite(FilePath documentRoot):documentRoot(documentRoot) {
 
 natural SimpleWebSite::onRequest(IHttpRequest& request,ConstStrA vpath) {
 
+	ConstStrA query;
+	natural q = vpath.find('?');
+	if (q != naturalNull) {
+		query = vpath.offset(q);
+		vpath = vpath.head(q);
+	}
 	if (vpath.empty()) {
-		request.redirect(StringA(request.getPath() + ConstStrA("/")));
+		request.redirect(StringA(request.getPath() + ConstStrA("/")+query));
 		return 0;
 	}
 	if (vpath == ConstStrA("/")) {

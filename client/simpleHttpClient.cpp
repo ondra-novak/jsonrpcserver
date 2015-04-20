@@ -33,7 +33,7 @@ String SimpleHttpClient::getUserAgent() const {
 
 void SimpleHttpClient::setProxy(ProxyMode md, String addr, natural port) {
 	if (proxyMode != md || proxyAddr != addr || proxyPort != port)
-		conn.unset();
+		conn = nil;
 
 	proxyMode = md;
 	proxyAddr = addr;
@@ -83,7 +83,7 @@ IHTTPStream& SimpleHttpClient::setHeader(ConstStrA headerName,
 }
 
 IHTTPStream& SimpleHttpClient::cancel() {
-	conn.unset();
+	conn = nil;
 	return *this;
 }
 
@@ -107,7 +107,7 @@ bool SimpleHttpClient::enumHeaders(IEnumHeaders& enumHdr) {
 }
 
 bool SimpleHttpClient::inConnected() const {
-	return conn.isSet();
+	return conn != nil;
 }
 
 IHTTPStream& SimpleHttpClient::disableRedirect() {
@@ -136,7 +136,7 @@ void SimpleHttpClient::setUrl(StringA url) {
 }
 
 bool SimpleHttpClient::extractChunkSize() {
-	SeqTextInA textin(*conn);
+	SeqTextInA textin(conn);
 	TextIn < SeqTextInA > scn(textin);
 	scn.setWS(" \t");
 	scn.setNL("\r\n");
@@ -160,9 +160,9 @@ natural SimpleHttpClient::read(void* buffer, natural size) {
 	natural s;
 	switch (readMode) {
 	case rmUnlimited:
-		s = conn->getBufferHandle()->read(buffer, size);
+		s = conn->getBufferedInputStream()->read(buffer, size);
 		if (s == 0) {
-			conn.unset();
+			conn = nil;
 			curMode = mdIdle;
 		}
 		return s;
@@ -174,9 +174,9 @@ natural SimpleHttpClient::read(void* buffer, natural size) {
 			curMode = mdIdle;
 			return 0;
 		}
-		s = conn->getBufferHandle()->read(buffer, size);
+		s = conn->getBufferedInputStream()->read(buffer, size);
 		if (s == 0) {
-			conn.unset();
+			conn = nil;
 			curMode = mdIdle;
 			reportReadException();
 		}
@@ -193,7 +193,7 @@ natural SimpleHttpClient::read(void* buffer, natural size) {
 		if (size > fragmentSize)
 			size = fragmentSize;
 
-		s = conn->getBufferHandle()->read(buffer, size);
+		s = conn->getBufferedInputStream()->read(buffer, size);
 		fragmentSize -= s;
 		return s;
 	}
@@ -214,10 +214,10 @@ natural SimpleHttpClient::peek(void* buffer, natural size) const {
 	natural s;
 	switch (readMode) {
 	case rmUnlimited:
-		return mthis->conn->getBufferHandle()->peek(buffer, size);
+		return mthis->conn->getBufferedInputStream()->peek(buffer, size);
 	case rmSizeLimited:
 		if (size == 0) {
-			s = mthis->conn->getBufferHandle()->peek(buffer, size);
+			s = mthis->conn->getBufferedInputStream()->peek(buffer, size);
 			if (s > fragmentSize)
 				s = fragmentSize;
 
@@ -227,13 +227,13 @@ natural SimpleHttpClient::peek(void* buffer, natural size) const {
 			size = fragmentSize;
 
 		if (size)
-			return mthis->conn->getBufferHandle()->peek(buffer, size);
+			return mthis->conn->getBufferedInputStream()->peek(buffer, size);
 		else
 			return 0;
 
 	case rmChunked: {
 		if (size == 0) {
-			return mthis->conn->getBufferHandle()->peek(buffer, size);
+			return mthis->conn->getBufferedInputStream()->peek(buffer, size);
 		} else if (fragmentSize == 0) {
 			if (!mthis->extractChunkSize()) {
 				mthis->readMode = rmSizeLimited;
@@ -245,7 +245,7 @@ natural SimpleHttpClient::peek(void* buffer, natural size) const {
 		if (size > fragmentSize)
 			size = fragmentSize;
 
-		return mthis->conn->getBufferHandle()->peek(buffer, size);
+		return mthis->conn->getBufferedInputStream()->peek(buffer, size);
 	}
 	}
 
@@ -254,11 +254,11 @@ natural SimpleHttpClient::peek(void* buffer, natural size) const {
 
 bool SimpleHttpClient::canRead() const {
 	if (!dataBuff.empty()) return true;
-	if (!conn.isSet()) return true;
+	if (conn == nil) return true;
 	byte b;
 	switch(readMode) {
 	case rmUnlimited: {
-		return SeqFileInput(*conn).hasItems();
+		return SeqFileInput(conn).hasItems();
 	}
 	case rmSizeLimited: return fragmentSize>0;
 	case rmChunked: return fragmentSize>0 || peek(&b,1) != 0;
@@ -313,7 +313,7 @@ void SimpleHttpClient::sendRequest() {
 		skipBody();
 		reloadConnection();
 		ConstStrA path = proxyUsed?ConstStrA(url):curPath;
-		SeqTextOutA textstream(*conn);
+		SeqTextOutA textstream(conn);
 		PrintTextA print(textstream);
 		ConstStrA methodStr;
 		if (method.empty()) {
@@ -380,7 +380,7 @@ void SimpleHttpClient::sendRequest() {
 	} catch (...) {
 		if (!firstRequest) {
 			firstRequest=true;
-			conn.unset();
+			conn = nil;
 			connAdr.clear();
 			sendRequest();
 		} else {
@@ -404,10 +404,10 @@ void SimpleHttpClient::reloadConnection() {
 		StringA proxyA = proxyAddr.getUtf8();
 		if (connAdr != proxyA) {
 			connAdr = proxyA;
-			conn.unset();
+			conn = nil;
 			NetworkAddress a(proxyA,proxyPort);
 			NetworkStreamSource netsrc(a,1,timeout,timeout,StreamOpenMode::active);
-			conn.init(netsrc.getNext());
+			conn = Constructor1<NetworkStream<>, PNetworkStream>(netsrc.getNext());
 			firstRequest = true;
 		}
 	} else {
@@ -417,10 +417,10 @@ void SimpleHttpClient::reloadConnection() {
 		if (curHost != connAdr) {
 			firstRequest = true;
 			connAdr = curHost;
-			conn.unset();
+			conn = nil;
 			NetworkAddress a(curHost,80);
 			NetworkStreamSource netsrc(a,1,timeout,timeout,StreamOpenMode::active);
-			conn.init(netsrc.getNext());
+			conn = Constructor1<NetworkStream<>, PNetworkStream>(netsrc.getNext());
 		}
 	}
 }
