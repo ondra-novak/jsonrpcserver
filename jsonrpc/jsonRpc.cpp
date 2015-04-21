@@ -20,6 +20,7 @@
 #include "lightspeed/base/exceptions/httpStatusException.h"
 #include "lightspeed/utils/md5iter.h"
 #include "rpc.js.h"
+#include "../httpserver/statBuffer.h"
 
 using LightSpeed::IInterface;
 
