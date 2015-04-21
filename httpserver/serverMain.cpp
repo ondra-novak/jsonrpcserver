@@ -17,6 +17,7 @@
 #include "lightspeed/base/debug/dbglog.h"
 #include "lightspeed/base/debug/stdlogoutput.h"
 #include "lightspeed/base/debug/livelog.h"
+#include "lightspeed/base/text/textOut.tcc"
 #include "serverMain.h"
 
 
