@@ -15,7 +15,7 @@ namespace BredyHttpSrv {
 
 void PathMapper::addHandler(ConstStrA path, IHttpHandler* h) {
 
-	bool found;
+	bool found = false;
 	Iterator i = handlers.seek(path,&found);
 	if (found) {
 		const Record &r = i.getNext();
@@ -66,7 +66,7 @@ void PathMapper::MappingIter::fetchNext() {
 }
 
 void PathMapper::MappingIter::fetchFirst() {
-	bool found;
+	bool found = false;
 	HandlerMap::Iterator iter = map.seek(path,&found);
 	if (found) {
 		fetched = &iter.getNext();

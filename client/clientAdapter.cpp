@@ -14,7 +14,7 @@ ClientAdapter::ClientAdapter():factory(JSON::create()),nextTicketId(1) {}
 ClientAdapter::ClientAdapter(IRuntimeAlloc& alloc):factory(JSON::create(alloc)),nextTicketId(1) {}
 
 JSON::PNode ClientAdapter::getResult(Ticket ticket, bool* setError) {
-	bool found;
+	bool found = false;
 	Results::Iterator iter = results.seek(ticket, &found);
 	if (!found) throw InvalidClientTicketException(THISLOCATION,ticket);
 	RPCResult res = iter.peek().value;

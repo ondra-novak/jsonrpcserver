@@ -199,15 +199,15 @@ void HttpReqImpl::sendHeaders() {
 	static ConstStrA connectionStr = fieldToText(fldConnection);
 	static ConstStrA contenLenStr = fieldToText(fldContentLength);
 	static ConstStrA dateStr = fieldToText(fldDate);
-	static ConstStrA statusMsg = this->statusMsg;
-	if (statusMsg.empty())
-		statusMsg = getStatusMessage(statusCode);
+	ConstStrA statusMsgStr = this->statusMsg;
+	if (statusMsgStr.empty())
+		statusMsgStr = getStatusMessage(statusCode);
 
 
 	PrintTextA print(*inout);
 	print.setNL("\r\n");
 	print("HTTP/%1.%2 %3 %4\n") << httpMajVer << httpMinVer << statusCode
-			<< statusMsg;
+			<< statusMsgStr;
 
 	if (statusCode == 101) {
 		hasTransfEnc = hasConnection = hasContentType = true;
@@ -263,7 +263,7 @@ void HttpReqImpl::sendHeaders() {
 	print("\n");
 
 	LogObject(THISLOCATION).info("HTTP/%1.%2 %3 %4 %5 %6")
-		<< httpMajVer << httpMajVer << method << path << statusCode << statusMsg;
+		<< httpMajVer << httpMajVer << method << path << statusCode << statusMsgStr;
 
 	responseHdrs.clear();
 	//for code 100 or 101, additional header will be next
@@ -756,12 +756,12 @@ void HttpReqImpl::clear() {
 	responseHdrs.clear();
 	hdrPool.clear();
 	responseHdrPool.clear();
+	statusMsg = HdrStr();
 	curHandler = nil;
 	bHeaderSent = false;
 	isHeadMethod = false;
 	useChunked = false;
 	inout = 0;
-	statusMsg = HdrStr();
 	remainPostData = 0;
 	chunkedPost = false;
 	requestContext = nil;
