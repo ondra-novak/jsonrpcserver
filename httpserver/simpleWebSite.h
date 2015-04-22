@@ -18,13 +18,14 @@ using namespace LightSpeed;
 
 class SimpleWebSite: public IHttpHandler {
 public:
-	SimpleWebSite(FilePath documentRoot);
+	SimpleWebSite(FilePath documentRoot, natural cacheTime = 86400);
 	virtual natural onRequest(IHttpRequest &request, ConstStrA vpath);
 	virtual natural onData(IHttpRequest &request) {return false;}
 
 
 protected:
 	FilePath documentRoot;
+	StringA cacheStr;
 };
 
 } /* namespace BredyHttpSrv */

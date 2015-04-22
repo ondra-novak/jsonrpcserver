@@ -18,7 +18,8 @@ using namespace LightSpeed;
 
 
 
-SimpleWebSite::SimpleWebSite(FilePath documentRoot):documentRoot(documentRoot) {
+SimpleWebSite::SimpleWebSite(FilePath documentRoot, natural cacheTime) :documentRoot(documentRoot)
+	,cacheStr(cacheTime==0?StringA():StringA(ConstStrA("max-age=")+ToString<natural>(cacheTime))) {
 
 }
 
@@ -52,20 +53,29 @@ natural SimpleWebSite::onRequest(IHttpRequest& request,ConstStrA vpath) {
 	IFileIOServices &svc = IFileIOServices::getIOServices();
 	if (svc.canOpenFile(pathName,IFileIOServices::fileOpenRead)) {
 
+		PFolderIterator finfo = svc.getFileInfo(resPath);
+		ToString<lnatural> etag(finfo->getModifiedTime().asUnix(), 36);
+
+		HeaderValue v = request.getHeaderField(IHttpRequest::fldIfNoneMatch);
+		if (v.defined && v == etag) return stNotModified;
+
 		ConstStrW ext = resPath.getExtension();
 		ConstStrA ctx;
-		if (ext == ConstStrW(L"txt")) ctx = ConstStrA("text/plain;charset=utf8");
+		if (ext == ConstStrW(L"txt")) ctx = ConstStrA("text/plain;charset=UTF-8");
 		else if (ext == ConstStrW(L"jpg")) ctx = ConstStrA("image/jpeg");
 		else if (ext == ConstStrW(L"png")) ctx = ConstStrA("image/png");
 		else if (ext == ConstStrW(L"gif")) ctx = ConstStrA("image/gif");
 		else if (ext == ConstStrW(L"js")) ctx = ConstStrA("application/javascript");
 		else if (ext == ConstStrW(L"css")) ctx = ConstStrA("text/css");
-		else if (ext == ConstStrW(L"htm")) ctx = ConstStrA("text/html;charset=utf8");
-		else if (ext == ConstStrW(L"html")) ctx = ConstStrA("text/html;charset=utf8");
+		else if (ext == ConstStrW(L"htm")) ctx = ConstStrA("text/html;charset=UTF-8");
+		else if (ext == ConstStrW(L"html")) ctx = ConstStrA("text/html;charset=UTF-8");
 		else ctx = ConstStrA("application/octet-stream");
 
+
+		request.header(IHttpRequest::fldContentLength, ToString<lnatural>(finfo->getSize()));
+		request.header(IHttpRequest::fldETag, etag);
 		request.header(IHttpRequest::fldContentType,ctx);
-		request.header(IHttpRequest::fldCacheControl,"max-age=86400");
+		if (!cacheStr.empty()) request.header(IHttpRequest::fldCacheControl, cacheStr);
 
 		try {
 			byte buff[4096];
