@@ -225,6 +225,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\httpserver\livelog.h"
+				>
+			</File>
+			<File
 				RelativePath=".\httpserver\nstream.h"
 				>
 			</File>
@@ -382,6 +386,10 @@
 			</File>
 			<File
 				RelativePath=".\jsonrpc\JSONRPCMain.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\httpserver\livelog.cpp"
 				>
 			</File>
 			<File
