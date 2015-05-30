@@ -108,6 +108,8 @@ integer AbstractJSONRPCServer::initService(const Args& args, SeqFileOutput serr)
 	return ServiceApp::initService(args,serr);
 }
 
+
+
 class JsonHttpServer: public JsonRpc, public BredyHttpSrv::HttpServer, public IJsonRpcLogObject {
 public:
 	JsonHttpServer(AbstractJSONRPCServer &owner, StringA baseUrl,

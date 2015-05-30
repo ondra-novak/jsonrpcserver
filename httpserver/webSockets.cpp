@@ -118,4 +118,8 @@ WebSocketConnection::WebSocketConnection(IHttpRequest& request) {
 	stream = request.getConnection();
 }
 
+template void AbstractWebSocketConnection<WebSocketConnection, true>::sendTextMessage(ConstStrA, bool);
+template void AbstractWebSocketConnection<WebSocketConnection, true>::sendBinMessage(ConstBin, bool);
+
+
 } /* namespace BredyHttpSrv */

@@ -164,7 +164,7 @@ private:
 	/**
 	 * @param buffer buffer for data
 	 * @param length length of that buffer
-	 * @return function returns count byter read from the stream. If there are no more data (connection closed)
+	 * @return function returns count bytes read from the stream. If there are no more data (connection closed)
 	 * function have to return zero. If function is called while data are not ready to read, function should
 	 * block until at least one byte is ready to read.
 	 *

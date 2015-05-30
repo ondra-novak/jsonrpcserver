@@ -140,6 +140,7 @@ HttpReqImpl::HttpReqImpl(ConstStrA baseUrl, ConstStrA serverIdent, Semaphore &bu
 , httpMinVer(0)
 , bHeaderSent(false)
 , useChunked(false)
+,switchedProtocol(false)
 ,statusCode(200)
 ,busySemaphore(busySemaphore)
 ,busyLockStatus(1)
@@ -212,6 +213,8 @@ void HttpReqImpl::sendHeaders() {
 	if (statusCode == 101) {
 		hasTransfEnc = hasConnection = hasContentType = true;
 		useChunked = false;
+		remainPostData = naturalNull;
+		switchedProtocol = true;
 	}
 
 	for (HeaderMap::Iterator iter = responseHdrs.getFwIter(); iter.hasItems();) {
@@ -378,6 +381,11 @@ void HttpReqImpl::openPostChunk() const {
 natural HttpReqImpl::read(void* buffer, natural size) {
 	if (bNeedContinue) send100continue();
 	if (inputClosed) return 0;
+	if (switchedProtocol) {
+		natural rd = inout->blockRead(buffer,size);
+		if (rd == 0) inputClosed = true;
+		return rd;
+	}
 	if (remainPostData == 0) {
 		if (chunkedPost) openPostChunk();
 		if (remainPostData == 0) {
@@ -449,7 +457,8 @@ natural HttpReqImpl::peek(void* buffer, natural size) const {
 
 bool HttpReqImpl::canRead() const {
 	if (inputClosed) return false;
-	if (remainPostData == 0 ) {
+	if (switchedProtocol) return true;
+	if (remainPostData == 0) {
 		if (chunkedPost) openPostChunk();
 		if (remainPostData == 0) {
 			inputClosed = true;
@@ -697,7 +706,7 @@ ITCPServerConnHandler::Command  HttpReqImpl::finishReadHeader() {
 
 bool HttpReqImpl::isInputAvailable() const {
 	if (chunkedPost) return !inputClosed;
-	else return remainPostData > 0;
+	else return switchedProtocol || remainPostData > 0;
 }
 
 ITCPServerConnHandler::Command  HttpReqImpl::processHandlerResponse(natural res) {
@@ -767,6 +776,7 @@ void HttpReqImpl::clear() {
 	requestContext = nil;
 	statusCode=200;
 	postBodyLimit = naturalNull;
+	switchedProtocol = false;
 
 }
 

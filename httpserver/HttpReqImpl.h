@@ -123,6 +123,7 @@ protected:
 	bool useChunked;
 	bool closeConn;
 	bool outputClosed;
+	bool switchedProtocol;
 	mutable bool inputClosed;
 	mutable bool bNeedContinue;
 	mutable bool chunkedPost;
