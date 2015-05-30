@@ -1,0 +1,54 @@
+helloWorld
+NAME
+
+	helloWorld
+	
+SYNOPSIS
+
+	**string** helloWorld [ ]
+	
+DESCRIPTION
+
+	Generates well known response
+	
+RETURN VALUE
+
+	Returns "Hello, World!" 
+.
+sumNumbers
+NAME
+
+	sumNumbers
+	
+SYNOPSIS
+
+	**struct** sumNumbers[ **number** n1, ... ]
+	
+DESCRIPTION
+
+	Calculates sum and average of numbers. Function accepts one or more arguments
+	
+RETURN VALUE
+
+	**number** sum    - sum 
+	**number** avg    - average
+	
+.
+reverse
+NAME
+
+	reverse
+	
+SYNOPSIS
+
+	**string** revrese [ **string** s ] 
+	
+DESCRIPTION
+
+	Reverses the string
+	
+RETURN VALUE
+
+	Returns reversed string. The last character appears as first and the first character appears as last
+	
+.
