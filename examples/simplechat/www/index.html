@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style type="text/css">
+body {
+	font-family: sans-serif;
+}
+#chatarea {
+	border: 1px solid #CCC;
+	padding: 10px;
+}
+form td {
+	vertical-align: top;
+}
+form textarea {
+	width:100%;
+}
+
+form table {
+	width: 100%;
+}
+
+#p1 {
+	width: 10em;
+}
+
+#p3 {
+	width: 6em;
+	text-align: center;
+}
+
+</style>
+<title>WebSockets chat</title>
+</head>
+<body onload="init();">
+<script type="text/javascript"><!--
+
+
+function getWsPath(relPath) {
+	var loc = window.location, new_uri;
+	if (loc.protocol === "https:") {
+	    new_uri = "wss:";
+	} else {
+	    new_uri = "ws:";
+	}
+	new_uri += "//" + loc.host;
+	new_uri += loc.pathname + relPath;
+	return new_uri;
+}
+
+function initWs() {
+	
+    websocket = new WebSocket(getWsPath("ws"));
+    websocket.onopen = function(evt) { onOpen(evt) };
+    websocket.onclose = function(evt) { onClose(evt) };
+    websocket.onmessage = function(evt) { onMessage(evt) };
+    websocket.onerror = function(evt) { onError(evt) };
+	
+}
+
+function onOpen(evt)
+{
+}
+
+function onClose(evt)
+{
+ 	if (confirm("Odpojeno, pokusit se o nové připojení?")) 
+ 		initWs();
+}
+
+function onMessage(evt)
+{
+  writeToScreen(evt.data);
+}
+
+function onError(evt)
+{
+  
+}
+
+function doSend(message)
+{
+  websocket.send(message);
+}
+
+function writeToScreen(message)
+{
+	var chat = document.getElementById("chatarea");
+    var pre = document.createElement("p");
+    var txt = document.createTextNode(message)
+    pre.appendChild(txt);
+  	chat.appendChild(pre);
+  	window.scrollBy(0,10000);
+}
+
+function onOdeslat() {
+	var textbox = document.getElementById("msg");
+	var prezdivka = document.getElementById("prezdivka");
+	if (textbox.value=="") {
+		textbox.focus();
+		return;
+	}
+	if (prezdivka.value=="") {
+		alert("Musíš vyplnit přezdívku");
+		prezdivka.focus();
+	} else {
+		var msg = prezdivka.value + ": " +textbox.value;
+		doSend(msg);
+		textbox.focus();
+		textbox.value="";
+	}	
+}
+
+function onKeyDown(ev) {
+	if (!ev) ev = window.event;
+	var keyCode = ('which' in ev) ? ev.which : ev.keyCode;
+	if (keyCode == 13) {
+		onOdeslat();
+		ev.preventDefault();
+	}	
+}
+
+function init() {
+	initWs();
+	document.getElementById("odeslat").addEventListener("click",onOdeslat);
+	document.getElementById("msg").addEventListener("keydown",onKeyDown);
+	document.getElementById("prezdivka").addEventListener("keydown",onKeyDown);
+	document.getElementById("prezdivka").focus();
+}
+
+//-->
+</script>
+<h1>WebSockets chat</h1>
+<p>Ukázka jednoduchého chatu s použitím WebSockets. Aplikace je napsaná v C++<p>
+<div id="chatarea">
+<p>System: Vítej na chatu, napiš sem něco. Pokud tady zrovna nikdo nepíše, <a href="" target="_blank">otevři si ještě jedno okno</a> a vyzkoušej si psaní sama sobě.</p>
+</div>
+<form>
+<table >
+<tr><th id="p1">Přezdívka</th><th>Zpráva</th><th></th></tr>
+<tr><td><input type="text" id="prezdivka" size="10"></td><td><textarea rows="2" cols="80" id="msg" ></textarea></td>
+<td  id="p3"><input type="button" value="Odeslat" id="odeslat" ></td></tr>
+</table>
+</form>
+</body>
+</html>
