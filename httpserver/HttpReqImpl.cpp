@@ -145,6 +145,7 @@ HttpReqImpl::HttpReqImpl(ConstStrA baseUrl, ConstStrA serverIdent, Semaphore &bu
 ,busySemaphore(busySemaphore)
 ,busyLockStatus(1)
 ,postBodyLimit(naturalNull)
+,attachStatus(IHttpHandler::stReject)
 	{
 
 }
@@ -709,7 +710,19 @@ bool HttpReqImpl::isInputAvailable() const {
 	else return switchedProtocol || remainPostData > 0;
 }
 
+ITCPServerConnHandler::Command HttpReqImpl::onUserWakeup()
+{
+	if (attachStatus == IHttpHandler::stReject) return ITCPServerConnHandler::cmdWaitUserWakeup;	
+	return processHandlerResponse(attachStatus);
+}
+
 ITCPServerConnHandler::Command  HttpReqImpl::processHandlerResponse(natural res) {
+	//stDetach causes waiting for user wakeup.
+	if (res == IHttpHandler::stDetach) {
+		return ITCPServerConnHandler::cmdWaitUserWakeup;
+	}
+	//this clears any registered userWakeup. Any future stDetach cannot cause unexpected interrupt
+	attachStatus = IHttpHandler::stReject;
 	//depend on whether headers has been sent
 	if (bHeaderSent) {
 		//in case of 100 response, keep connectnion online
@@ -846,6 +859,13 @@ void HttpReqImpl::setMaxPostSize(natural bytes) {
 	if (remainPostData > bytes) throw HttpStatusException(THISLOCATION,path,413,"Request is too large");
 	postBodyLimit = bytes;
 
+}
+
+void HttpReqImpl::attachThread( natural status )
+{
+	attachStatus = status;
+	ITCPServerConnControl &control = getIfc<ITCPServerConnControl>();
+	control.getUserSleeper()->wakeUp(0);
 }
 
 void HttpReqImpl::closeOutput() {

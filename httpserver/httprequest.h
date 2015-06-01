@@ -23,7 +23,7 @@ using namespace LightSpeed;
 
     class IHttpHandler;
 
-    class IHttpHandlerContext: public DynObject {
+    class IHttpHandlerContext: public DynObject, public IInterface {
     public:
     	virtual ~IHttpHandlerContext() {}
     };
@@ -423,6 +423,23 @@ using namespace LightSpeed;
 		 */
 		virtual void setMaxPostSize(natural bytes) = 0;
 
+
+		///Attaches request to thread
+		/**
+		 * You can attach request which has been detached using stDetach status. Calling
+		 * this function in not-detached-state causes that request is ignored. To
+		 * handle various race conditions, calling function while request is not
+		 * detached causes that request is remembered and request is attached 
+		 * immediately after detach is completed. Also note, that using
+		 * other return value than stDetach clears the attach request. 
+		 *
+		 * @param status status code to complete request. It can be also any status
+		 *    that causes continuation of the request, such a stContinue or stWaitForWrite.
+		 *    Do not use stReject as status. It erases remembered attach request
+		 *		 
+		 * */
+		virtual void attachThread(natural status) = 0;
+
 		class SectionIO {
 		public:
 			SectionIO(IHttpRequest &r):r(r) {r.beginIO();}
@@ -478,7 +495,16 @@ using namespace LightSpeed;
 			 * Once the chunk is sent, function onData is called again.
 			 *
 			 */
-			stWaitForWrite = 999
+			stWaitForWrite = 999,
+
+			///Detach request from the thread
+			/**
+			 * This allows to keep request without blocking the thread.
+			 * Detached request can be attached back using IHttpRequest::attachThread()
+			 * Note that detached thread must not been left back because it causes
+			 * memory and resource leak. 
+			 */
+			stDetach = 1000
 		};
 
 

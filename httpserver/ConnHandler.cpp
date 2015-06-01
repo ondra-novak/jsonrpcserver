@@ -32,12 +32,15 @@ ConnHandler::Command ConnHandler::onDataReady(const PNetworkStream &stream, ITCP
 		DbgLog::setThreadName(ctx->ctxName,false);
 
 		if (ctx->nstream == nil) {
-			ctx->nstream = Constructor1<NStream,PNetworkStream>(stream);
+			ctx->nstream = Constructor1<NStream,PNetworkStream>(stream.getMT());
 		}
 
 		ConnHandler::Command cmd =  ctx->onData(ctx->nstream);
 		while (cmd == ConnHandler::cmdWaitRead && ctx->nstream->dataReady() > 0) {
 			cmd =  ctx->onData(ctx->nstream);
+		}
+		if (cmd == ITCPServerConnHandler::cmdWaitUserWakeup) {
+			LogObject(THISLOCATION).debug("Request uses detach feature");
 		}
 		return cmd;
 	} catch (std::exception &e) {
@@ -194,7 +197,21 @@ const void* ConnHandler::proxyInterface(const IInterfaceRequest& p) const {
 
 ConnHandler::Command ConnHandler::onUserWakeup( const PNetworkStream &stream, ITCPServerContext *context ) throw()
 {
-	return ConnHandler::cmdWaitRead;
+	try {
+		Synchronized<Semaphore> _(busySemaphore);
+
+		ConnContext *ctx = static_cast<ConnContext *>(context);
+		DbgLog::setThreadName(ctx->ctxName,false);
+
+		//we need context otherwise close connection
+		if (ctx == 0) return cmdRemove;
+
+		return ctx->onUserWakeup();
+	} catch (std::exception &e) {
+		LogObject(THISLOCATION).note("Uncaught exception: %1") << e.what();
+		return cmdRemove;
+	}
+
 }
 
 ConstStrA ConnContext::getPeerAddrStr() const {

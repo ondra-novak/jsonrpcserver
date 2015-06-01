@@ -88,6 +88,10 @@ public:
 	virtual void endIO();
 
 	virtual void setMaxPostSize(natural bytes) ;
+	virtual void attachThread(natural status);
+
+	ITCPServerConnHandler::Command  onUserWakeup();
+
 
 protected:
 
@@ -110,6 +114,7 @@ protected:
 	void send100continue() const;
 	ITCPServerConnHandler::Command  processHandlerResponse(natural res);
 	bool isInputAvailable() const;
+	
 
 protected:
 	NStream *inout;
@@ -144,6 +149,7 @@ protected:
 	Semaphore &busySemaphore;
 	natural busyLockStatus;
 	mutable natural postBodyLimit;
+	natural attachStatus;
 
 	class SectionIODirect {
 	public:

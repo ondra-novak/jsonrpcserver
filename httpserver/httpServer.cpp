@@ -61,7 +61,7 @@ ConnHandler::Command HttpServer::onDataReady(const PNetworkStream& stream,
 		reportThreadUsage();
 		lastThreadCount = t;
 	}
-	return ConnHandler::onDataReady(stream,context);
+	return  ConnHandler::onDataReady(stream,context);
 }
 
 void HttpServer::executeInPool(const IThreadFunction &threadFn) {
