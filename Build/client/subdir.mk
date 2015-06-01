@@ -4,19 +4,16 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../client/client.cpp \
-../client/clientAdapter.cpp \
-../client/simpleHttpClient.cpp 
+../client/httpClientUA.cpp \
+../client/simpleClient.cpp 
 
 OBJS += \
-./client/client.o \
-./client/clientAdapter.o \
-./client/simpleHttpClient.o 
+./client/httpClientUA.o \
+./client/simpleClient.o 
 
 CPP_DEPS += \
-./client/client.d \
-./client/clientAdapter.d \
-./client/simpleHttpClient.d 
+./client/httpClientUA.d \
+./client/simpleClient.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

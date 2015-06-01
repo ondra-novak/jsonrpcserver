@@ -18,6 +18,7 @@
 #include "lightspeed/base/exceptions/outofmemory.h"
 #include "lightspeed/base/containers/stringpool.tcc"
 #include "lightspeed/base/containers/carray.h"
+#include "lightspeed/base/interface.tcc"
 
 
 namespace BredyHttpSrv {

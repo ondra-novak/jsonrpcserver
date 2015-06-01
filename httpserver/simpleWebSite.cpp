@@ -26,20 +26,23 @@ SimpleWebSite::SimpleWebSite(FilePath documentRoot, natural cacheTime) :document
 natural SimpleWebSite::onRequest(IHttpRequest& request,ConstStrA vpath) {
 
 	ConstStrA query;
+	ConstStrA uri;
 	natural q = vpath.find('?');
 	if (q != naturalNull) {
 		query = vpath.offset(q);
-		vpath = vpath.head(q);
+		uri = vpath.head(q);
+	} else {
+		uri = vpath;
 	}
-	if (vpath.empty()) {
+	if (uri.empty()) {
 		request.redirect(StringA(request.getPath() + ConstStrA("/")+query));
 		return 0;
 	}
-	if (vpath == ConstStrA("/")) {
-		vpath = ConstStrA("/index.html");
+	if (uri == ConstStrA("/")) {
+		uri = ConstStrA("/index.html");
 	}
 	FilePath resPath = documentRoot;
-	for (ConstStrA::SplitIterator iter = vpath.split('/'); iter.hasItems();) {
+	for (ConstStrA::SplitIterator iter = uri.split('/'); iter.hasItems();) {
 		ConstStrA t = iter.getNext();
 		if (t.empty() || t == ConstStrA(".")) continue;
 		if (t == "..") {
@@ -53,12 +56,6 @@ natural SimpleWebSite::onRequest(IHttpRequest& request,ConstStrA vpath) {
 	IFileIOServices &svc = IFileIOServices::getIOServices();
 	if (svc.canOpenFile(pathName,IFileIOServices::fileOpenRead)) {
 
-		PFolderIterator finfo = svc.getFileInfo(resPath);
-		ToString<lnatural> etag(finfo->getModifiedTime().asUnix(), 36);
-
-		HeaderValue v = request.getHeaderField(IHttpRequest::fldIfNoneMatch);
-		if (v.defined && v == etag) return stNotModified;
-
 		ConstStrW ext = resPath.getExtension();
 		ConstStrA ctx;
 		if (ext == ConstStrW(L"txt")) ctx = ConstStrA("text/plain;charset=UTF-8");
@@ -71,27 +68,41 @@ natural SimpleWebSite::onRequest(IHttpRequest& request,ConstStrA vpath) {
 		else if (ext == ConstStrW(L"html")) ctx = ConstStrA("text/html;charset=UTF-8");
 		else ctx = ConstStrA("application/octet-stream");
 
-
-		request.header(IHttpRequest::fldContentLength, ToString<lnatural>(finfo->getSize()));
-		request.header(IHttpRequest::fldETag, etag);
-		request.header(IHttpRequest::fldContentType,ctx);
-		if (!cacheStr.empty()) request.header(IHttpRequest::fldCacheControl, cacheStr);
-
-		try {
-			byte buff[4096];
-			ArrayRef<byte> abuff(buff,countof(buff));
-			SeqFileInput infile(pathName,0);
-			SeqFileOutput oup(&request);
-			oup.blockCopy(infile,abuff);
-		} catch (std::exception &e) {
-			request.errorPage(403,ConstStrA(),e.what());
-			LS_LOG.debug("Error reading: %1 - %2") << pathName << e.what();
-		}
-		return 0;
+		return serverFile(request, pathName, ctx, vpath);
 	} else {
 		LS_LOG.debug("File not found: %1 ") << pathName;
 		return 0;
 	}
 }
- /* namespace BredyHttpSrv */
+
+natural SimpleWebSite::serverFile(IHttpRequest& request, ConstStrW pathName, ConstStrA contentType, ConstStrA) {
+
+	IFileIOServices &svc = IFileIOServices::getIOServices();
+
+	PFolderIterator finfo = svc.getFileInfo(pathName);
+	ToString<lnatural> etag(finfo->getModifiedTime().asUnix(), 36);
+
+	HeaderValue v = request.getHeaderField(IHttpRequest::fldIfNoneMatch);
+	if (v.defined && v == etag) return stNotModified;
+
+	request.header(IHttpRequest::fldContentLength, ToString<lnatural>(finfo->getSize()));
+	request.header(IHttpRequest::fldETag, etag);
+	request.header(IHttpRequest::fldContentType,contentType);
+	if (!cacheStr.empty()) request.header(IHttpRequest::fldCacheControl, cacheStr);
+
+	try {
+		byte buff[4096];
+		ArrayRef<byte> abuff(buff,countof(buff));
+		SeqFileInput infile(pathName,0);
+		SeqFileOutput oup(&request);
+		oup.blockCopy(infile,abuff);
+	} catch (std::exception &e) {
+		request.errorPage(403,ConstStrA(),e.what());
+		LS_LOG.debug("Error reading: %1 - %2") << pathName << e.what();
+	}
+	return 0;
+}
+
+
+/* namespace BredyHttpSrv */
 }

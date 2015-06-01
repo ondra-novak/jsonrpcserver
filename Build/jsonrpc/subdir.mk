@@ -6,18 +6,21 @@
 CPP_SRCS += \
 ../jsonrpc/JSONRPCMain.cpp \
 ../jsonrpc/jsonRpc.cpp \
+../jsonrpc/jsonRpcServer.cpp \
 ../jsonrpc/restHandler.cpp \
 ../jsonrpc/rpchandler.cpp 
 
 OBJS += \
 ./jsonrpc/JSONRPCMain.o \
 ./jsonrpc/jsonRpc.o \
+./jsonrpc/jsonRpcServer.o \
 ./jsonrpc/restHandler.o \
 ./jsonrpc/rpchandler.o 
 
 CPP_DEPS += \
 ./jsonrpc/JSONRPCMain.d \
 ./jsonrpc/jsonRpc.d \
+./jsonrpc/jsonRpcServer.d \
 ./jsonrpc/restHandler.d \
 ./jsonrpc/rpchandler.d 
 

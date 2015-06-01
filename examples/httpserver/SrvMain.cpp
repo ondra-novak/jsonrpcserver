@@ -7,6 +7,7 @@
 
 #include "SrvMain.h"
 
+#include <lightspeed/base/text/textstream.tcc>
 namespace httpexample {
 
 //the one and only application object

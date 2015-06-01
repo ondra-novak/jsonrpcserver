@@ -8,6 +8,7 @@ CPP_SRCS += \
 ../httpserver/HttpReqImpl.cpp \
 ../httpserver/JobSchedulerImpl.cpp \
 ../httpserver/httpServer.cpp \
+../httpserver/livelog.cpp \
 ../httpserver/pathMapper.cpp \
 ../httpserver/queryParser.cpp \
 ../httpserver/serverMain.cpp \
@@ -21,6 +22,7 @@ OBJS += \
 ./httpserver/HttpReqImpl.o \
 ./httpserver/JobSchedulerImpl.o \
 ./httpserver/httpServer.o \
+./httpserver/livelog.o \
 ./httpserver/pathMapper.o \
 ./httpserver/queryParser.o \
 ./httpserver/serverMain.o \
@@ -34,6 +36,7 @@ CPP_DEPS += \
 ./httpserver/HttpReqImpl.d \
 ./httpserver/JobSchedulerImpl.d \
 ./httpserver/httpServer.d \
+./httpserver/livelog.d \
 ./httpserver/pathMapper.d \
 ./httpserver/queryParser.d \
 ./httpserver/serverMain.d \

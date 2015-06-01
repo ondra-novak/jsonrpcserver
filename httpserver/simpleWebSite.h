@@ -24,6 +24,19 @@ public:
 
 
 protected:
+	///Serves the file
+	/** Default implemenation just reads the file from the filesystem and outputs it to the http stream
+	 * Overwriting this method can extend function to perform various task with the file, for
+	 * example run template engine or interpret script
+	 *
+	 * @param request request object
+	 * @param pathName pathname of the file to serve
+	 * @param contentType content type determined from the file's extension
+	 * @param vpath vpath
+	 * @return status code
+	 */
+	natural serverFile(IHttpRequest& request, ConstStrW pathName, ConstStrA contentType, ConstStrA vpath);
+
 	FilePath documentRoot;
 	StringA cacheStr;
 };

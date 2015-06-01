@@ -219,6 +219,7 @@ inline void AbstractWebSocketConnection<Impl,serverSide>::sendBytesMasked(const 
 
 template<typename Impl, bool serverSide>
 inline AbstractWebSocketConnection<Impl,serverSide>::AbstractWebSocketConnection()
+:maxMessageSize(naturalNull),maxFragmentedMessageSize(naturalNull)
 {
 	if (!serverSide) {
 		uint32_t randomData[32];
