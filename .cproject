@@ -6,11 +6,8 @@
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/jsonrpcserver"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/ghub"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/jsonrpcserver/Debug"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/ghub/Debug"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="jsonrpcserver" srcPrefixMapping="" srcRootPath=""/>
-						<entry flags="RESOLVED" kind="libraryFile" name="ghub" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -60,16 +57,6 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
-					<folderInfo id="cdt.managedbuild.config.gnu.cross.lib.debug.185073766.235193383" name="/" resourcePath="examples">
-						<toolChain id="cdt.managedbuild.toolchain.gnu.base.216357310" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.base" unusedChildren="">
-							<tool id="cdt.managedbuild.tool.gnu.archiver.base.1451055351" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base.2125748017"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.1878561990" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base.1370300207"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.compiler.base.29480891" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.base.545070482"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.linker.base.373396638" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.base.1397755737"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.base.83517748" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.base.1820612950"/>
-							<tool id="cdt.managedbuild.tool.gnu.assembler.base.2077352420" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base.829287542"/>
-						</toolChain>
-					</folderInfo>
 					<sourceEntries>
 						<entry excluding="examples|resources/bin2c.c|dbhelpers|RESTApi|httpserver|jsonrpc|client" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="RESTApi"/>
@@ -86,11 +73,8 @@
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/jsonrpcserver"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/ghub"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/jsonrpcserver/Release"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/ghub/Release"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="jsonrpcserver" srcPrefixMapping="" srcRootPath=""/>
-						<entry flags="RESOLVED" kind="libraryFile" name="ghub" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -113,7 +97,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lightmysql/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lightspeed/src}&quot;"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.dialect.std.1417081577" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
+								<option id="gnu.cpp.compiler.option.dialect.std.1417081577" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.253738490" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool command="gcc" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GCCErrorParser" id="cdt.managedbuild.tool.gnu.c.compiler.base.1841597906" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.base">
@@ -126,16 +110,6 @@
 							<tool command="as" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GASErrorParser" id="cdt.managedbuild.tool.gnu.assembler.base.1563325989" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base">
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.458938334" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
-						</toolChain>
-					</folderInfo>
-					<folderInfo id="cdt.managedbuild.config.gnu.cross.lib.release.2140866456.769122205" name="/" resourcePath="examples">
-						<toolChain id="cdt.managedbuild.toolchain.gnu.base.1642629363" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.base" unusedChildren="">
-							<tool id="cdt.managedbuild.tool.gnu.archiver.base.646774821" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base.210077666"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.1215288870" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base.1642370112"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.compiler.base.1987438327" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.base.1841597906"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.linker.base.1382087803" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.base.1685234089"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.base.1991409225" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.base.401076102"/>
-							<tool id="cdt.managedbuild.tool.gnu.assembler.base.58868749" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base.1563325989"/>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
@@ -154,11 +128,8 @@
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/jsonrpcserver"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/ghub"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/jsonrpcserver/Build"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/ghub/Build"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="jsonrpcserver" srcPrefixMapping="" srcRootPath=""/>
-						<entry flags="RESOLVED" kind="libraryFile" name="ghub" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -194,16 +165,6 @@
 							<tool id="cdt.managedbuild.tool.gnu.assembler.base.1248949411" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base">
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.815185155" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
-						</toolChain>
-					</folderInfo>
-					<folderInfo id="cdt.managedbuild.config.gnu.cross.lib.release.2140866456.789067025.1284156742" name="/" resourcePath="examples">
-						<toolChain id="cdt.managedbuild.toolchain.gnu.base.1305657458" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.base" unusedChildren="">
-							<tool id="cdt.managedbuild.tool.gnu.archiver.base.378260364" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base.2042217036"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.237328617" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base.985229491"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.compiler.base.516355403" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.base.1276802876"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.linker.base.92610730" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.base.1930098995"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.base.706327039" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.base.152474372"/>
-							<tool id="cdt.managedbuild.tool.gnu.assembler.base.2000820150" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base.1248949411"/>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
