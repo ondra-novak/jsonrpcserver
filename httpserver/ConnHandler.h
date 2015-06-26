@@ -39,6 +39,7 @@ public:
 	virtual ITCPServerContext *onIncome(const NetworkAddress &addr) throw();
 	virtual Command onAccept(ITCPServerConnControl *controlObject, ITCPServerContext *context);
 
+	virtual bool isPeerTrustedProxy(ConstStrA ip) { return false; }
 
 	friend class ConnContext;
 
@@ -53,13 +54,14 @@ public:
 	///wait handler
 	virtual natural wait(const INetworkResource *res, natural waitFor, natural timeout) const;
 
-
 protected:
 	StringA serverIdent;
 	StringA baseUrl;
 	PathMapper pathMap;
 	natural numThreads;
 	mutable Semaphore busySemaphore;
+
+	ConstStrA getRealAddr(ConstStrA ip, ConstStrA proxies);
 };
 
 
@@ -69,6 +71,7 @@ public:
 	ConnHandler &owner;
 	NetworkAddress peerAddr;
 	mutable StringA peerAddrStr;
+	mutable StringA peerRealAddrStr;
 	Pointer<ITCPServerConnControl> controlObject;
 	Optional<NStream> nstream;
 	StringA ctxName;
@@ -85,6 +88,9 @@ public:
 	virtual natural getSourceId() const;
 	void setControlObject(Pointer<ITCPServerConnControl> controlObject);
 	void prepareToDisconnect();
+	virtual void clear();
+
+	virtual ConstStrA getPeerRealAddr() const;
 
 };
 

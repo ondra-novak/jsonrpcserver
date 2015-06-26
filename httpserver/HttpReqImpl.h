@@ -71,7 +71,7 @@ public:
 	ITCPServerConnHandler::Command onData(NStream &stream);
 	ITCPServerConnHandler::Command  readHeader();
 	ITCPServerConnHandler::Command  finishReadHeader();
-	void clear();
+	virtual void clear();
 
 	virtual void setRequestContext(IHttpHandlerContext *context) ;
 	virtual void setConnectionContext(IHttpHandlerContext *context) ;

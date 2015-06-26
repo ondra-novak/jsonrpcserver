@@ -4,13 +4,16 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../resources/rpc.js.c 
+../resources/rpc.js.c \
+../resources/wsrpc.js.c 
 
 OBJS += \
-./resources/rpc.js.o 
+./resources/rpc.js.o \
+./resources/wsrpc.js.o 
 
 C_DEPS += \
-./resources/rpc.js.d 
+./resources/rpc.js.d \
+./resources/wsrpc.js.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

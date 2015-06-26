@@ -221,6 +221,7 @@ void AbstractServerMain::readMainConfig(const IniConfig& cfg) {
 	sect.get(loglevel,"logLevel");
 	sect.get(livelog,"livelog");
 	sect.get(usergroup,"setusergroup");
+	sect.get(serverConfig.trustedProxies, "trustedProxies");
 	if (!livelog.empty()) {
 		DbgLog::setLogProvider(&logOutputSingleton);
 		sect.get(livelog_realm,"livelog.realm");

@@ -70,17 +70,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="client\client.h" />
-    <ClInclude Include="client\clientAdapter.h" />
     <ClInclude Include="client\iclient.h" />
-    <ClInclude Include="client\simpleHttpClient.h" />
-    <CustomBuild Include="dbhelpers\db.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </CustomBuild>
-    <CustomBuild Include="dbhelpers\ServiceContext.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </CustomBuild>
     <ClInclude Include="httpserver\abstractWebSockets.h" />
     <ClInclude Include="httpserver\ConnHandler.h" />
     <ClInclude Include="httpserver\HttpReqImpl.h" />
@@ -88,6 +78,7 @@
     <ClInclude Include="httpserver\httpServer.h" />
     <ClInclude Include="httpserver\IJobScheduler.h" />
     <ClInclude Include="httpserver\JobSchedulerImpl.h" />
+    <ClInclude Include="httpserver\livelog.h" />
     <ClInclude Include="httpserver\nstream.h" />
     <ClInclude Include="httpserver\pathMapper.h" />
     <ClInclude Include="httpserver\queryParser.h" />
@@ -102,26 +93,18 @@
     <ClInclude Include="jsonrpc\iresthandler.h" />
     <ClInclude Include="jsonrpc\jsonRpc.h" />
     <ClInclude Include="jsonrpc\JSONRPCMain.h" />
+    <ClInclude Include="jsonrpc\jsonRpcServer.h" />
+    <ClInclude Include="jsonrpc\jsonRpcWebsockets.h" />
     <ClInclude Include="jsonrpc\restHandler.h" />
     <ClInclude Include="jsonrpc\rpc.js.h" />
     <ClInclude Include="jsonrpc\rpchandler.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="client\client.cpp" />
-    <ClCompile Include="client\clientAdapter.cpp" />
-    <ClCompile Include="client\simpleHttpClient.cpp" />
-    <ClCompile Include="dbhelpers\db.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="dbhelpers\ServiceContext.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="httpserver\ConnHandler.cpp" />
     <ClCompile Include="httpserver\HttpReqImpl.cpp" />
     <ClCompile Include="httpserver\httpServer.cpp" />
     <ClCompile Include="httpserver\JobSchedulerImpl.cpp" />
+    <ClCompile Include="httpserver\livelog.cpp" />
     <ClCompile Include="httpserver\pathMapper.cpp" />
     <ClCompile Include="httpserver\queryParser.cpp" />
     <ClCompile Include="httpserver\serverMain.cpp" />
@@ -131,8 +114,11 @@
     <ClCompile Include="httpserver\webSockets.cpp" />
     <ClCompile Include="jsonrpc\jsonRpc.cpp" />
     <ClCompile Include="jsonrpc\JSONRPCMain.cpp" />
+    <ClCompile Include="jsonrpc\jsonRpcServer.cpp" />
+    <ClCompile Include="jsonrpc\jsonRpcWebsockets.cpp" />
     <ClCompile Include="jsonrpc\restHandler.cpp" />
     <ClCompile Include="jsonrpc\rpchandler.cpp" />
+    <ClCompile Include="resources\wsrpc.js.c" />
     <CustomBuild Include="resources\bin2c.c">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Preparing resource compiler</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">cl "/Fe$(IntDir)bin2c.exe" %(FullPath)
@@ -146,6 +132,7 @@
     <ClCompile Include="resources\rpc.js.c" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="ClassDiagram1.cd" />
     <None Include="conf\client.html" />
     <None Include="httpserver\abstractWebSockets.tcc" />
     <CustomBuild Include="resources\rpc.js">
@@ -154,11 +141,21 @@
 </Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)bin2c.exe;%(AdditionalInputs)</AdditionalInputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).c;%(Outputs)</Outputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compiling resources: $(InputFile)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compiling resources: %(Filename)%(Extension)</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(IntDir)bin2c.exe" "%(FullPath)" jsonrpcserver_rpc_js  &gt; "%(FullPath).c"
 </Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)bin2c.exe;%(AdditionalInputs)</AdditionalInputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).c;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="resources\wsrpc.js">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(IntDir)bin2c.exe" "%(FullPath)" jsonrpcserver_wsrpc_js  &gt; "%(FullPath).c"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(IntDir)bin2c.exe" "%(FullPath)" jsonrpcserver_wsrpc_js  &gt; "%(FullPath).c"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).c;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).c;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compiling resources: %(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compiling resources: %(Filename)%(Extension)</Message>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)bin2c.exe;%(AdditionalInputs)</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)bin2c.exe;%(AdditionalInputs)</AdditionalInputs>
     </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

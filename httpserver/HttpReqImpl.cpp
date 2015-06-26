@@ -55,7 +55,8 @@ static ConstStrA hdrfields[] = {
 		/*fldExpect,*/ "Expect",
 		/*fldUnknown,*/ "Undefined",
 		/*fldUpgrade,*/ "Upgrade",
-		/*fldAccessControlAllowMethods,*/ "Access-Control-Allow-Methods"
+		/*fldAccessControlAllowMethods,*/ "Access-Control-Allow-Methods",
+		/*fldXForwardedFor*/ "X-Forwarded-For"
 };
 
 static ConstStrA statusMessages[] = {
@@ -267,8 +268,9 @@ void HttpReqImpl::sendHeaders() {
 
 	print("\n");
 
-	LogObject(THISLOCATION).info("HTTP/%1.%2 %3 %4 %5 %6")
-		<< httpMajVer << httpMajVer << method << path << statusCode << statusMsgStr;
+	LogObject(THISLOCATION).progress("%7 - %3 %4 HTTP/%1.%2 %5 %6")
+		<< httpMajVer << httpMajVer << method << path << statusCode << statusMsgStr
+		<< getIfc<IHttpPeerInfo>().getPeerRealAddr();
 
 	responseHdrs.clear();
 	//for code 100 or 101, additional header will be next

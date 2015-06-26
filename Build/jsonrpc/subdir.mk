@@ -7,6 +7,7 @@ CPP_SRCS += \
 ../jsonrpc/JSONRPCMain.cpp \
 ../jsonrpc/jsonRpc.cpp \
 ../jsonrpc/jsonRpcServer.cpp \
+../jsonrpc/jsonRpcWebsockets.cpp \
 ../jsonrpc/restHandler.cpp \
 ../jsonrpc/rpchandler.cpp 
 
@@ -14,6 +15,7 @@ OBJS += \
 ./jsonrpc/JSONRPCMain.o \
 ./jsonrpc/jsonRpc.o \
 ./jsonrpc/jsonRpcServer.o \
+./jsonrpc/jsonRpcWebsockets.o \
 ./jsonrpc/restHandler.o \
 ./jsonrpc/rpchandler.o 
 
@@ -21,6 +23,7 @@ CPP_DEPS += \
 ./jsonrpc/JSONRPCMain.d \
 ./jsonrpc/jsonRpc.d \
 ./jsonrpc/jsonRpcServer.d \
+./jsonrpc/jsonRpcWebsockets.d \
 ./jsonrpc/restHandler.d \
 ./jsonrpc/rpchandler.d 
 

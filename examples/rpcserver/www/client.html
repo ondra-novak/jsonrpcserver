@@ -11,7 +11,7 @@
 	background-color: #EED;
 }
 body {
-	background-color:white;
+	background-color:#DDD;
 }
 
 .loginBox {
@@ -68,6 +68,47 @@ margin-left:-3px;
 	margin-top: 20px;
 }
 
+
+table.jsontable, table.jsonlist {
+    border: 1px solid #AAA;
+    border-spacing: 0px 0px;
+    border-collapse:collapse;
+}
+th {
+    vertical-align:top;
+    text-align:center;
+    padding: 0px 10px 0px 10px;
+    border: 1px solid #CCC;
+    background-color: #EDD;
+
+}
+
+
+th.lfc {
+    text-align:right;
+    background-color: #DDC;
+    border: 1px solid #888;
+}
+
+table.jsontable td {
+    text-align:center;
+    border: 1px solid #CCC;
+    vertical-align: top;
+}
+
+table.jsonlist td {
+    text-align:left;
+    border: 1px solid #CCC;
+    vertical-align: top;
+}
+
+    .jsoncontent {
+        padding: 0 5px 0 5px;
+    }
+
+tr:nth-child(even) {background: #EEE}
+tr:nth-child(odd) {background: #FFF}
+
 </style>
 </head>
 
@@ -96,12 +137,13 @@ margin-left:-3px;
 	<textarea rows="5" cols="80" name="data" id="data">[]</textarea><br>	
 	<input class="helpButton" value="?" onclick="helpOnMethod()" type="button">
 	<input value="odeslat" onclick="sendRequest()" type="button">
+    <label><input type="checkbox" id="rawresult" /> Raw JSON</label>
 	</div>
 	</form>
 	<div class="resultBox">
 	<h2>Result:</h2>
 	<div class="error" id="error"></div>
-	<pre class="result" id="result"></pre>
+	<div class="result" id="result"></div>
 	</div>
 	<div class="loginBox" id="loginBox">
 	<form>
@@ -156,30 +198,132 @@ var historie = new Array();
 var cursession = null;
 
 
-function print_r(arr,level) {
-	var dumped_text = "";
-	if(!level) level = 0;
-	
-	//The padding given at the beginning of the line.
-	var level_padding = "";
-	for(var j=0;j<level+1;j++) level_padding += "    ";
-	
-	if(typeof(arr) == 'object') { //Array/Hashes/Objects 
-		for(var item in arr) {
-			var value = arr[item];
-			
-			if(typeof(value) == 'object') { //If it is an array,
-				dumped_text += level_padding + "<strong>" + item + ":</strong> ...<br />";
-				dumped_text += print_r(value,level+1);
-			} else {
-				dumped_text += level_padding + "<strong>" + item + ":</strong> \"" + value + "\"<br />";
-			}
-		}
-	} else { //Stings/Chars/Numbers etc.
-		dumped_text = arr + "   ("+typeof(arr)+")";
-	}
-	return dumped_text;
+    //1 - inline - item is such small that can be put as one element
+    //2 - item can be whole put at single line (or table cell)
+    //3 
+    //3 - complex item - takes more lines
+var ITEM_INLINE = 1;
+var ITEM_CELLTABLE = 2;
+var ITEM_LINE = 2;
+var ITEM_MULTILINE = 3;
+
+function getItemComplexLevel(item) {
+    if (item == null) return ITEM_INLINE;
+    if (typeof (item) == "number") return ITEM_INLINE;
+    if (typeof (item) == "string") return item.length > 30 ? ITEM_CELLTABLE : ITEM_INLINE;
+    if (typeof (item) == "boolean") return ITEM_INLINE;
+ /*   if (item instanceof Array) {
+        var maxcomplex = ITEM_INLINE;
+        for (var i = 0; i < item.length; i++) {
+            var c = item[i];
+            var complex = getItemComplexLevel(c);
+            if (complex > maxcomplex) maxcomplex = complex;
+        }
+        if (maxcomplex < ITEM_MULTILINE && item.length > 4) maxcomplex++;
+        return maxcomplex;
+    }*/
+    return ITEM_MULTILINE;
 }
+
+function getTableColumns(item) {
+    if (typeof (item) != "object") return null;
+        var columns = [];
+        var tc = 0;
+        for (var i in item) {
+            var localcol = [];
+            var totalLen = 0;
+            if (typeof(item[i]) != "object") return null;
+            for (var j in item[i]) {
+                var x = item[i][j];
+                var c = getItemComplexLevel(x);
+                if (c < ITEM_MULTILINE) {
+                    totalLen += JSON.stringify(x).length;
+                    if (totalLen > 200) return null;
+                }
+                localcol.push(j);
+            }
+
+            tc += localcol.length;
+            for (var j = 0; j < localcol.length; j++) {
+                if (columns.indexOf(localcol[j]) == -1) columns.push(localcol[j]);
+
+            }
+        }
+        if ( columns.length > 12) return null;
+        else return columns;
+}
+function formatRawResultToDOM(item, element) {
+    var e = document.createElement("pre");
+    e.appendChild(document.createTextNode(JSON.stringify(item, null, "    ")));
+    element.appendChild(e);
+}
+
+
+function formatResultToDOM(item, element) {
+    if (item != null && typeof (item) == "object") {
+        var columns = getTableColumns(item);
+         if (columns != null) {
+                var t = document.createElement("table");
+                t.className = "jsontable";
+                element.appendChild(t);
+                var r = document.createElement("tr");
+                var h = document.createElement("th");
+                r.appendChild(h);
+                h.className = "blind";
+                for (var i = 0; i < columns.length; i++) {
+                    var h = document.createElement("th");
+                    h.appendChild(document.createTextNode(columns[i]));
+                    r.appendChild(h);
+                    t.appendChild(r);
+                }
+                for (var i in  item) {
+                    r = document.createElement("tr");
+                    t.appendChild(r);
+                    var h = document.createElement("th");
+                    h.className = "lfc";
+                    r.appendChild(h);
+                    h.appendChild(document.createTextNode(i));
+                    var v = item[i];
+                    for (var j = 0; j < columns.length; j++) {
+                        var c = columns[j];
+                        var d = document.createElement("td");
+                        r.appendChild(d);
+                        if (v.hasOwnProperty(c)) formatResultToDOM(v[c], d);
+                    }
+                }
+        } else {
+            var t = document.createElement("table");
+            t.className="jsonlist";
+            for (var i in item) {
+                var r = document.createElement("tr");
+                var h = document.createElement("th");
+                var d = document.createElement("td");
+                h.className = "lfc";
+                t.appendChild(r);
+                r.appendChild(h);
+                r.appendChild(d);
+                var value = item[i];
+                h.appendChild(document.createTextNode(i));
+                if (getItemComplexLevel(value) < ITEM_MULTILINE) {
+                    var ct = document.createElement("div");
+                    ct.className = "jsoncontent";
+                    d.appendChild(ct);
+                    ct.appendChild(document.createTextNode(JSON.stringify(value)));
+                } else {
+                    formatResultToDOM(value, d);
+                }
+            }
+            element.appendChild(t);
+        }
+    } else {
+        var ct = document.createElement("div");
+        ct.className = "jsoncontent";
+        element.appendChild(ct);
+        ct.appendChild(document.createTextNode(JSON.stringify(item)));
+    }
+    
+}
+
 
 function storeToHistory(method,data) {
 		if (historie.length > 0)
@@ -258,9 +402,31 @@ function sendRequest() {
 	document.getElementById("error").innerHTML = "";
 	document.getElementById("result").innerHTML = "...please wait...";
 
-	doJSONRPCRequest(method, data, function(res,error) {
-		document.getElementById("error").innerHTML = error == null?"":print_r(error);
-		document.getElementById("result").innerHTML = res == null?"":print_r(res);
+	doJSONRPCRequest(method, data, function (res, error) {
+
+	    var errelem = document.getElementById("error");
+	    var resultelem = document.getElementById("result");
+	    var rawchk = document.getElementById("rawresult");
+	    var raw = rawchk.checked;
+
+	    if (errelem.firstChild) errelem.removeChild(errelem.firstChild);
+	    if (resultelem.firstChild) resultelem.removeChild(resultelem.firstChild);
+
+	    if (raw) {
+	        if (error != null) {
+	            formatRawResultToDOM(error, errelem);
+	        } else {
+	            formatRawResultToDOM(res, resultelem);
+	        }
+	    } else {
+
+	        if (error != null) {
+	            formatResultToDOM(error, errelem);
+	        } else {
+	            formatResultToDOM(res, resultelem);
+	        }
+	    }
+
 	});
 }
 
@@ -410,8 +576,8 @@ function helpOnMethod() {
 	document.getElementById("result").innerHTML = "...please wait...";
 
 	doJSONRPCRequest("Server.help", "[\""+method+"\"]", function(res,error) {
-		document.getElementById("error").innerHTML = error == null?"":print_r(error);
-		document.getElementById("result").innerHTML = res == null?"":print_r(res);
+		document.getElementById("error").innerHTML = error == null?"":JSON.stringify(error,null," ");
+		document.getElementById("result").innerHTML = res == null ? "" : res;
 	});
 
 }

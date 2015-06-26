@@ -26,6 +26,8 @@ public:
 		natural maxBusyThreads;
 		natural newThreadTimeout;
 		natural threadIdleTimeout;
+		//a comma separated list of proxies that are trusted
+		StringA trustedProxies;
 	};
 
 	HttpServer(StringA baseUrl, StringA serverIdent, const Config &config);
@@ -60,6 +62,8 @@ public:
 		return  BredyHttpSrv::ConnHandler::proxyInterface(p);
 	}
 
+	virtual bool isPeerTrustedProxy(ConstStrA ip);
+
 protected:
 
 	class LocalParallelExecutor: public ParallelExecutor2 {
@@ -76,10 +80,11 @@ protected:
 	JobSchedulerImpl jobScheduler;
 	HttpStats stats;
 	natural lastIndex;
+	StringA trustedProxies;
 
 	void reportThreadUsage();
 	virtual void recordRequestDuration(natural duration);
-
+	void initTrustedProxies(ConstStrA proxies);
 
 
 };

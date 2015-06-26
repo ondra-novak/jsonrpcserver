@@ -141,7 +141,7 @@ template<typename WSConnClass, typename Args>
 class WebSocketHandlerT: public AbstractWebSocketsHandler {
 public:
 	WebSocketHandlerT(const Args &args):args(args) {}
-	virtual WebSocketConnection *onNewConnection(IRuntimeAlloc &alloc, IHttpRequest &request, ConstStrA vpath) {
+	virtual WebSocketConnection *onNewConnection(IRuntimeAlloc &alloc, IHttpRequest &request, ConstStrA) {
 		return new(alloc) WSConnClass(request,args);
 	}
 protected:
@@ -158,7 +158,7 @@ protected:
 template<typename WSConnClass>
 class WebSocketHandlerT<WSConnClass, void>: public AbstractWebSocketsHandler {
 public:
-	virtual WebSocketConnection *onNewConnection(IRuntimeAlloc &alloc, IHttpRequest &request, ConstStrA vpath) {
+	virtual WebSocketConnection *onNewConnection(IRuntimeAlloc &alloc, IHttpRequest &request, ConstStrA ) {
 		return new(alloc) WSConnClass(request);
 	}
 };
