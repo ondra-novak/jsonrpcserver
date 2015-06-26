@@ -81,7 +81,12 @@ namespace jsonsrv {
 		FastLock lock;
 		String logFileName;		
 
-		JSON::Factory_t::Stream_t strparams,strcontext,stroutput;
+		struct LogBuffers {
+			JSON::Factory_t::Stream_t strparams,strcontext,stroutput;
+
+		};
+		ThreadVarInitDefault<LogBuffers> logBuffers;
+		atomic logRotateCounter;
 
 	};
 

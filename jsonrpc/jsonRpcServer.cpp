@@ -14,7 +14,7 @@ namespace jsonsrv {
 	JsonRpcServer::JsonRpcServer()
 	{
 		setLogObject(this);
-		registerStatHandler("server",RpcCall::create(this,&JsonRpcServer::rpcHttpStatHandler));
+		DbgLog::needRotateLogs(logRotateCounter);
 	}
 
 	void JsonRpcServer::init( const IniConfig &cfg )
@@ -72,32 +72,40 @@ namespace jsonsrv {
 		}
 		setClientPage(clientPagePath);
 		registerServerMethods(true);
+		registerStatHandler("server",RpcCall::create(this,&JsonRpcServer::rpcHttpStatHandler));
 	}
 
 	void JsonRpcServer::logMethod( IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *logOutput )
 	{
 		if (logfile == nil) return;
+		if (logRotateCounter != DbgLog::rotateCounter) {
+			if (DbgLog::needRotateLogs(logRotateCounter)) {
+				logRotate();
+			}
+		}
+
 		LogObject lg(THISLOCATION);
-		Synchronized<FastLock> _(lock);
 		IHttpPeerInfo &pinfo = invoker.getIfc<IHttpPeerInfo>();
-		ConstStrA peerAddr = pinfo.getPeerAddrStr();
-		natural q = peerAddr.findLast(':');
-		if (q != naturalNull) peerAddr = peerAddr.head(q);
+		ConstStrA peerAddr = pinfo.getPeerRealAddr();
 		ConstStrA paramsStr;
-		strparams.clear();
-		strcontext.clear();
-		stroutput.clear();
+		LogBuffers &buffers = logBuffers[ITLSTable::getInstance()];
+		buffers.strparams.clear();
+		buffers.strcontext.clear();
+		buffers.stroutput.clear();
 		if (params == 0) params = JSON::getNullNode();
 		if (context == 0) context = JSON::getNullNode();
 		if (logOutput == 0) logOutput = JSON::getNullNode();
-		JSON::serialize(params,strparams,false);
-		JSON::serialize(context,strcontext,false);
-		JSON::serialize(logOutput,stroutput,false);;
-		ConstStrA resparamstr(strparams.getArray());
-		ConstStrA rescontextptr(strcontext.getArray());
-		ConstStrA resoutputptr(stroutput.getArray());
+		JSON::serialize(params,buffers.strparams,false);
+		JSON::serialize(context,buffers.strcontext,false);
+		JSON::serialize(logOutput,buffers.stroutput,false);;
+		ConstStrA resparamstr(buffers.strparams.getArray());
+		ConstStrA rescontextptr(buffers.strcontext.getArray());
+		ConstStrA resoutputptr(buffers.stroutput.getArray());
 		PrintTextA pr(*logfile);
 		AbstractLogProvider::LogTimestamp tms;
+
+		Synchronized<FastLock> _(lock);
+
 		pr("%{04}1/%{02}2/%{02}3 %{02}4:%{02}5:%{02}6 - [\"%7\",\"%8\",%9,%10,%11]\n")
 			<< tms.year << tms.month << tms.day
 			<< tms.hour << tms.min << tms.sec

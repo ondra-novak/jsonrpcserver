@@ -66,10 +66,10 @@ public:
 	 * @param httpMapper interface to map additional services. You can anytime dynamically add
 	 * or remove services from the server
 	 */
-	virtual void onServerReady(IHttpMapper &httpMapper) {}
+	virtual void onServerReady(IHttpMapper &) {}
 
 	///Caled when Stop command issued - but in this point, server is still running
-	virtual void onStopServer(IHttpMapper &httpMapper) {};
+	virtual void onStopServer(IHttpMapper &) {};
 
 	///Called when server finished
 	/** At this point, server is stopped, but interface is still valid
@@ -77,7 +77,7 @@ public:
 	 *
 	 * @param httpMapper
 	 */
-	virtual void onServerFinish(IHttpMapper &httpMapper) {};
+	virtual void onServerFinish(IHttpMapper &) {};
 
 	///Called on log rotate
 	/** called after log rotating is performed
@@ -94,7 +94,8 @@ protected:
     virtual void onThreadException(const Exception &e) throw();
 	virtual void onException(const Exception &e);
 
-    virtual integer initService(const Args & args, SeqFileOutput serr);
+	virtual integer validateService(const Args& args, SeqFileOutput serr);
+	virtual integer initService(const Args & args, SeqFileOutput serr);
     virtual integer startService();
 
 
@@ -118,6 +119,7 @@ protected:
 	String cfgPath;
 	StringA usergroup;
 	FilePath appPath;
+
 
 	void readMainConfig(const IniConfig &cfg);
 };

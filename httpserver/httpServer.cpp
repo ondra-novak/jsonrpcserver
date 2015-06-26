@@ -28,6 +28,7 @@ HttpServer::HttpServer(StringA baseUrl, StringA serverIdent, const Config &confi
 	 ,lkThreadPool(intThreadPool)
 	 ,tcplisten(*this,&lkThreadPool)
 	 ,jobScheduler(lkThreadPool)
+	 , trustedProxies(config.trustedProxies)
 {
 	lastThreadCount = 0;
 }
@@ -138,6 +139,12 @@ void HttpServer::recordRequestDuration(natural duration) {
 	stats.threads.add(executor->getThreadCount());
 	stats.idleThreads.add(executor->getIdleCount());
 }
+
+bool HttpServer::isPeerTrustedProxy(ConstStrA ip)
+{
+	return trustedProxies.find(ip) != naturalNull;
+}
+
 
 }
 

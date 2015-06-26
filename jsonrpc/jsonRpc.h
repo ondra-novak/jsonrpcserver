@@ -59,14 +59,6 @@ public:
     void loadHelp(SeqFileInput &input);
     void loadHelp(ConstStrW filename);
 
-    struct CallResult {
-    	JSON::PNode result;
-    	JSON::PNode error;
-    	JSON::PNode id;
-    	JSON::PNode newContext;
-    	JSON::PNode logOutput;
-    };
-
     CallResult callMethod(IHttpRequest *httpRequest, ConstStrA methodName, JSON::INode *args, JSON::INode *context, JSON::INode *id);
     virtual void setLogObject(IJsonRpcLogObject *logObject) {this->logObject = logObject;}
     virtual void setRequestMaxSize(natural bytes);
@@ -96,12 +88,14 @@ protected:
 	JSON::PNode rpcListMethods(  RpcRequest *rq);
 	JSON::PNode rpcHelp(  RpcRequest *rq);
 	JSON::PNode rpcPing( RpcRequest *rq);
+	JSON::PNode rpcPingNotify( RpcRequest *rq);
 	JSON::PNode rpcMulticall1(  RpcRequest *rq);
 	JSON::PNode rpcMulticallN( RpcRequest *rq);
 	JSON::PNode rpcStats( RpcRequest *rq);
 
 	natural dumpMethods(ConstStrA name, IHttpRequest &request);
 	natural sendClientJs(IHttpRequest &request);
+	natural sendWsClientJs(IHttpRequest &request);
 
 
 	StringA methodListTag;

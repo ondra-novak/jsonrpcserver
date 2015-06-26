@@ -21,6 +21,7 @@
 #include "lightspeed/utils/md5iter.h"
 #include "rpc.js.h"
 #include "../httpserver/statBuffer.h"
+#include "jsonRpcWebsockets.h"
 
 using LightSpeed::IInterface;
 
@@ -34,6 +35,8 @@ natural JsonRpc::onRequest(IHttpRequest& request, ConstStrA vpath) {
 			return dumpMethods(vpath.offset(9),request);
 		} else if (vpath == ConstStrA("/client.js")) {
 			return sendClientJs(request);
+		} else if (vpath == ConstStrA("/ws_client.js")) {
+			return sendWsClientJs(request);
 		}
 		return 404;
 
@@ -262,6 +265,7 @@ void JsonRpc::registerServerMethods(bool developMode) {
 		registerMethod("Server.listMethods:",RpcCall::create(this,&JsonRpc::rpcListMethods), ConstStrA("Lists all methods available for this server"));
 		registerMethod("Server.help:s",RpcCall::create(this,&JsonRpc::rpcHelp), ConstStrA("Shows help page about selected method (if exists)"));
 		registerMethod("Server.ping",RpcCall::create(this,&JsonRpc::rpcPing), ConstStrA("Sends back arguments"));
+		registerMethod("Server.pingNotify",RpcCall::create(this,&JsonRpc::rpcPingNotify), ConstStrA("Sends back arguments as notify (requires wsrpc). If the first argument is string, it is used as name of the notify"));
 	}
 	registerMethod("Server.multicall",RpcCall::create(this,&JsonRpc::rpcMulticallN),
 			ConstStrA("<p><pre>[[result,error],...] Server.multicall1 [\"methodName\",[args,...],[args,...],[args,...],...]</pre></p>"
@@ -625,6 +629,22 @@ JSON::PNode JsonRpc::rpcStats(RpcRequest* rq) {
 	return out;
 }
 
+JSON::PNode JsonRpc::rpcPingNotify( RpcRequest *rq) {
+	ConstStrA ntfName = "notify";
+	JsonRpcWebsocketsConnection *conn = JsonRpcWebsocketsConnection::getConnection(*rq->httpRequest);
+	if (conn == NULL) throw RpcError(THISLOCATION,rq,405,"Method requires wsRPC");
+	JSON::Iterator iter = rq->args->getFwIter();
+	if (iter.hasItems() && iter.peek().node->isString()) {
+		ntfName = iter.getNext().node->getStringUtf8();
+	}
+	JSON::PNode args = rq->array();
+	while (iter.hasItems()) args->add(iter.getNext().node);
+
+	conn->sendNotification(ntfName,args);
+	return rq->ok();
+}
+
+
 bool JsonRpc::CmpMethodPrototype::operator ()(ConstStrA a, ConstStrA b) const {
 	natural l = std::min(a.length(),b.length());
 	for (natural i = 0; i < l; i++) {
@@ -697,6 +717,15 @@ natural JsonRpc::dumpMethods(ConstStrA name, IHttpRequest& request) {
 
 natural JsonRpc::sendClientJs(IHttpRequest& request) {
 	ConstBin data(reinterpret_cast<const byte *>(jsonrpcserver_rpc_js),jsonrpcserver_rpc_js_length);
+	request.header(IHttpRequest::fldContentType,"application/javascript");
+	request.header(IHttpRequest::fldContentLength,ToString<natural>(data.length()));
+	request.header(IHttpRequest::fldCacheControl,"max-age=31556926");
+	request.writeAll(data.data(),data.length());
+	return stOK;
+}
+
+natural JsonRpc::sendWsClientJs(IHttpRequest& request) {
+	ConstBin data(reinterpret_cast<const byte *>(jsonrpcserver_wsrpc_js),jsonrpcserver_wsrpc_js_length);
 	request.header(IHttpRequest::fldContentType,"application/javascript");
 	request.header(IHttpRequest::fldContentLength,ToString<natural>(data.length()));
 	request.header(IHttpRequest::fldCacheControl,"max-age=31556926");

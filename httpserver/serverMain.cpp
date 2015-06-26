@@ -38,14 +38,14 @@ static void unknownParameter(SeqFileOutput &conerr, ConstStrW value) {
 	print(text) <<  value;
 }
 
-integer AbstractServerMain::initService(const Args& args, SeqFileOutput serr) {
+integer AbstractServerMain::validateService(const Args& args, SeqFileOutput serr) {
 
-	enableRestartOnError(5);
+	integer isr = ServiceApp::validateService(args,serr);
+	if (isr) return isr;
+
 	FilePath appPathname(getAppPathname());
 	appPath = appPathname/nil;
 
-	PrintTextW print(serr);
-	print("Starting HTTP server '%1'\n") << appPathname.getTitle();
 	cfgPath.clear();
 	CmdLineIterator iter(args,0);
 	while (iter.hasItems()) {
@@ -71,11 +71,22 @@ integer AbstractServerMain::initService(const Args& args, SeqFileOutput serr) {
 	IniConfig cfg(ConstStrW(cfgPath),OpenFlags::shareRead | OpenFlags::shareDelete);
 
 	readMainConfig(cfg);
+	isr = onInitServer(args,serr,cfg);
+	return isr;
+}
+
+integer AbstractServerMain::initService(const Args& args, SeqFileOutput serr) {
+
+	FilePath appPathname(getAppPathname());
+	PrintTextW print(serr);
+	print("Starting HTTP server '%1'\n") << appPathname.getTitle();
 
 	LS_LOGOBJ(lg);
 
 	//probe TCP port
 	lg.progress("----------------- Initializing the server ---------------------");
+	enableRestartOnError(5);
+
 	lg.note("Probe port: %1") << port;
 	NetworkStreamSource src(port,1,1,1,false);
 
@@ -86,8 +97,6 @@ integer AbstractServerMain::initService(const Args& args, SeqFileOutput serr) {
 	}
 
 
-	natural isr = onInitServer(args,serr,cfg);
-	if (isr != 0) return isr;
 	return ServiceApp::initService(args,serr);
 }
 
@@ -95,7 +104,7 @@ integer AbstractServerMain::startService() {
 
 	started = false;
 	LogObject lg(THISLOCATION);
-	lg.note("----------------- Entering service ---------------------");
+	lg.progress("----------------- Entering service ---------------------");
 	lg.note("Initializing server: %1") << serverIdent;
 	lg.note("Configuration: port=%1, maxThreads=%2, maxBusyThreads=%3") << port << serverConfig.maxThreads << serverConfig.maxBusyThreads;
 	lg.note("Configuration: newThreadTimeout=%1, threadIdleTimeout = %2") << serverConfig.newThreadTimeout << serverConfig.threadIdleTimeout;
@@ -161,8 +170,10 @@ integer AbstractServerMain::onMessage(ConstStrA command, const Args& args,
 			<< (args.length() > 4?args[4]:L"")
 			<< (args.length() > 5?L"...":L"");
 	if (command == "logrotate") {
-		lg.note("End of log (logrotate)");
-		DbgLog::logRotate();
+		lg.note("Log closed (logrotate)");
+		DbgLog::logRotateAll();
+		//send this to new log
+		lg.note("Log opened (logrotate)");
 		return 0;
 	} else {
 		return ServiceApp::onMessage(command,args,output);
@@ -221,6 +232,7 @@ void AbstractServerMain::readMainConfig(const IniConfig& cfg) {
 	sect.get(loglevel,"logLevel");
 	sect.get(livelog,"livelog");
 	sect.get(usergroup,"setusergroup");
+	sect.get(serverConfig.trustedProxies, "trustedProxies");
 	if (!livelog.empty()) {
 		DbgLog::setLogProvider(&logOutputSingleton);
 		sect.get(livelog_realm,"livelog.realm");

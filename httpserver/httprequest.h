@@ -71,7 +71,8 @@ using namespace LightSpeed;
 			fldExpect,
 			fldUnknown,
 			fldUpgrade,
-			fldAccessControlAllowMethods
+			fldAccessControlAllowMethods,
+			fldXForwardedFor
 
 
 		};
@@ -542,12 +543,21 @@ using namespace LightSpeed;
 	};
 
 
-	///Interface can be extracted from IHttpHandler, if implementation supports this
+	///Interface can be extracted from IHttpRequest, if implementation supports this
 	class IHttpPeerInfo: virtual public IInterface {
 	public:
 		///Returns network address of the peer
 		virtual const NetworkAddress &getPeerAddr() const = 0;
 		virtual ConstStrA getPeerAddrStr() const = 0;
+
+		///Retrieves real IP address of the peer. It can handle proxies
+		/** The function just returns string with IP address using the getPeerAddrStr(). Function doesn't
+		    include the port number. If the IP address is enlisted in the trusted proxies list, function
+			retrieves IP address from X-Forwarded-From header. Function can follow all trusted proxies
+			in this header and returns first IP untrusted IP. Any IP specified before are ignored (they can be forged
+			by an attacker). To achieve the correct result, server must have defined list of trusted proxies.
+			*/
+		virtual ConstStrA getPeerRealAddr() const = 0;
 
 		///Retrieves connection source identifier
 		/** This is used when multiport server is opened.

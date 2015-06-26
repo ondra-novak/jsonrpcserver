@@ -151,21 +151,19 @@ ConnContext::ConnContext(ConnHandler &owner, const NetworkAddress &addr)
 	:HttpReqImpl(owner.baseUrl,owner.serverIdent, owner.busySemaphore), owner(owner) {
 	natural contextId = lockInc(contextCounter);
 	peerAddr = addr;
-	peerAddrStr = addr.asString(false);
 
 	TextFormatBuff<char, StaticAlloc<100> > fmt;
 	fmt("Http:%1") << contextId;
 	ctxName = fmt.write();
 
 
-	(LogObject(THISLOCATION).progress("New connection %1 - address: %2 ") 
-			<< ctxName << peerAddrStr) ;
+	(LogObject(THISLOCATION).info("New connection %1 ") << ctxName ) ;
 }
 
 ConnContext::~ConnContext() {
 	prepareToDisconnect();
 	DbgLog::setThreadName("",true);
-	LogObject(THISLOCATION).progress("Connection closed %1") << ctxName ;
+	LogObject(THISLOCATION).info("Connection closed %1") << ctxName ;
 
 }
 
@@ -214,7 +212,40 @@ ConnHandler::Command ConnHandler::onUserWakeup( const PNetworkStream &stream, IT
 
 }
 
+ConstStrA trimSpaces(ConstStrA what) {
+	if (what.empty()) return what;
+	if (isspace(what[0])) return trimSpaces(what.crop(1,0));
+	if (isspace(what[what.length() - 1])) return trimSpaces(what.crop(0,1));
+	return what;
+}
+
+ConstStrA ConnHandler::getRealAddr(ConstStrA ip, ConstStrA proxies)
+{
+	natural sep = proxies.findLast(',');
+	while (sep != naturalNull) {
+		ConstStrA first = trimSpaces(proxies.offset(sep + 1));
+		proxies = proxies.head(sep);
+		if (first.empty()) continue;
+		if (isPeerTrustedProxy(ip)) {
+			ip = first;
+		}
+		else {
+			return ip;
+		}
+		sep = proxies.findLast(',');
+	}
+	ConstStrA last = trimSpaces(proxies);
+	if (isPeerTrustedProxy(ip)) {
+		return last;
+	}
+	else {
+		return ip;
+	}
+
+}
+
 ConstStrA ConnContext::getPeerAddrStr() const {
+	if (peerAddrStr.empty()) peerAddrStr = peerAddr.asString(false);
 	return peerAddrStr;
 }
 
@@ -233,6 +264,28 @@ void ConnContext::prepareToDisconnect() {
 	//destroy context, because there still can be other thread accessing it
 	setConnectionContext(0);
 
+}
+
+
+void ConnContext::clear()
+{
+	HttpReqImpl::clear();
+	peerRealAddrStr.clear();
+}
+
+LightSpeed::ConstStrA ConnContext::getPeerRealAddr() const
+{
+	if (peerRealAddrStr.empty()) {
+		StringA ipport = getPeerAddrStr();
+		natural sep = ipport.findLast(':');
+		ConstStrA ip = ipport.head(sep);
+		HeaderValue proxies = getHeaderField(fldXForwardedFor);
+		if (proxies.defined)
+			peerRealAddrStr = owner.getRealAddr(ip, proxies);
+		else
+			peerRealAddrStr = ip;
+	}
+	return peerRealAddrStr;
 }
 
 }

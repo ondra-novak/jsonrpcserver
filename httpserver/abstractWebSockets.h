@@ -156,6 +156,7 @@ protected:
 	byte fragmentedMsgType;
 
 	Rand *rand;
+	bool requestClose;
 
 	void deliverPayload(byte opcode,ConstBin data);
 

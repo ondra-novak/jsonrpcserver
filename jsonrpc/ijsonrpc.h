@@ -12,14 +12,19 @@
 
 namespace jsonsrv {
 
-	class IJsonRpcLogObject {
+///interface that helps to log method.
+/**
+ * Interface can be retrieve from IJsonRpc using getIfcPtr if target object supports logging
+ * For example JsonRpcServer object supports standard loging into rpclogfile. Using
+ * this interface is way how to log methods there
+ */
+	class IJsonRpcLogObject: public IInterface {
 	public:
 		virtual void logMethod(IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *output) = 0;
-		virtual ~IJsonRpcLogObject() {}
 	};
 
 
-	class IJsonRpc {
+	class IJsonRpc: public IInterface {
 	public:
 		///Registers RPC method
 		/**
@@ -80,6 +85,44 @@ namespace jsonsrv {
 	     * set this limit. Default value is 4MB.
 	     */
 	    virtual void setRequestMaxSize(natural bytes) = 0;
+
+	    struct CallResult {
+	    	///Result of the call
+	    	JSON::PNode result;
+	    	///Error of the call (result is "null")
+	    	JSON::PNode error;
+	    	///Id returned to the caller
+	    	JSON::PNode id;
+	    	///New context, if changed, or NULL (no change)
+	    	JSON::PNode newContext;
+	    	///output that should be logged out - can be different than result (default is "null")
+	    	JSON::PNode logOutput;
+	    };
+
+	    ///Calls method on JsonRpc interface
+	    /**
+	     *
+	     * @param httpRequest pointer to IHttpRequest. This pointer is then appear on RpcRequest
+	     * 			as httpRequest. You can set this argument to NULL but this can
+	     * 			cause crash when called method expect the valid pointer. Aslo
+	     * 			note that method can request various interfaces from this argument. If you
+	     * 			are supply proxy object, don't forget to proxy interface requests to
+	     * 			the original object.
+	     * @param methodName Name of method to call
+	     * @param args arguments as defined in JSONRPC protocol. Can't be set to NULL
+	     * @param context optional context. This argument can be NULL, when no context is defined
+	     * @param id identification of request. Can't be set to NULL
+	     * @return Function returns struct that contains result and various items connected to result.
+	     *      see CallResult struct
+	     *
+	     * @exception RpcCallError error in arguments.
+	     *
+	     * @note function will not throw user exception thrown outside of method unless RpcCallError
+	     *  is thrown. Also unknown exceptions (such a ... or exceptions not inherited from
+	     *  std::exception are thrown outside of this call
+	     */
+	    virtual CallResult callMethod(IHttpRequest *httpRequest, ConstStrA methodName, JSON::INode *args, JSON::INode *context, JSON::INode *id) = 0;
+
 
 	    virtual ~IJsonRpc() {}
 
