@@ -57,7 +57,7 @@ void AbstractWebSocketConnection<Impl,serverSide>::sendFrame(
 	byte frameHeader[20];
 	frameHeader[0] = (final?0x80:0x00) | opcode;
 	natural frameLen = 2;
-	natural len = msg.length();
+	lnatural len = msg.length();
 	if (len < 126) {
 		frameHeader[1] = (byte)(msg.length() & 0x7F);
 	} else if (len < 65536) {
@@ -68,7 +68,7 @@ void AbstractWebSocketConnection<Impl,serverSide>::sendFrame(
 	} else {
 		frameHeader[1] = 127;
 		for (natural i = 0; i < 8; i++) {
-			frameHeader[i+2] = (frameLen >> (i * 8)) & 0xFF;
+			frameHeader[9-i] = (len >> (i * 8)) & 0xFF;
 		}
 		frameLen = 10;
 	}
@@ -131,9 +131,11 @@ bool AbstractWebSocketConnection<Impl,serverSide>::onRawDataIncome() {
 		closeConnection(closeMessageTooBig);
 		return false;
 	}
-	if (frame.length() < beginOfFrame + payloadLen)
+	if (frame.length() < beginOfFrame + payloadLen) {
+		frame.reserve(beginOfFrame + payloadLen);
 		return true;
-	if (maskKey) {
+	}
+	if (maskKey) { 
 		for (natural i = 0; i < payloadLen; i++) {
 			frame(beginOfFrame + i) ^= maskKey[(i & 0x3)];
 		}
@@ -174,6 +176,7 @@ bool AbstractWebSocketConnection<Impl,serverSide>::onRawDataIncome() {
 				fragmentBuffer.clear();
 			}
 		}
+						  break;
 	case opcodeTextFrame:
 	case opcodeBinaryFrame:
 			if (final) {
