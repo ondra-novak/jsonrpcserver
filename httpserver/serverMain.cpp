@@ -161,8 +161,10 @@ integer AbstractServerMain::onMessage(ConstStrA command, const Args& args,
 			<< (args.length() > 4?args[4]:L"")
 			<< (args.length() > 5?L"...":L"");
 	if (command == "logrotate") {
-		lg.note("End of log (logrotate)");
-		DbgLog::logRotate();
+		lg.note("Log closed (logrotate)");
+		DbgLog::logRotateAll();
+		//send this to new log
+		lg.note("Log opened (logrotate)");
 		return 0;
 	} else {
 		return ServiceApp::onMessage(command,args,output);

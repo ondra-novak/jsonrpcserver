@@ -86,6 +86,7 @@ namespace jsonsrv {
 
 		};
 		ThreadVarInitDefault<LogBuffers> logBuffers;
+		atomic logRotateCounter;
 
 	};
 

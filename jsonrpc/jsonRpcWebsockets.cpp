@@ -70,6 +70,18 @@ protected:
 	virtual void attachThread(natural status) {}
 	virtual void closeOutput() {}
 
+	virtual void *proxyInterface(IInterfaceRequest &p) {
+		void *x = IInterface::proxyInterface(p);
+		if (!x) x = r->proxyInterface(p);
+		return x;
+	}
+	virtual const void *proxyInterface(const IInterfaceRequest &p) const {
+		const void *x = IInterface::proxyInterface(p);
+		if (!x) x = r->proxyInterface(p);
+		return x;
+	}
+
+
 	AllocPointer<IHttpHandlerContext> rctx;
 
 };
