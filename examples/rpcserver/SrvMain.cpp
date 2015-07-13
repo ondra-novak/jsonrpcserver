@@ -30,15 +30,17 @@ natural SrvMain::onInitServer(const Args& args, SeqFileOutput serr,
 	rpc->init(rpccfg);
 	wsrpc = new JsonRpcWebsockets(*rpc);
 
-	rpc->registerMethod("helloWorld:",RpcCall::create(this,&SrvMain::rpcHelloWorld));
-	rpc->registerMethod("sumNumbers",RpcCall::create(this,&SrvMain::rpcNumberSum));
-	rpc->registerMethod("reverse:s",RpcCall::create(this,&SrvMain::rpcReverse));
 
 	return 0;
 }
 
 
 natural SrvMain::onStartServer(BredyHttpSrv::IHttpMapper& httpMapper) {
+
+	rpc->registerMethod("helloWorld:",RpcCall::create(this,&SrvMain::rpcHelloWorld));
+	rpc->registerMethod("sumNumbers",RpcCall::create(this,&SrvMain::rpcNumberSum));
+	rpc->registerMethod("reverse:s",RpcCall::create(this,&SrvMain::rpcReverse));
+
 
 	httpMapper.addSite("/RPC",rpc);
 	httpMapper.addSite("/wsrpc",wsrpc);
