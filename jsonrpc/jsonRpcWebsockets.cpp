@@ -70,6 +70,18 @@ protected:
 	virtual void attachThread(natural status) {}
 	virtual void closeOutput() {}
 
+	virtual void *proxyInterface(IInterfaceRequest &p) {
+		void *x = IInterface::proxyInterface(p);
+		if (!x) x = r->proxyInterface(p);
+		return x;
+	}
+	virtual const void *proxyInterface(const IInterfaceRequest &p) const {
+		const void *x = IInterface::proxyInterface(p);
+		if (!x) x = r->proxyInterface(p);
+		return x;
+	}
+
+
 	AllocPointer<IHttpHandlerContext> rctx;
 
 };
@@ -198,6 +210,24 @@ void JsonRpcWebsocketsConnection::onConnect() {
 		}
 
 	}
+}
+
+void JsonRpcWebsocketsConnection::sendNotification(const PreparedNtf& ntf) {
+	this->sendTextMessage(ntf,true);
+}
+
+JsonRpcWebsocketsConnection::PreparedNtf JsonRpcWebsocketsConnection::prepareNotification(
+		LightSpeed::ConstStrA name, LightSpeed::JSON::PNode arguments) {
+	Synchronized<FastLock> _(lock);
+	JSON::PNode req = json("method",name)
+			("params",arguments)
+			("id",nil);
+	return  IRpcNotify::prepare(json.factory->toString(*req));
+}
+
+IRpcNotify *IRpcNotify::fromRequest(RpcRequest *r) {
+	JsonRpcWebsocketsConnection *conn = JsonRpcWebsocketsConnection::getConnection(*r->httpRequest);
+	return conn;
 }
 
 } /* namespace jsonsrv */

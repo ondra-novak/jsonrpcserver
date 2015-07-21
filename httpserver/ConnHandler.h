@@ -39,7 +39,7 @@ public:
 	virtual ITCPServerContext *onIncome(const NetworkAddress &addr) throw();
 	virtual Command onAccept(ITCPServerConnControl *controlObject, ITCPServerContext *context);
 
-	virtual bool isPeerTrustedProxy(ConstStrA ip) { return false; }
+	virtual bool isPeerTrustedProxy(ConstStrA) { return false; }
 
 	friend class ConnContext;
 

@@ -372,6 +372,10 @@
 				RelativePath=".\httpserver\webSockets.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\resources\wsrpc.js.c"
+				>
+			</File>
 		</Filter>
 		<File
 			RelativePath=".\httpserver\abstractWebSockets.tcc"
@@ -406,6 +410,30 @@
 					Name="VCCustomBuildTool"
 					Description="Compiling resources: $(InputFile)"
 					CommandLine="&quot;$(IntDir)\bin2c.exe&quot; &quot;$(InputPath)&quot; jsonrpcserver_rpc_js  &gt; &quot;$(InputPath).c&quot;&#x0D;&#x0A;"
+					AdditionalDependencies="$(IntDir)\bin2c.exe"
+					Outputs="$(InputPath).c"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
+			RelativePath=".\resources\wsrpc.js"
+			>
+			<FileConfiguration
+				Name="Debug|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					CommandLine="&quot;$(IntDir)\bin2c.exe&quot; &quot;$(InputPath)&quot; jsonrpcserver_wsrpc_js  &gt; &quot;$(InputPath).c&quot;"
+					AdditionalDependencies="$(IntDir)\bin2c.exe"
+					Outputs="$(InputPath).c"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					CommandLine="&quot;$(IntDir)\bin2c.exe&quot; &quot;$(InputPath)&quot; jsonrpcserver_wsrpc_js  &gt; &quot;$(InputPath).c&quot;"
 					AdditionalDependencies="$(IntDir)\bin2c.exe"
 					Outputs="$(InputPath).c"
 				/>

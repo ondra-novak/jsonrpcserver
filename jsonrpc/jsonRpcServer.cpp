@@ -14,7 +14,7 @@ namespace jsonsrv {
 	JsonRpcServer::JsonRpcServer()
 	{
 		setLogObject(this);
-		registerStatHandler("server",RpcCall::create(this,&JsonRpcServer::rpcHttpStatHandler));
+		DbgLog::needRotateLogs(logRotateCounter);
 	}
 
 	void JsonRpcServer::init( const IniConfig &cfg )
@@ -72,11 +72,18 @@ namespace jsonsrv {
 		}
 		setClientPage(clientPagePath);
 		registerServerMethods(true);
+		registerStatHandler("server",RpcCall::create(this,&JsonRpcServer::rpcHttpStatHandler));
 	}
 
 	void JsonRpcServer::logMethod( IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *logOutput )
 	{
 		if (logfile == nil) return;
+		if (logRotateCounter != DbgLog::rotateCounter) {
+			if (DbgLog::needRotateLogs(logRotateCounter)) {
+				logRotate();
+			}
+		}
+
 		LogObject lg(THISLOCATION);
 		IHttpPeerInfo &pinfo = invoker.getIfc<IHttpPeerInfo>();
 		ConstStrA peerAddr = pinfo.getPeerRealAddr();

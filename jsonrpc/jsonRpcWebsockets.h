@@ -11,6 +11,7 @@
 #include "ijsonrpc.h"
 #include "lightspeed/base/actions/promise.h"
 #include "lightspeed/base/containers/map.h"
+#include "rpcnotify.h"
 
 
 namespace jsonsrv {
@@ -19,7 +20,7 @@ namespace jsonsrv {
 using namespace BredyHttpSrv;
 
 
-class JsonRpcWebsocketsConnection: public WebSocketConnection{
+class JsonRpcWebsocketsConnection: public WebSocketConnection, public IRpcNotify{
 public:
 	JsonRpcWebsocketsConnection(IHttpRequest &request, IJsonRpc &handler, StringA openMethod);
 
@@ -33,6 +34,11 @@ public:
 	 * @note notification is send with id=null as specification says.
 	 */
 	void sendNotification(ConstStrA name, JSON::PNode arguments);
+
+	void sendNotification(const PreparedNtf &ntf);
+	PreparedNtf prepareNotification(LightSpeed::ConstStrA name, LightSpeed::JSON::PNode arguments);
+;
+
 
 	///Server call method on the client
 	/**
@@ -73,6 +79,8 @@ public:
 	 * @return pointer to current context or NULL, if context is not set.
 	 */
 	IHttpHandlerContext *getContext() const;
+
+	virtual void closeConnection(natural code=1000) {WebSocketConnection::closeConnection(code);}
 
 	~JsonRpcWebsocketsConnection();
 

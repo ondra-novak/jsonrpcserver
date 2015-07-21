@@ -14,7 +14,6 @@ function WsRpcClient (wsrpc_url, method_list, options) {
 
 	var lastIdent = 0;
 	var idtable = {};
-	var reconnectInterval = 2000;
 	var clientMethods={};
 	var eventListeners={};
 	var me = this;
@@ -42,8 +41,7 @@ function WsRpcClient (wsrpc_url, method_list, options) {
 	var reconnectIfNeed = false;
 
 	var connect = function() {
-		if (connection) return this;
-		console.log("Connecting...")
+		if (connection) return this;		
 		connection = new WebSocket(url);
 		connection.onopen = function(evt) { onOpen(evt) };
 		connection.onclose = function(evt) { onClose(evt) };
@@ -63,9 +61,17 @@ function WsRpcClient (wsrpc_url, method_list, options) {
 		if (id == null) {
 			var m = eventListeners[method];
 			if (m) {
+				m = m.slice(0); 
 				for (var i = 0; i < m.length; i++) {
-					m[i](arguments);
+					m[i](method, arguments, me);
 				}
+			}
+			m = eventListeners["*"]
+			if (m) {
+				m = m.slice(0);
+				for (var i = 0; i < m.length; i++) {
+					m[i](method, arguments, me);
+				}				
 			}
 		} else {
 			var m = clientMethods[method];
@@ -122,22 +128,21 @@ function WsRpcClient (wsrpc_url, method_list, options) {
 	}
 	
 	var onOpen = function(evt) {
-		console.log("Connection established")
-		onClientMethod("_connect",[me],null);
+		onClientMethod("status",["connect"],null);
 		opened = true;
 		resendRequests();
 	}
 	var onClose = function(evt) {
+		onClientMethod("status",["disconnect"],null);
 		if (reconnectIfNeed) {
-			console.log("Websocket connection lost");
 			if ( Object.keys(idtable).length === 0) {
 				cleanup();		
-				setTimeout(connect,reconnectInterval);
+				connect();
 			} else {
 				me.onConnectionError(evt.data, function(x) {
 					cleanup(x);
 					connect();
-				})
+				});
 			}
 		}
 	}
@@ -164,8 +169,6 @@ function WsRpcClient (wsrpc_url, method_list, options) {
 		if (!keeprq) cancelRequests();
 		connection = null;
 		opened = false;
-		onClientMethod("_close",[me],null);
-		
 	}
 	
 	var disconnect = function(keeprq) {
@@ -179,11 +182,15 @@ function WsRpcClient (wsrpc_url, method_list, options) {
   	var changed = false;
 		for (var i in c) {
 			changed = true;
-			if (i == null) delete me.context[i];
+			if (c[i] === null) delete me.context[i];
 			else me.context[i] = c[i];
 		}
   }
 	
+  this.updateContext = function(c) {
+	  updateContext(c);
+  }
+  
 	var regMethod = function(obj, locname, remotename) {
 		var k = locname.indexOf('.');
 		var r = remotename;
@@ -209,8 +216,6 @@ function WsRpcClient (wsrpc_url, method_list, options) {
 	});
 
 	if (options) {
-		if (options.hasOwnProperty("reconnectInterval"))
-			reconnectInterval = options.reconnectInterval;
 		if (options.hasOwnProperty("onConnectionError")) 
 			this.onConnectionError = options.onConnectionError;
 	}
@@ -231,7 +236,7 @@ function WsRpcClient (wsrpc_url, method_list, options) {
 		return this;
 	}
 	
-	this.removeEventListrener = function(event, fn) {
+	this.removeEventListener = function(event, fn) {
 		var e = eventListeners[event];
 		if (!e) return this;
 		var idx = e.indexOf(fn);

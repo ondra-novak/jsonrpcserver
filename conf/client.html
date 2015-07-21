@@ -82,7 +82,7 @@ margin-left:-3px;
 	</div>	
 	</div>	
 	</div>
-	<wg-form class="inputBox">
+	<form class="inputBox">
 	Method: <input name="method" id="method" type="text">
 	<input value="..." onclick="methodChoose()" type="button">
 	<input value="&lt;" onclick="getFromHistoryPrev()" type="button">
@@ -97,22 +97,22 @@ margin-left:-3px;
 	<input class="helpButton" value="?" onclick="helpOnMethod()" type="button">
 	<input value="odeslat" onclick="sendRequest()" type="button">
 	</div>
-	</wg-form>
+	</form>
 	<div class="resultBox">
 	<h2>Result:</h2>
 	<div class="error" id="error"></div>
 	<pre class="result" id="result"></pre>
 	</div>
 	<div class="loginBox" id="loginBox">
-	<wg-form>
+	<form>
 	Username: <input name="username" id="username" type="text"><br>
 	Password: <input name="password" id="password" type="password"><br>
 	<input value="Login" onclick="doLoginSubmit();" type="button">
 	<input value="Cancel" onclick="doLoginCancel();" type="button">
-	</wg-form>
+	</form>
 	</div>
 	<div class="extendBox" id="extendBox">
-	<wg-form>
+	<form>
 	Time (minutes): <input name="time" id="time" type="text" value="15"><br>
 	User level: <select name="level" id="level">
 	<option value="">-- select to change ---</option>
@@ -124,14 +124,14 @@ margin-left:-3px;
 	</select><br>
 	<input value="Extend" onclick="doExtendSubmit();" type="button">
 	<input value="Cancel" onclick="doExtendCancel();" type="button">
-	</wg-form>
+	</form>
 	</div>
 	<div class="openSesBox" id="openSesBox" style="">
-	<wg-form>
+	<form>
 	SessionId: <input name="entersessionid" id="entersessionid" type="text" value="" style="width:30em"><br>
 	<input value="Open" onclick="doOpenSessionSubmit();" type="button">
 	<input value="Cancel" onclick="doOpenSessionCancel()" type="button">
-	</wg-form>
+	</form>
 	</div>
 	
 

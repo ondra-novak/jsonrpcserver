@@ -121,12 +121,12 @@ function RpcClient (rpc_url, method_list, options) {
 			if (i == null) delete me.context[i];
 			else me.context[i] = c[i];
 		}
-/*    	if (changed && localStorageKey != null) {
-    		localStorage[localStorageKey] = JSON.stringify(this.context);
-    	}*/
     }
 
-
+    this.updateContext = function(c) {
+  	  updateContext(c);
+    }
+    
 	
 	var doCall2 = function(method,args) {
 		return new Promise(function(ok,fail) {
