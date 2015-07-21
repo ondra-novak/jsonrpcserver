@@ -19,7 +19,7 @@ namespace ThreadMode {
 		newThread,
 		///use thread from server thread pool - may reduce number of available threads for HTTP requests
 		serverThread,
-		///run action in scheduler thread - may block scheduler and delay other tasks
+		///run action in scheduler thread - may block the scheduler and delay other tasks
 		schedulerThread
 
 	};
@@ -44,10 +44,10 @@ public:
 	///Schedules action to given time.
 	/**
 	 * @param action action to carry out at given time
-	 * @param timeInS time in seconds measured from now. Scheduler has seconds
-	 * 		resolution, you cannot scheduler to shorter interval
-	 * @param threadMode choose which thread will be used to execute job
-	 * @return function returns an pointer, which can be later use to cancel scheduled action
+	 * @param timeInS time in seconds measured from now. The scheduler has
+	 * 		resolution in seconds, you cannot schedule to shorter interval
+	 * @param threadMode choose which thread will be used to execute the job
+	 * @return function returns a pointer, which can be later use to cancel the scheduled action
 	 *
 	 */
 	virtual void *schedule(const LightSpeed::IThreadFunction &action, LightSpeed::natural timeInS,
@@ -71,9 +71,9 @@ public:
 
 };
 
-///Allows to start background tasks on server
-/**Interface allows only tp start new job. It is on caller to
- * setup communication with the newly created job.
+///Allows to start background tasks on the server
+/**Interface allows only to start a new job. It is on caller to
+ * setup a communication with the newly created job.
  *
  *
  */

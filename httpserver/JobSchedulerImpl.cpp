@@ -114,10 +114,8 @@ void JobSchedulerImpl::workThread() throw () {
 			lg.debug("Processing scheduled action");
 			pumpMessage();
 		} else if (wt != naturalNull) {
-			lg.debug("Sleeping for %1 seconds") << wt;
 			Thread::sleep(wt * 1000);
 		} else {
-			lg.debug("Waiting for actions") << wt;
 			Thread::sleep (nil);
 		}
 	}

@@ -94,7 +94,8 @@ protected:
     virtual void onThreadException(const Exception &e) throw();
 	virtual void onException(const Exception &e);
 
-    virtual integer initService(const Args & args, SeqFileOutput serr);
+	virtual integer validateService(const Args& args, SeqFileOutput serr);
+	virtual integer initService(const Args & args, SeqFileOutput serr);
     virtual integer startService();
 
 

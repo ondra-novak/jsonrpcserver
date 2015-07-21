@@ -131,8 +131,8 @@ struct RpcRequest {
 	JSON::PNode argObject(ArgIter &iter, ConstStrA name, JSON::PNode defval);
 	bool hasValue(ArgIter &iter, ConstStrA name);
 
-	JSON::PFactory::Builder object() const {return JSON::PFactory(jsonFactory.get()).object();}
-	JSON::PFactory::Builder array() const {return JSON::PFactory(jsonFactory.get()).array();}
+	JSON::Builder::Object object() const {return JSON::Builder(jsonFactory.get()).object();}
+	JSON::Builder::Array array() const {return JSON::Builder(jsonFactory.get()).array();}
 	JSON::PNode ok() const {return jsonFactory->newValue(true);}
 
 };

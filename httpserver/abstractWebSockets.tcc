@@ -31,6 +31,7 @@ template<typename Impl, bool serverSide>
 void AbstractWebSocketConnection<Impl,serverSide>::closeConnection(
 		natural code) {
 
+	requestClose = true;
 	byte data[2];
 	data[0] = byte(code / 256);
 	data[1] = byte(code % 256);
@@ -90,6 +91,7 @@ void AbstractWebSocketConnection<Impl,serverSide>::sendFrame(
 
 template<typename Impl, bool serverSide>
 bool AbstractWebSocketConnection<Impl,serverSide>::onRawDataIncome() {
+	if (requestClose) return false;
 	natural avail = frame.getAllocatedSize() - frame.length();
 	if (avail == 0) avail = 256;
 	natural pos = frame.length();
@@ -196,7 +198,7 @@ bool AbstractWebSocketConnection<Impl,serverSide>::onRawDataIncome() {
 	}
 
 	frame.erase(0,frameLen);
-	return true;
+	return !requestClose;
 }
 
 template<typename Impl, bool serverSide>
@@ -222,7 +224,7 @@ inline void AbstractWebSocketConnection<Impl,serverSide>::sendBytesMasked(const 
 
 template<typename Impl, bool serverSide>
 inline AbstractWebSocketConnection<Impl,serverSide>::AbstractWebSocketConnection()
-:maxMessageSize(naturalNull),maxFragmentedMessageSize(naturalNull)
+:maxMessageSize(naturalNull),maxFragmentedMessageSize(naturalNull),requestClose(false)
 {
 	if (!serverSide) {
 		uint32_t randomData[32];
