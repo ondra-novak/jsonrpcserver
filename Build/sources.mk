@@ -26,5 +26,4 @@ SUBDIRS := \
 resources \
 jsonrpc \
 httpserver \
-client \
 

@@ -11,7 +11,6 @@ RM := rm -rf
 -include resources/subdir.mk
 -include jsonrpc/subdir.mk
 -include httpserver/subdir.mk
--include client/subdir.mk
 -include subdir.mk
 -include objects.mk
 
