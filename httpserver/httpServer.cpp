@@ -55,7 +55,7 @@ ITCPServerContext* HttpServer::onConnect(const NetworkAddress& addr) throw() {
 
 ConnHandler::Command HttpServer::onDataReady(const PNetworkStream& stream,
 		ITCPServerContext* context) throw() {
-	ParallelExecutor2 *executor = &intThreadPool;
+	ParallelExecutor *executor = &intThreadPool;
 	natural t = executor->getThreadCount();
 	if (t != lastThreadCount) {
 		DbgLog::setThreadName("server",false);
@@ -92,7 +92,7 @@ void* HttpServer::schedule(const LightSpeed::IThreadFunction &action,
 
 
 void HttpServer::reportThreadUsage() {
-	ParallelExecutor2 *executor = &intThreadPool;
+	ParallelExecutor *executor = &intThreadPool;
 	LogObject(THISLOCATION).info("Workers: %1, Idle: %2, Connections: %3")
 			<< executor->getThreadCount()
 			<< executor->getIdleCount()
@@ -101,7 +101,7 @@ void HttpServer::reportThreadUsage() {
 
 
 HttpServer::LocalParallelExecutor::LocalParallelExecutor(const Config& config)
-:ParallelExecutor2(config.maxThreads,naturalNull,config.newThreadTimeout,config.threadIdleTimeout)
+:ParallelExecutor(config.maxThreads,naturalNull,config.newThreadTimeout,config.threadIdleTimeout)
 {
 }
 
@@ -131,7 +131,7 @@ void HttpServer::addLiveLog(ConstStrA path, ConstStrA realm, ConstStrA userList)
 
 void HttpServer::recordRequestDuration(natural duration) {
 	double d = duration*0.001;
-	ParallelExecutor2 *executor = &intThreadPool;
+	ParallelExecutor *executor = &intThreadPool;
 	stats.requests.add(1);
 	stats.latency.add(d);
 	stats.worktime.add(d);

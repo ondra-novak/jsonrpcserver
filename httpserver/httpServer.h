@@ -66,7 +66,7 @@ public:
 
 protected:
 
-	class LocalParallelExecutor: public ParallelExecutor2 {
+	class LocalParallelExecutor: public ParallelExecutor {
 	public:
 		LocalParallelExecutor(const Config &cfg);
 		virtual void onThreadInit();
@@ -74,7 +74,7 @@ protected:
 	};
 
 	LocalParallelExecutor intThreadPool;
-	TCPSharedThreadPool lkThreadPool;
+	ParallelExecutor lkThreadPool;
 	TCPServer tcplisten;
 	natural lastThreadCount;
 	JobSchedulerImpl jobScheduler;
