@@ -19,6 +19,7 @@
 #include "lightspeed/base/containers/stringpool.tcc"
 #include "lightspeed/base/containers/carray.h"
 #include "lightspeed/base/interface.tcc"
+#include "lightspeed/base/streams/fileiobuff.tcc"
 
 
 namespace BredyHttpSrv {
@@ -592,18 +593,19 @@ ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
 
 	try {
 
-		AutoArray<char, SmallAlloc<8000> > linebuff;
+		AutoArray<char, SmallAlloc<8192> > linebuff;
 
-		IBufferedInputStream *instr = inout->getBufferedInputStream();
-		if (instr->fetch() == 0) {
+		NStream::Buffer &buffer = inout->getBuffer();
+		natural fetched = buffer.fetch();
+		if (fetched == 0) {
 			errorPage(413,ConstStrA(),"Header is too large");
 			return ITCPServerConnHandler::cmdRemove;
 		}
-		natural pos = instr->lookup(ConstBin("\r\n"));
+		natural pos = buffer.lookup(ConstBin("\r\n"),fetched);
 		while (pos != naturalNull) {
 
 			linebuff.resize(pos+2);
-			instr->read(linebuff.data(),pos+2);
+			buffer.read(linebuff.data(),pos+2);
 			ConstStrA line = linebuff.head(pos);
 
 			if (method.empty()) {
@@ -644,7 +646,7 @@ ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
 				crop(value);
 				requestHdrs.insert(hdrPool.add(field),hdrPool.add(value));
 			}
-			pos = instr->lookup(ConstBin("\r\n"));
+			pos = buffer.lookup(ConstBin("\r\n"));
 		}
 		return ITCPServerConnHandler::cmdWaitRead;
 	} catch (AllocatorLimitException &) {

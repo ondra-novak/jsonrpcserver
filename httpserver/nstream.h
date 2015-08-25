@@ -11,7 +11,7 @@
 
 namespace BredyHttpSrv {
 
-typedef LightSpeed::NetworkStream<8000,1500> NStream;
+typedef LightSpeed::NetworkStream<8196> NStream;
 }
 
 
