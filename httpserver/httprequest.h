@@ -36,7 +36,7 @@ using namespace LightSpeed;
      *
 
      */
-	class IHttpRequest: public ISeqFileHandle {
+	class IHttpRequest: public IInOutStream {
 
 	public:
 
