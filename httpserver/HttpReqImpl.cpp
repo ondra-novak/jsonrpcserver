@@ -270,7 +270,8 @@ void HttpReqImpl::sendHeaders() {
 	print("\n");
 
 	LogObject(THISLOCATION).progress("%7 - %3 %4 HTTP/%1.%2 %5 %6")
-		<< httpMajVer << httpMajVer << method << path << statusCode << statusMsgStr
+		<< httpMajVer << httpMajVer << ConstStrA(method)
+		<< ConstStrA(path) << statusCode << statusMsgStr
 		<< getIfc<IHttpPeerInfo>().getPeerRealAddr();
 
 	responseHdrs.clear();

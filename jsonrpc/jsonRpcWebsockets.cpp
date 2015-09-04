@@ -111,9 +111,8 @@ Promise<JSON::PNode> JsonRpcWebsocketsConnection::callMethod(ConstStrA name, JSO
 	ConstStrA msg = json.factory->toString(*req);
 	this->sendTextMessage(msg,true);
 
-	PromiseResolution<JSON::PNode> result;
-	Promise<JSON::PNode> promise(result);
-	waitingPromises.insert(promiseId,result);
+	Promise<JSON::PNode> promise;
+	waitingPromises.insert(promiseId,promise.createResult());
 	return promise;
 }
 
@@ -137,9 +136,9 @@ void JsonRpcWebsocketsConnection::onTextMessage(ConstStrA msg) {
 	JSON::PNode req = json.factory->fromString(msg);
 	if (req->getPtr("result")) {
 		natural id = req["id"]->getUInt();
-		const PromiseResolution<JSON::PNode> *pres = waitingPromises.find(id);
+		const Promise<JSON::PNode>::Result *pres = waitingPromises.find(id);
 		if (pres == 0) return;
-		PromiseResolution<JSON::PNode> p = *pres;
+		Promise<JSON::PNode>::Result p = *pres;
 		waitingPromises.erase(id);
 		if (req["error"]->isNull()) p.resolve(req["result"]);
 		else p.reject(RpcError(THISLOCATION,req["error"]));

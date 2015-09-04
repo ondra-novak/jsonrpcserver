@@ -92,7 +92,7 @@ protected:
 	IJsonRpc &handler;
 	IJsonRpcLogObject *logobject;
 	natural nextPromiseId;
-	typedef Map<natural, PromiseResolution<JSON::PNode> > WaitingPromises;
+	typedef Map<natural, Promise<JSON::PNode>::Result > WaitingPromises;
 
 	WaitingPromises waitingPromises;
 
