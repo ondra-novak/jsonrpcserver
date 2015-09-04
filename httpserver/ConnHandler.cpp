@@ -23,12 +23,12 @@ namespace BredyHttpSrv {
 static atomic contextCounter = 0;
 
 ConnHandler::Command ConnHandler::onDataReady(const PNetworkStream &stream, ITCPServerContext *context) throw() {
-	try {
-		Synchronized<Semaphore> _(busySemaphore);
+	Synchronized<Semaphore> _(busySemaphore);
+	ConnContext *ctx = static_cast<ConnContext *>(context);
+		try {
 
 		stream->setWaitHandler(this);
 
-		ConnContext *ctx = static_cast<ConnContext *>(context);
 		DbgLog::setThreadName(ctx->ctxName,false);
 
 		if (ctx->nstream == nil) {
@@ -42,9 +42,11 @@ ConnHandler::Command ConnHandler::onDataReady(const PNetworkStream &stream, ITCP
 		if (cmd == ITCPServerConnHandler::cmdWaitUserWakeup) {
 			LogObject(THISLOCATION).debug("Request uses detach feature");
 		}
+		if (cmd == cmdRemove) ctx->nstream = nil;
 		return cmd;
 	} catch (std::exception &e) {
 		LogObject(THISLOCATION).note("Uncaught exception: %1") << e.what();
+		ctx->nstream->getBuffer().discardOutput(naturalNull);
 		return cmdRemove;
 	}
 
