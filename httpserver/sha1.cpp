@@ -81,8 +81,8 @@ std::string SHA1::final()
     }
 
     /* Append total_bits, split this uint64 into two uint32 */
-    block[BLOCK_INTS - 1] = total_bits;
-    block[BLOCK_INTS - 2] = (total_bits >> 32);
+    block[BLOCK_INTS - 1] = (uint32)(total_bits & 0xFFFFFFFF);
+    block[BLOCK_INTS - 2] = (uint32)(total_bits >> 32);
     transform(block);
 
 

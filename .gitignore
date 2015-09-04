@@ -1,3 +1,10 @@
 /Debug/
 /Release/
 resources/rpc.js.c
+*.idb
+BuildLog.htm
+examples/simplechat/tmp
+logfile
+examples/rpcserver/tmp
+examples/rpcserver/log/rpclogfile
+resources/wsrpc.js.c
