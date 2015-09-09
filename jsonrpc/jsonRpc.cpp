@@ -193,6 +193,7 @@ JSON::PNode JsonRpc::parseRequest(IHttpRequest& request, JSON::IFactory *f) {
 	res.id = jsonreq->getVariable("id");
 	try {
 		ConstStrA method = (*jsonreq)["method"].getStringUtf8();
+		request.setRequestName(method);
 		JSON::INode *params = jsonreq->getVariable("params");
 		//no "params"
 		if (params == 0) {
@@ -561,6 +562,7 @@ JSON::PNode JsonRpc::rpcMulticall1(  RpcRequest *rq) {
 	}
 	result->add("results",resarr);
 	result->add("errors",errarr);
+	rq->logOutput = errarr;
 	return result;
 }
 
@@ -599,6 +601,8 @@ JSON::PNode JsonRpc::rpcMulticallN(RpcRequest *rq) {
 	}
 	result->add("results",resarr);
 	result->add("errors",errarr);
+	rq->logOutput = errarr;
+
 	return result;
 
 }

@@ -441,6 +441,15 @@ using namespace LightSpeed;
 		 * */
 		virtual void attachThread(natural status) = 0;
 
+
+		///Sets request name
+		/** For debugging and logging proposes. Associates name with the request. The
+		 * name is then appear in the logfile. You can later ease idenitify various requests
+		 *
+		 * @param name name of the request. Can be any string (no limitation)
+		 */
+		virtual void setRequestName(ConstStrA name) = 0;
+
 		class SectionIO {
 		public:
 			SectionIO(IHttpRequest &r):r(r) {r.beginIO();}
@@ -587,6 +596,7 @@ using namespace LightSpeed;
 		virtual void addLiveLog(ConstStrA path, ConstStrA realm, ConstStrA userList ) = 0;
 		virtual ~IHttpLiveLog() {}
 	};
+
 }
 
 
