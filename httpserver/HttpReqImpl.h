@@ -92,6 +92,7 @@ public:
 
 	ITCPServerConnHandler::Command  onUserWakeup();
 
+	virtual void setRequestName(ConstStrA name);
 
 protected:
 
@@ -150,6 +151,10 @@ protected:
 	natural busyLockStatus;
 	mutable natural postBodyLimit;
 	natural attachStatus;
+
+	HdrStr requestName;
+
+	TimeStamp reqBeginTime;
 
 	class SectionIODirect {
 	public:

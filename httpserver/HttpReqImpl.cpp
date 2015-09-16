@@ -219,6 +219,10 @@ void HttpReqImpl::sendHeaders() {
 		useChunked = false;
 		remainPostData = naturalNull;
 		switchedProtocol = true;
+		LS_LOG.progress("%7 - %3 %4 HTTP/%1.%2 %5 %6")
+				<< httpMajVer << httpMajVer << ConstStrA(method)
+				<< ConstStrA(path) << statusCode << statusMsgStr
+				<< getIfc<IHttpPeerInfo>().getPeerRealAddr();
 	}
 
 	for (HeaderMap::Iterator iter = responseHdrs.getFwIter(); iter.hasItems();) {
@@ -269,10 +273,10 @@ void HttpReqImpl::sendHeaders() {
 
 	print("\n");
 
-	LogObject(THISLOCATION).progress("%7 - %3 %4 HTTP/%1.%2 %5 %6")
+/*	LogObject(THISLOCATION).progress("%7 - %3 %4 HTTP/%1.%2 %5 %6")
 		<< httpMajVer << httpMajVer << ConstStrA(method)
 		<< ConstStrA(path) << statusCode << statusMsgStr
-		<< getIfc<IHttpPeerInfo>().getPeerRealAddr();
+		<< getIfc<IHttpPeerInfo>().getPeerRealAddr();*/
 
 	responseHdrs.clear();
 	//for code 100 or 101, additional header will be next
@@ -322,6 +326,8 @@ void HttpReqImpl::errorPage(natural code, ConstStrA msg, ConstStrA expl) {
 	print("<html><head><title>%1 %2</title></head><body><h1>%1 %2</h1>")
 		<< code << msg;
 	if (!expl.empty()) print("<pre>%3</pre>")<< expl;
+	print("<hr>");
+	print("<small><em>Powered by Bredy's JsonRpcServer - C++ http & jsonrpc server - <a href=\"https://github.com/ondra-novak/jsonrpcserver\">sources available</a></em></small>");
 	print("</body></html>");
 }
 
@@ -611,6 +617,9 @@ ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
 
 			if (method.empty()) {
 				if (pos == 0) return ITCPServerConnHandler::cmdWaitRead;
+
+				reqBeginTime = TimeStamp::now();
+
 				crop(line);
 				ConstStrA::SplitIterator splt = line.split(' ');
 				method = hdrPool.add(ConstStrA(splt.getNext()));
@@ -743,12 +752,7 @@ ITCPServerConnHandler::Command  HttpReqImpl::processHandlerResponse(natural res)
 		else if (res == IHttpHandler::stWaitForWrite) {
 			return ITCPServerConnHandler::cmdWaitWrite;
 		} else {
-			if (!outputClosed) {
-				//otherwise finalize chunk
-				finishChunk();
-			}
-			//clear connection status
-			clear();
+			finish();
 			//keep conection depend on keep-alive
 			return keepAlive()?ITCPServerConnHandler::cmdWaitRead:ITCPServerConnHandler::cmdRemove;
 		}
@@ -796,18 +800,31 @@ void HttpReqImpl::clear() {
 	statusCode=200;
 	postBodyLimit = naturalNull;
 	switchedProtocol = false;
+	requestName = HdrStr();
 
 }
 
 void HttpReqImpl::finish() {
-	finishChunk();
+	if (!outputClosed) {
+		//otherwise finalize chunk
+		finishChunk();
+	}
+	if (!method.empty()) {
+		TimeStamp reqEndTime = TimeStamp::now();
+		LogObject(THISLOCATION).progress("%7 - %3 %4 HTTP/%1.%2 %5 %6 %8 (%9 ms)")
+				<< httpMajVer << httpMajVer << ConstStrA(method)
+				<< ConstStrA(path) << statusCode << statusMsg
+				<< getIfc<IHttpPeerInfo>().getPeerRealAddr()
+				<< requestName
+				<< (reqEndTime - reqBeginTime).getMilis();
+
+	}
 	clear();
 }
 
 ITCPServerConnHandler::Command HttpReqImpl::errorPageKA(natural code, ConstStrA expl) {
 	errorPage(code,ConstStrA(),expl);
-	finishChunk();
-	clear();
+	finish();
 	return ITCPServerConnHandler::cmdRemove;
 }
 
@@ -884,6 +901,9 @@ void HttpReqImpl::closeOutput() {
 	}
 }
 
+void HttpReqImpl::setRequestName(ConstStrA name) {
+	requestName = responseHdrPool.add(name);
+}
 
 }
 

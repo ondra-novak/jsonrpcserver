@@ -10,6 +10,8 @@
 #include <lightspeed/base/interface.tcc>
 
 #include "lightspeed/base/actions/promise.tcc"
+
+#include "lightspeed/base/debug/dbglog.h"
 namespace jsonsrv {
 
 class JsonRpcWebsocketsConnection::HttpRequestWrapper: public BredyHttpSrv::IHttpRequest {
@@ -69,6 +71,7 @@ protected:
 	virtual void setMaxPostSize(natural bytes) {}
 	virtual void attachThread(natural status) {}
 	virtual void closeOutput() {}
+	virtual void setRequestName(ConstStrA reqName) {}
 
 	virtual void *proxyInterface(IInterfaceRequest &p) {
 		void *x = IInterface::proxyInterface(p);
@@ -133,6 +136,8 @@ IHttpHandlerContext* JsonRpcWebsocketsConnection::getContext() const {
 
 void JsonRpcWebsocketsConnection::onTextMessage(ConstStrA msg) {
 	Synchronized<FastLock> _(lock);
+	LS_LOGOBJ(lg);
+
 	JSON::PNode req = json.factory->fromString(msg);
 	if (req->getPtr("result")) {
 		natural id = req["id"]->getUInt();
@@ -143,6 +148,7 @@ void JsonRpcWebsocketsConnection::onTextMessage(ConstStrA msg) {
 		if (req["error"]->isNull()) p.resolve(req["result"]);
 		else p.reject(RpcError(THISLOCATION,req["error"]));
 	} else {
+		TimeStamp beginTime = TimeStamp::now();
 		ConstStrA method = req["method"]->getStringUtf8();
 		JSON::PNode params = req["params"];
 		JSON::PNode id = req["id"];
@@ -170,6 +176,9 @@ void JsonRpcWebsocketsConnection::onTextMessage(ConstStrA msg) {
 			ConstStrA msg = json.factory->toString(*response);
 			sendTextMessage(msg,true);
 		}
+		TimeStamp endTime = TimeStamp::now();
+		lg.progress("%1 - POST %2 WSRPC/1.0 (%3 ms)") << http.getIfc<IHttpPeerInfo>().getPeerRealAddr()
+						<< method << (endTime - beginTime).getMilis();
 	}
 
 }
