@@ -76,7 +76,7 @@ IExecutor* JobSchedulerImpl::chooseExecutor(ThreadMode::Type threadMode) {
 
 void* JobSchedulerImpl::schedule(const IThreadFunction &action, natural timeInS,
 		ThreadMode::Type threadMode) {
-	ScheduledAction* a = new ScheduledAction(Action(action), chooseExecutor(threadMode),
+	ScheduledAction* a = new ScheduledAction(action, chooseExecutor(threadMode),
 			msgAlloc);
 	Scheduler::schedule(a, timeInS);
 	return a;

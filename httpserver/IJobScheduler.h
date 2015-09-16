@@ -69,6 +69,8 @@ public:
 	 */
 	virtual void cancel(void *action, bool async) = 0;
 
+	virtual ~IJobScheduler() {}
+
 };
 
 ///Allows to start background tasks on the server
