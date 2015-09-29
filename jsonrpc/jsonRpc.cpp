@@ -96,6 +96,8 @@ static bool findPragma(IHttpRequest &r) {
 
 
 natural JsonRpc::onData(IHttpRequest& request) {
+	LS_LOGOBJ(lg);
+	lg.debug("Reading JSONRPC request");
 	request.setMaxPostSize(maxRequestSize);
 	JSON::PFactory f = getFactory();
 	JSON::IFactoryToStringProperty &prop = f->getIfc<JSON::IFactoryToStringProperty>();
@@ -193,6 +195,7 @@ JSON::PNode JsonRpc::parseRequest(IHttpRequest& request, JSON::IFactory *f) {
 	res.id = jsonreq->getVariable("id");
 	try {
 		ConstStrA method = (*jsonreq)["method"].getStringUtf8();
+		lg.debug("Parsing: %1") << method;		
 		request.setRequestName(method);
 		JSON::INode *params = jsonreq->getVariable("params");
 		//no "params"
@@ -206,8 +209,10 @@ JSON::PNode JsonRpc::parseRequest(IHttpRequest& request, JSON::IFactory *f) {
 			newParams = f->newArray()->add(params);
 			params = newParams;
 		}
-		JSON::INode *context = jsonreq->getVariable("context");
+		JSON::INode *context = jsonreq->getVariable("context");		
+		lg.debug("Executing: %1") << method;
 		res = callMethod(&request,method,params,context,res.id);
+		lg.debug("Finished: %1") << method;
 		if (logObject != nil) logObject->logMethod(request,method,params,context,res.logOutput);
 	} catch (RpcCallError &e) {
 		RpcError err(THISLOCATION,f,e.getStatus(),e.getStatusMessage());
