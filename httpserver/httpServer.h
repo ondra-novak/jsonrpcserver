@@ -73,8 +73,7 @@ protected:
 		virtual void onThreadDone();
 	};
 
-	LocalParallelExecutor intThreadPool;
-	ParallelExecutor lkThreadPool;
+	LocalParallelExecutor threadPool;
 	TCPServer tcplisten;
 	natural lastThreadCount;
 	JobSchedulerImpl jobScheduler;

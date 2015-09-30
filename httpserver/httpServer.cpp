@@ -24,10 +24,9 @@ namespace BredyHttpSrv {
 
 HttpServer::HttpServer(StringA baseUrl, StringA serverIdent, const Config &config)
 	:BredyHttpSrv::ConnHandler(baseUrl, serverIdent, config.maxBusyThreads)
-	 ,intThreadPool(config)
-	 ,lkThreadPool(intThreadPool)
-	 ,tcplisten(*this,&lkThreadPool)
-	 ,jobScheduler(lkThreadPool)
+	 ,threadPool(config)
+	 ,tcplisten(*this,&threadPool)
+	 ,jobScheduler(threadPool)
 	 , trustedProxies(config.trustedProxies)
 {
 	lastThreadCount = 0;
@@ -55,7 +54,7 @@ ITCPServerContext* HttpServer::onConnect(const NetworkAddress& addr) throw() {
 
 ConnHandler::Command HttpServer::onDataReady(const PNetworkStream& stream,
 		ITCPServerContext* context) throw() {
-	ParallelExecutor *executor = &intThreadPool;
+	ParallelExecutor *executor = &threadPool;
 	natural t = executor->getThreadCount();
 	if (t != lastThreadCount) {
 		DbgLog::setThreadName("server",false);
@@ -66,7 +65,7 @@ ConnHandler::Command HttpServer::onDataReady(const PNetworkStream& stream,
 }
 
 void HttpServer::executeInPool(const IThreadFunction &threadFn) {
-	lkThreadPool.execute(threadFn);
+	threadPool.execute(threadFn);
 }
 
 
@@ -92,7 +91,7 @@ void* HttpServer::schedule(const LightSpeed::IThreadFunction &action,
 
 
 void HttpServer::reportThreadUsage() {
-	ParallelExecutor *executor = &intThreadPool;
+	ParallelExecutor *executor = &threadPool;
 	LogObject(THISLOCATION).info("Workers: %1, Idle: %2, Connections: %3")
 			<< executor->getThreadCount()
 			<< executor->getIdleCount()
@@ -131,7 +130,7 @@ void HttpServer::addLiveLog(ConstStrA path, ConstStrA realm, ConstStrA userList)
 
 void HttpServer::recordRequestDuration(natural duration) {
 	double d = duration*0.001;
-	ParallelExecutor *executor = &intThreadPool;
+	ParallelExecutor *executor = &threadPool;
 	stats.requests.add(1);
 	stats.latency.add(d);
 	stats.worktime.add(d);
