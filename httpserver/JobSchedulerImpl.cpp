@@ -20,7 +20,7 @@ JobSchedulerImpl::JobSchedulerImpl(LightSpeed::IExecutor &serverExecutor):server
 }
 
 
-class ScheduledAction: public Scheduler::AbstractEvent, public DynObject {
+class ScheduledAction: public OldScheduler::AbstractEvent, public DynObject {
 public:
 
 	ScheduledAction(const LightSpeed::Action::Ifc &msg, IExecutor *executor, IRuntimeAlloc &alloc);
@@ -78,13 +78,13 @@ void* JobSchedulerImpl::schedule(const IThreadFunction &action, natural timeInS,
 		ThreadMode::Type threadMode) {
 	ScheduledAction* a = new ScheduledAction(action, chooseExecutor(threadMode),
 			msgAlloc);
-	Scheduler::schedule(a, timeInS);
+	OldScheduler::schedule(a, timeInS);
 	return a;
 }
 
 void JobSchedulerImpl::cancel(void* action, bool async) {
 	ScheduledAction* a = (ScheduledAction*) ((((action))));
-	Scheduler::cancelMessage(a, async);
+	OldScheduler::cancelMessage(a, async);
 }
 
 void JobSchedulerImpl::notify() {
@@ -100,7 +100,7 @@ void* JobSchedulerImpl::schedule(const LightSpeed::IThreadFunction &action,
 		const LightSpeed::IThreadFunction &rejectAction, LightSpeed::natural timeInS,
 		ThreadMode::Type threadMode) {
 	ScheduledActionReject* a = new ScheduledActionReject(Action(action),  Action(rejectAction), chooseExecutor(threadMode), msgAlloc);
-	Scheduler::schedule(a, timeInS);
+	OldScheduler::schedule(a, timeInS);
 	return a;
 }
 

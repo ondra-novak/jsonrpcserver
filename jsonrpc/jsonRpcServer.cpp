@@ -110,6 +110,7 @@ namespace jsonsrv {
 			<< tms.year << tms.month << tms.day
 			<< tms.hour << tms.min << tms.sec
 			<< peerAddr << methodName << resparamstr << rescontextptr << resoutputptr;
+		logfile->flush();
 	}
 
 	void JsonRpcServer::openLog()

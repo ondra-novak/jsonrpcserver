@@ -9,14 +9,14 @@
 #define BREDYHTTPSERVER_JOBSCHEDULERIMPL_H_
 
 #include "IJobScheduler.h"
-#include "lightspeed/base/actions/scheduler.h"
 #include "lightspeed/base/memory/poolalloc.h"
 #include <lightspeed/base/actions/directExecutor.h>
+#include <lightspeed/base/actions/schedulerOld.h>
 #include "lightspeed/base/actions/InfParallelExecutor.h"
 
 namespace BredyHttpSrv {
 
-class JobSchedulerImpl: public IJobScheduler, public LightSpeed::Scheduler {
+class JobSchedulerImpl: public IJobScheduler, public LightSpeed::OldScheduler {
 public:
 	JobSchedulerImpl(LightSpeed::IExecutor &serverExecutor);
 	~JobSchedulerImpl();

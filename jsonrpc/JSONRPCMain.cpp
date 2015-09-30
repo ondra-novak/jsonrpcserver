@@ -123,6 +123,7 @@ public:
 	}
 	void logMethod(IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *logOutput) {
 		if (logfile == nil) return;
+		Synchronized<FastLock> _(lock);
 		LogObject lg(THISLOCATION);
 		IHttpPeerInfo &pinfo = invoker.getIfc<IHttpPeerInfo>();
 		ConstStrA peerAddr = pinfo.getPeerAddrStr();
@@ -141,7 +142,6 @@ public:
 		ConstStrA resparamstr(strparams.getArray());
 		ConstStrA rescontextptr(strcontext.getArray());
 		ConstStrA resoutputptr(stroutput.getArray());
-		Synchronized<FastLock> _(lock);
 		PrintTextA pr(*logfile);
 		AbstractLogProvider::LogTimestamp tms;
 		pr("%{04}1/%{02}2/%{02}3 %{02}4:%{02}5:%{02}6 - [\"%7\",\"%8\",%9,%10,%11]\n")

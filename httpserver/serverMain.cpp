@@ -191,14 +191,13 @@ ILogOutput& AbstractServerMain::logOutputSingleton() {
 void AbstractServerMain::onThreadException(const Exception& e) throw() {
 	try {
 		LogObject(THISLOCATION).fatal("Thread exception: %1") << e.what();
-		time_t t;
-		time(&t);
-		lnatural x = t;
-		lnatural s = exceptSumTm / 100;
-		exceptSumTm = exceptSumTm - s + x;
-		if (x - s < 3) {
-			errorRestart();
-		}
+		/*after each thread exception, sleep for a while - this should help to
+		 *  - if any thread can soon reach the same issue, it will be also logged in 2 sec window
+		 *  - too many thread exception will slow down service and then service will able to
+		 *    report the problem to the monitoring
+		 */
+		Thread::deepSleep(2000);
+
 	} catch (...) {
 
 	}
