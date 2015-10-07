@@ -101,10 +101,12 @@ namespace jsonsrv {
 		ConstStrA resparamstr(buffers.strparams.getArray());
 		ConstStrA rescontextptr(buffers.strcontext.getArray());
 		ConstStrA resoutputptr(buffers.stroutput.getArray());
+
+		Synchronized<FastLock> _(lock);
+
 		PrintTextA pr(*logfile);
 		AbstractLogProvider::LogTimestamp tms;
 
-		Synchronized<FastLock> _(lock);
 
 		pr("%{04}1/%{02}2/%{02}3 %{02}4:%{02}5:%{02}6 - [\"%7\",\"%8\",%9,%10,%11]\n")
 			<< tms.year << tms.month << tms.day
