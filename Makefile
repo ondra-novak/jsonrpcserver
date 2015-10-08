@@ -1,18 +1,23 @@
 LIBNAME:=libjsonrpcserver.a
 LIBDEPS:=libjsonrpcserver.deps
-
+with_dbhelpers ?= 0
 SEARCHPATHS="./ ../ ../../ /usr/include/ /usr/local/include/"
+
+CXX=clang++
+CPP_SRCS := 
+OBJS := 
+clean_list :=
+
 
 selectpath=$(abspath $(firstword $(foreach dir,$(1),$(wildcard $(dir)$(2)))))
 
 INCLUDES=-I$(call selectpath,$(SEARCHPATHS),lightspeed/src/) 
 
 
-CXX=clang++
-
-CPP_SRCS := 
-OBJS := 
-clean_list :=
+ifeq "$(with_dbhelpers)" "1"
+INCLUDES+=-I$(call selectpath,$(SEARCHPATHS),lightmysql/src/)
+include dbhelpers/dbhelpers.mk
+endif 
 
 all: $(LIBNAME)
 
