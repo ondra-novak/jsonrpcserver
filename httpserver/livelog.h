@@ -53,7 +53,7 @@ namespace BredyHttpSrv {
 	class LiveLogAuthHandler: public LiveLogHandler {
 	public:
 		virtual natural onRequest(IHttpRequest &request, ConstStrA vpath);
-		virtual natural onData(IHttpRequest &request) {return 0;}
+		virtual natural onData(IHttpRequest &) {return 0;}
 
 		void setRealm(StringA realm) {this->realm = realm;}
 		void setUserlist(StringA userlist) {this->userlist = userlist;}

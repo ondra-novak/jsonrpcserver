@@ -69,7 +69,7 @@ ConnHandler::Command ConnHandler::onWriteReady(const PNetworkStream &stream, ITC
 	//so we can route onWriteReady through onDataReady
 	return onDataReady(stream,context);
 }
-ConnHandler::Command ConnHandler::onTimeout(const PNetworkStream &, ITCPServerContext *context) throw () {
+ConnHandler::Command ConnHandler::onTimeout(const PNetworkStream &, ITCPServerContext *) throw () {
 	//when timeout - remove connection
 	return cmdRemove;
 }
@@ -195,7 +195,7 @@ const void* ConnHandler::proxyInterface(const IInterfaceRequest& p) const {
 	return IHttpMapper::proxyInterface(p);
 }
 
-ConnHandler::Command ConnHandler::onUserWakeup( const PNetworkStream &stream, ITCPServerContext *context ) throw()
+ConnHandler::Command ConnHandler::onUserWakeup( const PNetworkStream &, ITCPServerContext *context ) throw()
 {
 	try {
 		Synchronized<Semaphore> _(busySemaphore);

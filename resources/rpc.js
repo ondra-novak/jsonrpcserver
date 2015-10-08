@@ -1,5 +1,3 @@
-
-
 ///Initializes RPC client
 /**
  * @param rpc_url - url of rpc server

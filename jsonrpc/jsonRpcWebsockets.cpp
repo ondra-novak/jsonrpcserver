@@ -29,26 +29,26 @@ protected:
 	virtual HeaderValue getHeaderField(HeaderField field) const {return r->getHeaderField(field);}
 	virtual bool enumHeader(HdrEnumFn fn) const {return r->enumHeader(fn);}
 	virtual void sendHeaders() {}
-	virtual void header(ConstStrA field, ConstStrA value) {}
-	virtual void header(HeaderField field, ConstStrA value) {}
-	virtual void status(natural code, ConstStrA msg = ConstStrA()) {}
-	virtual void errorPage(natural code, ConstStrA msg = ConstStrA(), ConstStrA expl = ConstStrA()) {}
-	virtual void redirect(ConstStrA url, int code = 0) {}
+	virtual void header(ConstStrA , ConstStrA ) {}
+	virtual void header(HeaderField , ConstStrA ) {}
+	virtual void status(natural , ConstStrA = ConstStrA()) {}
+	virtual void errorPage(natural , ConstStrA = ConstStrA(), ConstStrA = ConstStrA()) {}
+	virtual void redirect(ConstStrA , int = 0) {}
 	virtual ConstStrA getBaseUrl() const {return r->getBaseUrl();}
-	virtual void useHTTP11(bool use) {}
+	virtual void useHTTP11(bool ) {}
 	virtual bool isField(ConstStrA text, HeaderField fld) const {return r->isField(text,fld);}
-	virtual natural read(void *buffer,  natural size) {return 0;}
-    virtual natural write(const void *buffer,  natural size)  {return 0;}
-	virtual natural peek(void *buffer, natural size) const {return 0;}
+	virtual natural read(void *,  natural ) {return 0;}
+    virtual natural write(const void *,  natural )  {return 0;}
+	virtual natural peek(void *, natural ) const {return 0;}
 	virtual bool canRead() const {return false;}
 	virtual bool canWrite() const {return false;}
 	virtual void flush() {}
 	virtual natural dataReady() const {return 0;}
 	virtual void finish() {}
 	virtual bool headersSent() const {return true;}
-	virtual natural callHandler(ConstStrA path, IHttpHandler **h = 0) {return 0;}
-	virtual natural callHandler(IHttpRequest &request, IHttpHandler **h = 0) {return 0;}
-	virtual natural forwardRequest(ConstStrA path) {return 0;}
+	virtual natural callHandler(ConstStrA , IHttpHandler ** = 0) {return 0;}
+	virtual natural callHandler(IHttpRequest &, IHttpHandler ** = 0) {return 0;}
+	virtual natural forwardRequest(ConstStrA ) {return 0;}
 	virtual bool keepAlive() const {return true;}
 	virtual PNetworkStream getConnection() {return nil;}
 	virtual void setRequestContext(IHttpHandlerContext *context) {
@@ -68,10 +68,10 @@ protected:
 	}
 	virtual void beginIO() {r->beginIO();}
 	virtual void endIO()   {r->endIO();}
-	virtual void setMaxPostSize(natural bytes) {}
-	virtual void attachThread(natural status) {}
+	virtual void setMaxPostSize(natural ) {}
+	virtual void attachThread(natural ) {}
 	virtual void closeOutput() {}
-	virtual void setRequestName(ConstStrA reqName) {}
+	virtual void setRequestName(ConstStrA ) {}
 
 	virtual void *proxyInterface(IInterfaceRequest &p) {
 		void *x = IInterface::proxyInterface(p);
@@ -187,12 +187,12 @@ JsonRpcWebsockets::JsonRpcWebsockets(IJsonRpc& handler,StringA openMethod):handl
 
 WebSocketConnection* JsonRpcWebsockets::onNewConnection(
 		IRuntimeAlloc& alloc, IHttpRequest& request,
-		ConstStrA vpath) {
+		ConstStrA ) {
 
 	return new(alloc) JsonRpcWebsocketsConnection(request,handler,openMethod);
 }
 
-void JsonRpcWebsocketsConnection::onCloseOutput(natural unsignedLongInt) {
+void JsonRpcWebsocketsConnection::onCloseOutput(natural ) {
 	Synchronized<FastLock> _(lock);
 	context = nil;
 }

@@ -16,7 +16,7 @@ namespace BredyHttpSrv {
 template<typename Impl, bool serverSide>
 void AbstractWebSocketConnection<Impl,serverSide>::sendTextMessage(
 		ConstStrA msg, bool fin) {
-	sendFrame(true,opcodeTextFrame,ConstBin((const byte *)msg.data(), msg.length()));
+	sendFrame(fin,opcodeTextFrame,ConstBin((const byte *)msg.data(), msg.length()));
 
 
 }
@@ -24,7 +24,7 @@ void AbstractWebSocketConnection<Impl,serverSide>::sendTextMessage(
 template<typename Impl, bool serverSide>
 void AbstractWebSocketConnection<Impl,serverSide>::sendBinMessage(
 		ConstBin msg, bool fin) {
-	sendFrame(true,opcodeBinaryFrame,msg);
+	sendFrame(fin,opcodeBinaryFrame,msg);
 }
 
 template<typename Impl, bool serverSide>

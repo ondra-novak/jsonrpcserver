@@ -33,7 +33,7 @@ public:
 	virtual void removeEndpoint(ConstStrA name);
 
 	virtual natural onRequest(BredyHttpSrv::IHttpRequest &request, ConstStrA vpath);
-	virtual natural onData(BredyHttpSrv::IHttpRequest &request) {return 0;}
+	virtual natural onData(BredyHttpSrv::IHttpRequest &) {return 0;}
 
 protected:
 

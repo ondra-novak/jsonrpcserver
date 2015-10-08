@@ -88,14 +88,14 @@ natural AbstractWebSocketsHandler::onData(IHttpRequest& request) {
 
 void WebSocketConnection::onConnect() {}
 
-void WebSocketConnection::onCloseOutput(natural code) {}
+void WebSocketConnection::onCloseOutput(natural ) {}
 
-void WebSocketConnection::onPong(ConstBin msg) {}
+void WebSocketConnection::onPong(ConstBin ) {}
 
-void WebSocketConnection::onTextMessage(ConstStrA msg) {
+void WebSocketConnection::onTextMessage(ConstStrA ) {
 }
 
-void WebSocketConnection::onBinaryMessage(ConstBin msg) {
+void WebSocketConnection::onBinaryMessage(ConstBin ) {
 }
 
 

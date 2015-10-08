@@ -454,7 +454,7 @@ natural HttpReqImpl::write(const void* buffer, natural size) {
 }
 natural HttpReqImpl::peek(void* buffer, natural size) const {
 	if (bNeedContinue) send100continue();
-	if (inputClosed) return 0;
+	if (inputClosed || size == 0) return 0;
 	if (remainPostData == 0) {
 		if (chunkedPost) openPostChunk();
 		if (remainPostData == 0) {

@@ -1,20 +1,27 @@
 
-all: rpc.js.c wsrpc.js.c
+all: rpcjs.c wsrpcjs.c
 
-.SUFFIXES:
+
+
+.INTERMEDIATE :  bin2c
 
 bin2c: bin2c.c
-	gcc -o bin2c bin2c.c
+	@echo Building resources
+	$(CC) -o $@ bin2c.c
 
-rpc.js.c: rpc.js bin2c
-	./bin2c rpc.js jsonrpcserver_rpc_js > rpc.js.c
+rpcjs.c: rpc.js bin2c
+	@./bin2c rpc.js jsonrpcserver_rpc_js > $@
 	
-wsrpc.js.c: wsrpc.js bin2c
-	./bin2c wsrpc.js jsonrpcserver_wsrpc_js > wsrpc.js.c
+wsrpcjs.c: wsrpc.js bin2c	
+	@./bin2c wsrpc.js jsonrpcserver_wsrpc_js > $@
 
+# prevent to apply default rule js.c to js as make thinks that js is executable
+%.js : %.js.c
+	@ echo
 	
+	
+	 	
 clean:
-	rm -f bin2c
-	rm -f rpc.js.c
-	rm -f wsrpc.js.c
+	rm -f rpcjs.c
+	rm -f wsrpcjs.c
 	
