@@ -40,7 +40,7 @@ clean_list += $(OBJS)  ${CPP_SRCS:.cpp=.deps} $(LIBNAME) $(LIBDEPS) $(PLATFORM) 
 
 
 
-.PHONY: debug all clean
+.PHONY: debug all clean deps
 
 debug: $(LIBNAME) 
 
@@ -50,6 +50,7 @@ debug: $(LIBNAME)
 deprun: 
 	@echo "Updating dependencies..."; touch deprun;
 
+deps: ${DEPS}
 
 $(CFGNAME):
 	@rm -f cfg.debug cfg.release
