@@ -5,6 +5,12 @@
 #include "lightspeed/base/debug/LogProvider.h"
 #include "../httpserver/serverStats.h"
 #include "../httpserver/httpServer.h"
+#include "lightspeed/base/framework/proginstance.h"
+#include "lightspeed/utils/json/jsonbuilder.h"
+#include "../httpserver/stats.h"
+
+using LightSpeed::ProgInstance;
+using LightSpeed::JSON::Builder;
 
 namespace jsonsrv {
 
@@ -173,62 +179,9 @@ namespace jsonsrv {
 		return JsonRpc::onException(json,e);
 	}
 
-	template<typename T>
-	JSON::PNode JsonRpcServer::avgField( const StatBuffer<T> &b, JSON::IFactory &f, natural cnt )
-	{
-		T c = b.getAvg(cnt);
-		if (c.isDefined()) return f.newValue(c.getValue());
-		else return f.newNullNode();
-	}
-
-	template<typename T>
-	JSON::PNode JsonRpcServer::minField( const StatBuffer<T> &b, JSON::IFactory &f, natural cnt )
-	{
-		T c = b.getMin(cnt);
-		if (c.isDefined()) return f.newValue(c.getValue());
-		else return f.newNullNode();
-	}
-
-	template<typename T>
-	JSON::PNode JsonRpcServer::maxField( const StatBuffer<T> &b, JSON::IFactory &f, natural cnt )
-	{
-		T c = b.getMax(cnt);
-		if (c.isDefined()) return f.newValue(c.getValue());
-		else return f.newNullNode();
-	}
-
-	template<typename T>
-	JSON::PNode JsonRpcServer::statFields( const StatBuffer<T> &b, JSON::IFactory &f )
-	{
-		JSON::PNode a = f.newClass();
-		a->add("avg006",avgField(b,f,6));
-		a->add("avg030",avgField(b,f,30));
-		a->add("avg060",avgField(b,f,60));
-		a->add("avg300",avgField(b,f,300));
-		a->add("min006",minField(b,f,6));
-		a->add("min030",minField(b,f,30));
-		a->add("min060",minField(b,f,60));
-		a->add("min300",minField(b,f,300));
-		a->add("max006",maxField(b,f,6));
-		a->add("max030",maxField(b,f,30));
-		a->add("max060",maxField(b,f,60));
-		a->add("max300",maxField(b,f,300));
-		return a;
-	}
-
 	JSON::PNode JsonRpcServer::rpcHttpStatHandler( RpcRequest *rq )
 	{
-		JSON::IFactory &f = *(rq->jsonFactory);
-		const HttpServer &server = rq->httpRequest->getIfc<HttpServer>();
-		const HttpStats &st = server.getStats();
-		JSON::PNode out = rq->jsonFactory->newClass();
-		out->add("request", statFields(st.requests,f))
-			->add("threads", statFields(st.threads,f))
-			->add("threadsIdle", statFields(st.idleThreads,f))
-			->add("connections", statFields(st.connections,f))
-			->add("latency", statFields(st.latency,f))
-			->add("worktime", statFields(st.worktime,f));
-		return out;
+		return BredyHttpSrv::StatHandler::getStatsJSON(rq->httpRequest,rq->jsonFactory);
 	}
 
 }

@@ -58,23 +58,6 @@ namespace jsonsrv {
 		void logMethod(IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *logOutput);
 		///Opens, reopens the log
 		void openLog();
-
-
-		template<typename T>
-		static JSON::PNode avgField(const StatBuffer<T> &b, JSON::IFactory &f, natural cnt);
-
-
-		template<typename T>
-		static JSON::PNode minField(const StatBuffer<T> &b, JSON::IFactory &f, natural cnt);
-
-
-		template<typename T>
-		static JSON::PNode maxField(const StatBuffer<T> &b, JSON::IFactory &f, natural cnt);
-
-
-		template<typename T>
-		static JSON::PNode statFields(const StatBuffer<T> &b, JSON::IFactory &f);
-
 		JSON::PNode rpcHttpStatHandler(RpcRequest *rq);
 	protected:
 		AllocPointer<SeqFileOutBuff<> >logfile;

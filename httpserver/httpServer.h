@@ -17,7 +17,6 @@
 namespace BredyHttpSrv{
 
 class HttpServer:  public BredyHttpSrv::ConnHandler,
-					public IJobScheduler,
 					public IJobManager,
 					public IHttpLiveLog {
 public:
@@ -39,15 +38,8 @@ public:
 	virtual ConnHandler::Command onDataReady(const PNetworkStream &stream, ITCPServerContext *context)  throw();
 
 	virtual void executeInPool(const IThreadFunction &threadFn);
-	virtual void *schedule(const LightSpeed::IThreadFunction &action, LightSpeed::natural timeInS,
-							ThreadMode::Type threadMode = ThreadMode::newThread) ;
-	virtual void *schedule(const LightSpeed::IThreadFunction &action,
-							const LightSpeed::IThreadFunction &rejectAction,
-							LightSpeed::natural timeInS,
-							ThreadMode::Type threadMode = ThreadMode::newThread ) ;
+	virtual void runJob(const LightSpeed::IThreadFunction &action);
 
-	virtual void cancel(void *action, bool async);
-	virtual void runJob(const LightSpeed::IThreadFunction &action, ThreadMode::Type threadMode);
 
 	const HttpStats &getStats() const {return stats;}
 
@@ -55,12 +47,8 @@ public:
 	virtual void addLiveLog(ConstStrA path, ConstStrA realm, ConstStrA userList ) ;
 
 
-	virtual const void *proxyInterface(const IInterfaceRequest &p) const {
-		return  BredyHttpSrv::ConnHandler::proxyInterface(p);
-	}
-	virtual void *proxyInterface(IInterfaceRequest &p)  {
-		return  BredyHttpSrv::ConnHandler::proxyInterface(p);
-	}
+	virtual const void *proxyInterface(const IInterfaceRequest &p) const;
+	virtual void *proxyInterface(IInterfaceRequest &p);
 
 	virtual bool isPeerTrustedProxy(ConstStrA ip);
 

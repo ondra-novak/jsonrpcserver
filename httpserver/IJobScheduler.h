@@ -14,11 +14,8 @@ namespace BredyHttpSrv {
 
 namespace ThreadMode {
 
+	///deprecated
 	enum Type {
-		///create thread for scheduled task - may allocate additional resources
-		newThread,
-		///use thread from server thread pool - may reduce number of available threads for HTTP requests
-		serverThread,
 		///run action in scheduler thread - may block the scheduler and delay other tasks
 		schedulerThread
 
@@ -43,20 +40,70 @@ public:
 
 	///Schedules action to given time.
 	/**
-	 * @param action action to carry out at given time
-	 * @param timeInS time in seconds measured from now. The scheduler has
-	 * 		resolution in seconds, you cannot schedule to shorter interval
-	 * @param threadMode choose which thread will be used to execute the job
-	 * @return function returns a pointer, which can be later use to cancel the scheduled action
+	 * @note function is deprecated
 	 *
 	 */
 	virtual void *schedule(const LightSpeed::IThreadFunction &action, LightSpeed::natural timeInS,
-			ThreadMode::Type threadMode = ThreadMode::newThread) = 0;
+			ThreadMode::Type ) {
+		return schedule(action,timeInS);
+	}
 
+	///Schedules action to a given time
+	/**
+	 * @param action reference to action created using ThreadFunction::create(). You can
+	 * also use Action::create() because ThreadFunction is compatible with the Action. Also
+	 * any instance of Action is accepted. Note that function will copy the action.
+	 *
+	 * @param timeInS time in seconds. You cannot use less resolution than 1 second, it is by design.
+	 * To schedule action for less than 1 second, create extra thread.
+	 *
+	 * @note Actions are executed in thread of the scheduler. Action should exit as soon
+	 * as possible. For long task, action can use IJobManager to start new jobs (however
+	 * action will need to carry the reference to the IJobManager to access job manager, because
+	 * internal scheduler doesn't implement it.
+	 *
+	 * Action can reschedule itself to create a loop. It should do this in the scheduler's thread
+	 * before it spawns a new job, otherwise it is impossible to safely stop such a loop (due
+	 * various race conditions)
+	 *
+	 *
+	 *
+	 */
+	virtual void *schedule(const LightSpeed::IThreadFunction &action, LightSpeed::natural timeInS) = 0;
+
+
+	///Deprecated function
 	virtual void *schedule(const LightSpeed::IThreadFunction &action,
 						  const LightSpeed::IThreadFunction &rejectAction,
 						  LightSpeed::natural timeInS,
-						  ThreadMode::Type threadMode = ThreadMode::newThread) = 0;
+						  ThreadMode::Type) {
+		return schedule(action,rejectAction,timeInS);
+	}
+
+	///Schedules action at a given time
+	/**
+	 * @param action reference to action created using ThreadFunction::create(). You can
+	 * also use Action::create() because ThreadFunction is compatible with the Action. Also
+	 * any instance of Action is accepted. Note that function will copy the action.
+	 *
+	 * @rejectAction function called when server exits before action is executed
+	 *
+	 * @param timeInS time in seconds. You cannot use less resolution than 1 second, it is by design.
+	 * To schedule action for less than 1 second, create extra thread.
+	 *
+	 * @note Actions are executed in thread of the scheduler. Action should exit as soon
+	 * as possible. For long task, action can use IJobManager to start new jobs (however
+	 * action will need to carry the reference to the IJobManager to access job manager, because
+	 * internal scheduler doesn't implement it.
+	 *
+	 * Action can reschedule itself to create a loop. It should do this in the scheduler's thread
+	 * before it spawns a new job, otherwise it is impossible to safely stop such a loop (due
+	 * various race conditions)
+	 *
+	 */
+	virtual void *schedule(const LightSpeed::IThreadFunction &action,
+						  const LightSpeed::IThreadFunction &rejectAction,
+						  LightSpeed::natural timeInS) = 0;
 
 	///Cancels scheduled action
 	/**
@@ -69,6 +116,17 @@ public:
 	 */
 	virtual void cancel(void *action, bool async) = 0;
 
+	///Cancels loop
+	/**Function safely cancels scheduled loop - scheduled action which reschedules
+	 * itself on each run. Function monitors action variable during cancel and if
+	 * rescheduling happened, it repeats operation, until the action is canceled
+	 *
+	 * @param action reference to action pointer. Function expects, that every cycle the
+	 * scheduled action stores
+	 *
+	 */
+	virtual void cancelLoop( void * volatile &action) = 0;
+
 	virtual ~IJobScheduler() {}
 
 };
@@ -77,12 +135,25 @@ public:
 /**Interface allows only to start a new job. It is on caller to
  * setup a communication with the newly created job.
  *
+ * Job interface implemented in HttpServer allow to spawn new job using the thread from
+ * the server's pool. You can access this job manager using getIfc<IJobManager> on IHttpRequest.
+ * Because threads are limited resource, you should always be aware on
+ * how many jobs can run at time. Every running job decreases count of available threads in
+ * server's thread pool for the requests.
+ *
+ * Job interface implemented through the scheduler will use scheduler's thread. You
+ * can access this interface using getIfc<IJobManager> on IJobScheduler.
  *
  */
 class IJobManager {
 public:
 
-	virtual void runJob(const LightSpeed::IThreadFunction &action, ThreadMode::Type threadMode = ThreadMode::newThread) = 0;
+	///Deprecated call
+	virtual void runJob(const LightSpeed::IThreadFunction &action, ThreadMode::Type) {
+		runJob(action);
+	}
+	///Executes job.
+	virtual void runJob(const LightSpeed::IThreadFunction &action) = 0;
 
 };
 

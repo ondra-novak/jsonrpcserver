@@ -26,7 +26,6 @@ HttpServer::HttpServer(StringA baseUrl, StringA serverIdent, const Config &confi
 	:BredyHttpSrv::ConnHandler(baseUrl, serverIdent, config.maxBusyThreads)
 	 ,threadPool(config)
 	 ,tcplisten(*this,&threadPool)
-	 ,jobScheduler(threadPool)
 	 , trustedProxies(config.trustedProxies)
 {
 	lastThreadCount = 0;
@@ -68,27 +67,18 @@ void HttpServer::executeInPool(const IThreadFunction &threadFn) {
 	threadPool.execute(threadFn);
 }
 
-
-void HttpServer::cancel(void* action, bool async) {
-	jobScheduler.cancel(action,async);
+const void *HttpServer::proxyInterface(const IInterfaceRequest &p) const {
+	if (typeid(IJobScheduler) == p.getType()) return static_cast<const IJobScheduler *>(&jobScheduler);
+	return  BredyHttpSrv::ConnHandler::proxyInterface(p);
+}
+void *HttpServer::proxyInterface(IInterfaceRequest &p)  {
+	if (typeid(IJobScheduler) == p.getType()) return static_cast<IJobScheduler *>(&jobScheduler);
+	return  BredyHttpSrv::ConnHandler::proxyInterface(p);
 }
 
-void HttpServer::runJob(const LightSpeed::IThreadFunction &action,
-		ThreadMode::Type threadMode) {
-	jobScheduler.schedule(action,0,threadMode);
+void HttpServer::runJob(const LightSpeed::IThreadFunction& action) {
+	executeInPool(action);
 }
-
-void* HttpServer::schedule(const LightSpeed::IThreadFunction &action,
-		LightSpeed::natural timeInS, ThreadMode::Type threadMode) {
-	return jobScheduler.schedule(action,timeInS,threadMode);
-}
-
-void* HttpServer::schedule(const LightSpeed::IThreadFunction &action,
-		const LightSpeed::IThreadFunction &rejectAction, LightSpeed::natural timeInS,
-		ThreadMode::Type threadMode) {
-	return jobScheduler.schedule(action,rejectAction,timeInS,threadMode);
-}
-
 
 void HttpServer::reportThreadUsage() {
 	ParallelExecutor *executor = &threadPool;

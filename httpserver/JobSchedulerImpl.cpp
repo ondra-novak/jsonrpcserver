@@ -10,12 +10,14 @@
 #include "lightspeed/base/exceptions/invalidParamException.h"
 #include "lightspeed/base/debug/dbglog.h"
 #include <time.h>
+#include "lightspeed/base/exceptions/stdexception.h"
+#include "lightspeed/base/framework/iapp.h"
 
 namespace BredyHttpSrv {
 
 using namespace LightSpeed;
 
-JobSchedulerImpl::JobSchedulerImpl(LightSpeed::IExecutor &serverExecutor):serverExecutor(serverExecutor) {
+JobSchedulerImpl::JobSchedulerImpl() {
 	time(&startTime);
 }
 
@@ -23,12 +25,11 @@ JobSchedulerImpl::JobSchedulerImpl(LightSpeed::IExecutor &serverExecutor):server
 class ScheduledAction: public OldScheduler::AbstractEvent, public DynObject {
 public:
 
-	ScheduledAction(const LightSpeed::Action::Ifc &msg, IExecutor *executor, IRuntimeAlloc &alloc);
+	ScheduledAction(const LightSpeed::Action::Ifc &msg, IRuntimeAlloc &alloc);
 	virtual void run() throw();
 
 protected:
 
-	IExecutor *executor;
 	LightSpeed::Action msg;
 
 };
@@ -36,7 +37,7 @@ protected:
 class ScheduledActionReject: public ScheduledAction {
 public:
 
-	ScheduledActionReject(const LightSpeed::Action::Ifc &msg, const LightSpeed::Action::Ifc &cancelMsg, IExecutor *executor, IRuntimeAlloc &alloc);
+	ScheduledActionReject(const LightSpeed::Action::Ifc &msg, const LightSpeed::Action::Ifc &cancelMsg, IRuntimeAlloc &alloc);
 	virtual void reject() throw ();
 
 protected:
@@ -56,28 +57,9 @@ LightSpeed::natural JobSchedulerImpl::getCurTime() const {
 	return  (natural)curTime - (natural)startTime;
 }
 
-IExecutor* JobSchedulerImpl::chooseExecutor(ThreadMode::Type threadMode) {
-	IExecutor* executor;
-	switch (threadMode) {
-	case ThreadMode::schedulerThread:
-		executor = &directExecutor;
-		break;
-	case ThreadMode::newThread:
-		executor = &infExecutor;
-		break;
-	case ThreadMode::serverThread:
-		executor = &serverExecutor;
-		break;
-	default:
-		throw InvalidParamException(THISLOCATION, 1, "Invalid thread mode");
-	}
-	return executor;
-}
 
-void* JobSchedulerImpl::schedule(const IThreadFunction &action, natural timeInS,
-		ThreadMode::Type threadMode) {
-	ScheduledAction* a = new ScheduledAction(action, chooseExecutor(threadMode),
-			msgAlloc);
+void* JobSchedulerImpl::schedule(const IThreadFunction &action, natural timeInS ) {
+	ScheduledAction* a = new ScheduledAction(action,msgAlloc);
 	OldScheduler::schedule(a, timeInS);
 	return a;
 }
@@ -97,11 +79,23 @@ void JobSchedulerImpl::notify() {
 
 
 void* JobSchedulerImpl::schedule(const LightSpeed::IThreadFunction &action,
-		const LightSpeed::IThreadFunction &rejectAction, LightSpeed::natural timeInS,
-		ThreadMode::Type threadMode) {
-	ScheduledActionReject* a = new ScheduledActionReject(Action(action),  Action(rejectAction), chooseExecutor(threadMode), msgAlloc);
+		const LightSpeed::IThreadFunction &rejectAction, LightSpeed::natural timeInS ) {
+	ScheduledActionReject* a = new ScheduledActionReject(Action(action),  Action(rejectAction),  msgAlloc);
 	OldScheduler::schedule(a, timeInS);
 	return a;
+}
+
+void JobSchedulerImpl::cancelLoop( void * volatile& action) {
+	 void * volatile d;
+	do {
+		d = action;
+		if (d == 0) break;
+		cancel(d,false);
+	} while (d != action);
+}
+
+void JobSchedulerImpl::runJob(const LightSpeed::IThreadFunction& action) {
+	schedule(action,0);
 }
 
 void JobSchedulerImpl::workThread() throw () {
@@ -122,17 +116,20 @@ void JobSchedulerImpl::workThread() throw () {
 	lg.debug("Scheduler exit");
 }
 
-inline ScheduledAction::ScheduledAction(const LightSpeed::Action::Ifc &msg, IExecutor* executor,
-		IRuntimeAlloc& alloc) :
-		executor(executor), msg(msg.clone(alloc))
+inline ScheduledAction::ScheduledAction(const LightSpeed::Action::Ifc &msg,
+		IRuntimeAlloc& alloc) : msg(msg.clone(alloc))
 {
 }
 
 inline void ScheduledAction::run() throw () {
 	try {
-		executor->execute(msg);
+		msg();
+	} catch (::LightSpeed::Exception &e) {
+		IApp::threadException(e);
 	} catch (std::exception &e) {
-		LogObject(THISLOCATION).error("Exception in scheduler: %1") << e.what();
+		IApp::threadException(StdException(THISLOCATION, e));
+	} catch (...) {
+		IApp::threadException(UnknownException(THISLOCATION));
 	}
 }
 
@@ -142,8 +139,8 @@ inline void ScheduledActionReject::reject() throw () {
 
 
 inline ScheduledActionReject::ScheduledActionReject(const LightSpeed::Action::Ifc & msg,
-		const LightSpeed::Action::Ifc & cancelMsg, IExecutor* executor, IRuntimeAlloc& alloc)
-	:ScheduledAction(msg,executor, alloc),rejectMsg(cancelMsg.clone(alloc))
+		const LightSpeed::Action::Ifc & cancelMsg,  IRuntimeAlloc& alloc)
+	:ScheduledAction(msg, alloc),rejectMsg(cancelMsg.clone(alloc))
 
 {
 }

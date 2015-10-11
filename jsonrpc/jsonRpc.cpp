@@ -631,15 +631,6 @@ void JsonRpc::setRequestMaxSize(natural bytes) {
 	maxRequestSize = bytes;
 }
 
-AutoArray<char,StaticAlloc<19> > getTimeAsStr(natural seconds) {
-	TextFormatBuff<char, StaticAlloc<19> > out;
-	out("%1d, %{02}2:%{02}3:%{02}4")
-		<< seconds / 86400
-		<< (seconds % 86400)/3600
-		<< (seconds % 3600)/60
-		<< (seconds % 60);
-	return out.write();
-}
 
 JSON::PNode JsonRpc::rpcStats(RpcRequest* rq) {
 	JSON::Builder json(rq->jsonFactory.get());
@@ -651,12 +642,6 @@ JSON::PNode JsonRpc::rpcStats(RpcRequest* rq) {
 		out->add(e.key,r);
 	}
 
-	TimeStamp waketime = TimeStamp::fromUnix(ProgInstance::getUpTime(false));
-
-	out("crashCount",ProgInstance::getRestartCounts());
-	out("crashesPerDay", ProgInstance::getRestartCounts()/waketime.getFloat());
-	out("upTime",json("total",ConstStrA(getTimeAsStr(ProgInstance::getUpTime(false))))
-				("fromLastCrash",ConstStrA(getTimeAsStr(ProgInstance::getUpTime(true)))));
 
 
 	return out;

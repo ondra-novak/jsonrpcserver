@@ -16,18 +16,20 @@
 
 namespace BredyHttpSrv {
 
-class JobSchedulerImpl: public IJobScheduler, public LightSpeed::OldScheduler {
+class JobSchedulerImpl: public IJobScheduler, public IJobManager, public LightSpeed::OldScheduler {
 public:
-	JobSchedulerImpl(LightSpeed::IExecutor &serverExecutor);
+	JobSchedulerImpl();
 	~JobSchedulerImpl();
 
-	virtual void *schedule(const LightSpeed::IThreadFunction &action, LightSpeed::natural timeInS,
-							ThreadMode::Type threadMode = ThreadMode::newThread) ;
+	virtual void *schedule(const LightSpeed::IThreadFunction &action, LightSpeed::natural timeInS) ;
 	virtual void *schedule(const LightSpeed::IThreadFunction &action,
 							const LightSpeed::IThreadFunction &rejectAction,
-							LightSpeed::natural timeInS,
-							ThreadMode::Type threadMode = ThreadMode::newThread ) ;
+							LightSpeed::natural timeInS) ;
 	virtual void cancel(void *action, bool async);
+
+	virtual void cancelLoop( void * volatile &action);
+
+	virtual void runJob(const LightSpeed::IThreadFunction &action);
 
 	virtual void notify();
 
@@ -35,16 +37,12 @@ public:
 protected:
 
 	LightSpeed::PoolAlloc msgAlloc;
-	LightSpeed::DirectExecutor directExecutor;
-	LightSpeed::InfParallelExecutor infExecutor;
-	LightSpeed::IExecutor &serverExecutor;
 	LightSpeed::Thread worker;
 
 
 	void workThread() throw();
 
 protected:
-	IExecutor* chooseExecutor(ThreadMode::Type threadMode);
 	time_t startTime;
 };
 
