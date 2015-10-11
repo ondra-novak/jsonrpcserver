@@ -100,7 +100,9 @@ integer AbstractServerMain::initService(const Args& args, SeqFileOutput serr) {
 	return ServiceApp::initService(args,serr);
 }
 
+
 integer AbstractServerMain::startService() {
+
 
 	started = false;
 	LogObject lg(THISLOCATION);
@@ -145,9 +147,24 @@ integer AbstractServerMain::startService() {
 	}
 #endif
 
+
 	onServerReady(srv);
 
-	res = ServiceApp::startService();
+	{
+		AllocPointer<StatHandler> statHandler;
+		if (!statsvpath.empty()) {
+			statHandler = new StatHandler;
+			srv.addSite(statsvpath,statHandler);
+		}
+
+
+		if (!statdumpfile.empty()) {
+			if (statHandler==nil) statHandler = new StatHandler;
+			statHandler->dumpStatsToFile(statdumpfile,&srv);
+		}
+
+		res = ServiceApp::startService();
+	}
 
 	lg.progress("Exiting server (exit code: %1)") << res;
 	onStopServer(srv);
@@ -237,6 +254,11 @@ void AbstractServerMain::readMainConfig(const IniConfig& cfg) {
 		sect.get(livelog_realm,"livelog.realm");
 		sect.get(livelog_userlist,"livelog.auth");
 	}
+	sect.get(statsvpath,"stats");
+	String dumpFile;
+	sect.get(dumpFile,"statDumpFile");
+	if (!dumpFile.empty())
+		statdumpfile = FilePath(p/dumpFile);
 	StdLogOutput *stdLog = DbgLog::getStdLog();
 	if (stdLog) {
 		stdLog->setFile(FilePath(p/logfile));

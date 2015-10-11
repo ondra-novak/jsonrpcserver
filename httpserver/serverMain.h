@@ -12,6 +12,7 @@
 
 #include "../httpserver/httpServer.h"
 #include "lightspeed/utils/FilePath.h"
+#include "stats.h"
 
 namespace LightSpeed {
 class ILogOutput;
@@ -116,9 +117,12 @@ protected:
 	StringA livelog;
 	StringA livelog_realm;
 	StringA livelog_userlist;
+	StringA statsvpath;
+	FilePath statdumpfile;
 	String cfgPath;
 	StringA usergroup;
 	FilePath appPath;
+
 
 
 	void readMainConfig(const IniConfig &cfg);
