@@ -228,14 +228,14 @@ namespace BredyHttpSrv {
 	}
 
 	static NamedEnumDef<ILogOutput::LogType> strLogTypeDef[] = {
-		{ILogOutput::logFatal,"fatal",0,0},
-		{ILogOutput::logError,"error",0,0},
-		{ILogOutput::logWarning,"warning",0,0},
-		{ILogOutput::logNote,"note",0,0},
-		{ILogOutput::logProgress,"progress",0,0},
-		{ILogOutput::logInfo,"info",0,0},
-		{ILogOutput::logDebug,"debug",0,0},
-		{ILogOutput::logDebug,"all",0,0}
+		{ILogOutput::logFatal,"fatal"},
+		{ILogOutput::logError,"error"},
+		{ILogOutput::logWarning,"warning"},
+		{ILogOutput::logNote,"note"},
+		{ILogOutput::logProgress,"progress"},
+		{ILogOutput::logInfo,"info"},
+		{ILogOutput::logDebug,"debug"},
+		{ILogOutput::logDebug,"all"}
 	};
 	static NamedEnum<ILogOutput::LogType> strLogType(strLogTypeDef);
 

@@ -107,9 +107,7 @@ namespace jsonsrv {
 		ConstStrA resparamstr(buffers.strparams.getArray());
 		ConstStrA rescontextptr(buffers.strcontext.getArray());
 		ConstStrA resoutputptr(buffers.stroutput.getArray());
-
 		Synchronized<FastLock> _(lock);
-
 		PrintTextA pr(*logfile);
 		AbstractLogProvider::LogTimestamp tms;
 

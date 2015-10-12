@@ -13,11 +13,16 @@ NEEDLIBS:=$(LIBLIGHTSPEED)
 ifeq "$(with_dbhelpers)" "1"
 
 LIBLIGHTMYSQL=$(call selectpath,$(SEARCHPATHS),lightmysql)
-NEEDLIBS:=$(LIBLIGHTMYSQL)
-include dbhelpers/dbhelpers.mk
-
+NEEDLIBS+=$(LIBLIGHTMYSQL)
+CONFIG=tmp/with_dbhelpers
+else
+CONFIG=tmp/without_dbhelpers
 endif 
 
+$(CONFIG):
+	@rm -f tmp/with_dbhelpers tmp/without_dbhelpers
+	@touch $(CONFIG)
+	@echo $(LIBNAME): with_dbhelpers=$(with_dbhelpers)
 
 include building/build_lib.mk
 
