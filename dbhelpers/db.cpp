@@ -404,7 +404,7 @@ LightSpeed::StringA dbOrderFromJSON(const LightSpeed::JSON::INode &nd, ConstStrA
 	return ConstStrA(buff);
 }
 
-LightSpeed::StringA dbOrderFromJSON(const LightSpeed::JSON::INode *nd, ConstStrA allowedSet) {
+LightSpeed::StringA dbOrderFromJSON(const LightSpeed::JSON::INode *nd, ConstStrA ) {
 	using namespace LightSpeed;
 	if (nd == 0) return StringA();
 	else return dbOrderFromJSON(*nd);
