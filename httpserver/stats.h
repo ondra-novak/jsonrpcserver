@@ -37,7 +37,7 @@ namespace BredyHttpSrv {
 		struct DumpArgs {
 			HttpServer *server;
 			FilePath dumpPath;
-			natural lasttm;
+			time_t lasttm;
 			natural lastclk;
 			DumpArgs(HttpServer *server,FilePath dumpPath)
 				:server(server),dumpPath(dumpPath) {}

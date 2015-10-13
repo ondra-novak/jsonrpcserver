@@ -89,6 +89,7 @@
     <ClInclude Include="httpserver\sha1.h" />
     <ClInclude Include="httpserver\simpleWebSite.h" />
     <ClInclude Include="httpserver\statBuffer.h" />
+    <ClInclude Include="httpserver\stats.h" />
     <ClInclude Include="httpserver\webSockets.h" />
     <ClInclude Include="jsonrpc\base64.h" />
     <ClInclude Include="jsonrpc\ijsonrpc.h" />
@@ -113,6 +114,7 @@
     <ClCompile Include="httpserver\sha1.cpp" />
     <ClCompile Include="httpserver\simpleWebSite.cpp" />
     <ClCompile Include="httpserver\statBuffer.cpp" />
+    <ClCompile Include="httpserver\stats.cpp" />
     <ClCompile Include="httpserver\webSockets.cpp" />
     <ClCompile Include="jsonrpc\jsonRpc.cpp" />
     <ClCompile Include="jsonrpc\JSONRPCMain.cpp" />

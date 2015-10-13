@@ -120,13 +120,13 @@ StatHandler::~StatHandler() {
 }
 
 void StatHandler::scheduleDump( StatHandler::DumpArgs args) {
-	natural curTm = TimeStamp::now().asUnix();
-	natural nextTm = ((curTm + 300) / 300) * 300; //every 5 minutes
-	natural remain = nextTm - curTm;
+	time_t curTm = TimeStamp::now().asUnix();
+	time_t nextTm = ((curTm + 300) / 300) * 300; //every 5 minutes
+	time_t remain = nextTm - curTm;
 	args.lastclk = ProgInstance::getCPUTime();
 	args.lasttm = curTm;
 	dumpJob = this->scheduler->schedule(
-			Action::create(this, &StatHandler::dumpNow, args), remain);
+			Action::create(this, &StatHandler::dumpNow, args), (natural)remain);
 }
 
 void StatHandler::dumpStatsToFile(FilePath fname, HttpServer *server) {
@@ -190,7 +190,7 @@ void StatHandler::dumpNow(DumpArgs args) {
 						<< maxField(st.worktime,f,300)->getStringUtf8();
 
 	natural cputm = ProgInstance::getCPUTime();
-	natural curTm = d.asUnix();
+	time_t curTm = d.asUnix();
 	if (curTm == args.lasttm) print(",");
 	else print("%1,") << (double)(cputm - args.lastclk)/(double)(curTm - args.lasttm)/10.0;
 	print("%1,") << ProgInstance::getMemoryUsage();
