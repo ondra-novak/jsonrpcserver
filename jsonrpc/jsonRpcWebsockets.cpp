@@ -6,6 +6,8 @@
  */
 
 #include "jsonRpcWebsockets.h"
+#include "../httpserver/abstractWebSockets.tcc"
+
 
 #include <lightspeed/base/interface.tcc>
 

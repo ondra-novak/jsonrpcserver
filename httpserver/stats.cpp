@@ -12,6 +12,7 @@
 #include "../httpserver/httpServer.h"
 #include "lightspeed/utils/json/jsonbuilder.h"
 #include <lightspeed/base/framework/proginstance.h>
+#include <lightspeed/base/text/textstream.tcc>
 #include "lightspeed/base/interface.tcc"
 
 using LightSpeed::StaticAlloc;
