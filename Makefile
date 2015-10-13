@@ -21,6 +21,7 @@ endif
 
 $(CONFIG):
 	@rm -f tmp/with_dbhelpers tmp/without_dbhelpers
+	mkdir -p tmp
 	@touch $(CONFIG)
 	@echo $(LIBNAME): with_dbhelpers=$(with_dbhelpers)
 
