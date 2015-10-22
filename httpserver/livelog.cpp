@@ -277,7 +277,7 @@ namespace BredyHttpSrv {
 			return 0;
 		}
 
-		IHttpRequest::HeaderValue accept = request.getHeaderField(IHttpRequest::fldAccept);
+		HeaderValue accept = request.getHeaderField(IHttpRequest::fldAccept);
 		bool asEventStream = accept.defined && accept == "text/event-stream";
 
 		StringA strfilter;

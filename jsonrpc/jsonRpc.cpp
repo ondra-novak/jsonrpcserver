@@ -14,6 +14,7 @@
 #include "lightspeed/base/sync/tls.h"
 #include "lightspeed/base/text/textstream.tcc"
 #include "../httpserver/httprequest.h"
+#include "../httpserver/IJobScheduler.h"
 #include "lightspeed/base/containers/stringpool.tcc"
 #include "lightspeed/base/debug/dbglog.h"
 #include "lightspeed/utils/json/jsonfast.tcc"
@@ -22,9 +23,10 @@
 
 #include "lightspeed/base/exceptions/httpStatusException.h"
 #include "lightspeed/utils/md5iter.h"
-#include "rpc.js.h"
+
 #include "../httpserver/statBuffer.h"
 #include "jsonRpcWebsockets.h"
+#include "rpc.js.h"
 
 using LightSpeed::IInterface;
 using LightSpeed::StaticAlloc;
@@ -90,7 +92,7 @@ void JsonRpc::replyError(String msg, IHttpRequest& request, JSON::PNode idnode =
 static bool findPragma(IHttpRequest &r) {
 
 	using namespace LightSpeed;
-	IHttpRequest::HeaderValue p = r.getHeaderField(IHttpRequest::fldPragma);
+	HeaderValue p = r.getHeaderField(IHttpRequest::fldPragma);
 	if (p.defined != 0) {
 		if (p.find(ConstStrA("json-escape-utf")) != naturalNull) return true;
 	}
@@ -270,18 +272,19 @@ void JsonRpc::registerMethodObsolete(ConstStrA methodName) {
 
 
 void JsonRpc::registerServerMethods(bool developMode) {
+	registerMethod("Server.listMethods:",RpcCall::create(this,&JsonRpc::rpcListMethods), ConstStrA("Lists all methods available for this server"));
+	registerMethod("Server.multicall",RpcCall::create(this,&JsonRpc::rpcMulticallN),
+			ConstStrA("<p><pre>[[result,error],...] Server.multicall1 [\"methodName\",[args,...],[args,...],[args,...],...]</pre></p>"
+					"<p><pre>[[result,error],...] Server.multicall [[\"methodName\",[args,...]],[\"methodName\",[args,...]],...]</pre></p>"));
+	registerMethod("Server.stats:",RpcCall::create(this,&JsonRpc::rpcStats), ConstStrA("Show statistics - arguments are passed to the handlers"));
+	registerMethod("Server.stats:c",RpcCall::create(this,&JsonRpc::rpcStats), ConstStrA("Show statistics - arguments are passed to the handlers"));
 	if (developMode) {
-		registerMethod("Server.listMethods:",RpcCall::create(this,&JsonRpc::rpcListMethods), ConstStrA("Lists all methods available for this server"));
+		registerMethod("Server.crash", RpcCall::create(this,&JsonRpc::rpcCrash),ConstStrA("Crashes the server - for development and testing"));
+		registerMethod("Server.crashScheduler", RpcCall::create(this,&JsonRpc::rpcCrashScheduler),ConstStrA("Crashes the server in scheduler - for development and testing"));
 		registerMethod("Server.help:s",RpcCall::create(this,&JsonRpc::rpcHelp), ConstStrA("Shows help page about selected method (if exists)"));
 		registerMethod("Server.ping",RpcCall::create(this,&JsonRpc::rpcPing), ConstStrA("Sends back arguments"));
 		registerMethod("Server.pingNotify",RpcCall::create(this,&JsonRpc::rpcPingNotify), ConstStrA("Sends back arguments as notify (requires wsrpc). If the first argument is string, it is used as name of the notify"));
 	}
-	registerMethod("Server.multicall",RpcCall::create(this,&JsonRpc::rpcMulticallN),
-			ConstStrA("<p><pre>[[result,error],...] Server.multicall1 [\"methodName\",[args,...],[args,...],[args,...],...]</pre></p>"
-					"<p><pre>[[result,error],...] Server.multicall [[\"methodName\",[args,...]],[\"methodName\",[args,...]],...]</pre></p>"));
-//	registerMethod("Server.multicall",RpcCall::create(this,&JsonRpc::rpcMulticallN),ConstStrA());
-	registerMethod("Server.stats:",RpcCall::create(this,&JsonRpc::rpcStats), ConstStrA("Show statistics - arguments are passed to the handlers"));
-	registerMethod("Server.stats:c",RpcCall::create(this,&JsonRpc::rpcStats), ConstStrA("Show statistics - arguments are passed to the handlers"));
 
 }
 
@@ -749,6 +752,18 @@ natural JsonRpc::sendWsClientJs(IHttpRequest& request) {
 	request.header(IHttpRequest::fldCacheControl,"max-age=31556926");
 	request.writeAll(data.data(),data.length());
 	return stOK;
+}
+
+JSON::PNode JsonRpc::rpcCrash(RpcRequest* rq) {
+	int *x = (int *)1;
+	*x = 2; //crash
+	return rq->ok();
+}
+
+JSON::PNode JsonRpc::rpcCrashScheduler(RpcRequest* rq) {
+	BredyHttpSrv::IJobScheduler *sch = rq->httpRequest->getIfcPtr<BredyHttpSrv::IJobScheduler>();
+	sch->schedule(Action::create(this,&JsonRpc::rpcCrash,rq),3);
+	return rq->ok();
 }
 
 

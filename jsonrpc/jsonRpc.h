@@ -92,6 +92,8 @@ protected:
 	JSON::PNode rpcMulticall1(  RpcRequest *rq);
 	JSON::PNode rpcMulticallN( RpcRequest *rq);
 	JSON::PNode rpcStats( RpcRequest *rq);
+	JSON::PNode rpcCrash( RpcRequest *rq);
+	JSON::PNode rpcCrashScheduler( RpcRequest *rq);
 
 	natural dumpMethods(ConstStrA name, IHttpRequest &request);
 	natural sendClientJs(IHttpRequest &request);

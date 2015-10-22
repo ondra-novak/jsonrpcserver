@@ -165,7 +165,7 @@ ConstStrA HttpReqImpl::getProtocol() {
 	return protocol;
 }
 
-HttpReqImpl::HeaderValue HttpReqImpl::getHeaderField(ConstStrA field) const {
+HeaderValue HttpReqImpl::getHeaderField(ConstStrA field) const {
 	const HdrStr *val = requestHdrs.find(field);
 	if (val == 0) return HeaderValue();
 	else return HeaderValue(ConstStrA(*val));
@@ -489,7 +489,7 @@ void HttpReqImpl::flush() {
 	inout->flush();
 }
 
-HttpReqImpl::HeaderValue HttpReqImpl::getHeaderField(HeaderField field) const {
+HeaderValue HttpReqImpl::getHeaderField(HeaderField field) const {
 	return getHeaderField(fieldToText(field));
 }
 

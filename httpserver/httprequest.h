@@ -12,6 +12,7 @@
 #include "lightspeed/base/streams/fileio_ifc.h"
 #include "lightspeed/base/actions/message.h"
 #include "lightspeed/base/streams/netio_ifc.h"
+#include "headerValue.h"
 
 namespace LightSpeed {
 	class NetworkAddress;
@@ -77,12 +78,7 @@ using namespace LightSpeed;
 
 		};
 
-		class HeaderValue: public ConstStrA {
-		public:
-			const bool defined;
-			HeaderValue():defined(false) {}
-			HeaderValue(ConstStrA value):ConstStrA(value),defined(true) {}
-		};
+		typedef BredyHttpSrv::HeaderValue HeaderValue;
 
 		typedef std::pair<ConstStrA,ConstStrA> HeaderFieldPair;
 		typedef Message<bool,HeaderFieldPair > HdrEnumFn;
@@ -461,7 +457,6 @@ using namespace LightSpeed;
 	class IHttpHandler {
 	public:
 
-		typedef IHttpRequest::HeaderValue HeaderValue;
 
 		enum Status {
 		///Request has been processed
@@ -541,6 +536,7 @@ using namespace LightSpeed;
 
 		virtual ~IHttpHandler() {}
 		typedef IHttpRequest::SectionIO SectionIO;
+		typedef BredyHttpSrv::HeaderValue HeaderValue;
 
 	};
 
