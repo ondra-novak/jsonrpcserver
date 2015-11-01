@@ -77,10 +77,9 @@ void AbstractWebSocketConnection<Impl,serverSide>::sendFrame(
 		frameHeader[1] |= 0x80;
 		byte *mask = frameHeader+frameLen;
 		frameLen+=4;
-	/*	mask[0] = (byte)rand->getNext();
-		mask[1] = (byte)rand->getNext();
-		mask[2] = (byte)rand->getNext();
-		mask[3] = (byte)rand->getNext();*/
+		if (maskingFn == nil)
+			maskingFn = IWebSocketMasking::getFastMasking();
+		maskingFn->setMaskingBytes(mask);
 		this->_invoke().stream_write(frameHeader,frameLen);
 		sendBytesMasked(msg.data(), msg.length(), mask);
 	} else {
@@ -235,16 +234,13 @@ inline AbstractWebSocketConnection<Impl,serverSide>::AbstractWebSocketConnection
 		}
 		delete [] randomData2;
 
-//		rand = new Rand(seed);
-	} else {
-		rand = 0;
 	}
 }
 
 template<typename Impl, bool serverSide>
 inline AbstractWebSocketConnection<Impl,serverSide>::~AbstractWebSocketConnection()
 {
-//	if (!serverSide) delete rand;
+
 }
 
 template<typename Impl, bool serverSide>
@@ -258,6 +254,12 @@ void AbstractWebSocketConnection<Impl,serverSide>::deliverPayload(
 	}
 }
 
+
+template<typename Impl, bool serverSide>
+void AbstractWebSocketConnection<Impl, serverSide>::setMaskingFn(IWebSocketMasking *maskingFn)
+{
+	this->maskingFn = maskingFn;
+}
 
 
 }

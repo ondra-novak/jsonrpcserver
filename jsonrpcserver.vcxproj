@@ -103,6 +103,7 @@
     <ClInclude Include="jsonrpc\rpchandler.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="httpserver\abstractWebSockets.cpp" />
     <ClCompile Include="httpserver\ConnHandler.cpp" />
     <ClCompile Include="httpserver\HttpReqImpl.cpp" />
     <ClCompile Include="httpserver\httpServer.cpp" />
