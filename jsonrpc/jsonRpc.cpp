@@ -24,6 +24,7 @@
 #include "lightspeed/base/exceptions/httpStatusException.h"
 #include "lightspeed/utils/md5iter.h"
 
+#include "../httpserver/headerValue.h"
 #include "../httpserver/statBuffer.h"
 #include "jsonRpcWebsockets.h"
 #include "rpc.js.h"
