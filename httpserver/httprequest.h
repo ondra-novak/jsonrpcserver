@@ -280,18 +280,20 @@ using namespace LightSpeed;
 		 *
 		 * @note current handler will not be executed again recursively
 		 */
-		virtual natural callHandler(ConstStrA path, IHttpHandler **h = 0) = 0;
+		virtual natural callHandler(ConstStrA host, ConstStrA path, IHttpHandler **h) = 0;
 
-		///Allows to call handler with modified request
-		/**
-		 * Caller must implement own version of IHttpRequest. Function getPath() should return new path to perform handler mapping
-		 * @param request modified request. Class may refer to original request object. Note that handler will use write() functions to emit output. This
-		 * allows to implement translators, buffering, and so on.
-		 * @return true handler has been executed
-		 * @retval false no handler found or all found handlers rejected the request
-		 * @note current handler will not be executed again recursively
-		 */
-		virtual natural callHandler(IHttpRequest &request, IHttpHandler **h = 0) = 0;
+		///Allows to call handler with new path
+		/**Function is useful to handle path rewrittng
+		*
+		* @param path new path. Handler will be choosen by mapping depend of this argument
+		* @retval true handler has been executed
+		* @retval false no handler found or all found handlers rejected the request
+		*
+		* @note current handler will not be executed again recursively
+		*/
+		virtual natural callHandler(ConstStrA path, IHttpHandler **h) = 0;
+
+		virtual natural forwardRequest(ConstStrA host, ConstStrA path) = 0;
 
 
 		virtual natural forwardRequest(ConstStrA path) = 0;

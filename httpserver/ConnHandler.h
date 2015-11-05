@@ -58,6 +58,7 @@ protected:
 	StringA serverIdent;
 	StringA baseUrl;
 	PathMapper pathMap;
+	HostMapper hostMap;
 	natural numThreads;
 	mutable Semaphore busySemaphore;
 
@@ -79,7 +80,7 @@ public:
 	ConnContext(ConnHandler &owner, const NetworkAddress &addr);
 	~ConnContext();
 
-	virtual natural callHandler(IHttpRequest &request, ConstStrA path, IHttpHandler **h);
+	virtual natural callHandler(ConstStrA host, ConstStrA path, IHttpHandler **h);
 
 	virtual void *proxyInterface(IInterfaceRequest &p);
 	virtual const void *proxyInterface(const IInterfaceRequest &p) const;

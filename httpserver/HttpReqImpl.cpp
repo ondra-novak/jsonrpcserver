@@ -506,22 +506,20 @@ natural HttpReqImpl::dataReady() const {
 	if(canRead() ) return inout->dataReady(); else return 0;
 }
 
-natural HttpReqImpl::callHandler(ConstStrA path, IHttpHandler **h) {
-	return callHandler(*this,path,h);
-}
-
-natural HttpReqImpl::callHandler(IHttpRequest& request, IHttpHandler **h) {
-	return callHandler(request,request.getPath(),h);
-}
 
 natural HttpReqImpl::forwardRequest(ConstStrA path) {
 	IHttpHandler *h;
-	natural r = callHandler(*this,path,&h);
+	natural r = callHandler(path,&h);
 	if (h != 0) curHandler = h;
 	return r;
 
 }
 
+
+LightSpeed::natural HttpReqImpl::forwardRequest(ConstStrA host, ConstStrA path)
+{
+
+}
 
 void HttpReqImpl::finishChunk() {
 	if (!bNeedContinue) {
@@ -714,7 +712,7 @@ ITCPServerConnHandler::Command  HttpReqImpl::finishReadHeader() {
 	curHandler = nil;
 	outputClosed = false;
 	inputClosed = false;
-	natural res = callHandler(*this,path, &h);
+	natural res = callHandler( path, &h);
 	if (h == 0) return errorPageKA(404);
 	if (curHandler == nil) curHandler = h; //need this to correctly handle forward function
 	return processHandlerResponse(res);

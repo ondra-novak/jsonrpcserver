@@ -130,7 +130,9 @@ protected:
 	SysTime begin;
 };
 
-natural ConnContext::callHandler(IHttpRequest &request, ConstStrA path, IHttpHandler **h) {
+LightSpeed::natural ConnContext::callHandler(ConstStrA host, ConstStrA path, IHttpHandler **h) {
+
+
 
 	DurationMeasure _(&owner);
 	PathMapper::MappingIter iter = owner.pathMap.findPathMapping(path);

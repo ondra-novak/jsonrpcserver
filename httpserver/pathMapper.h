@@ -63,7 +63,6 @@ protected:
 	SPool strings;
 
 
-
 };
 
 } /* namespace jsonsvc */

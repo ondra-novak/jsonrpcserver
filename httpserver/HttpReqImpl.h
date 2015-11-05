@@ -58,11 +58,11 @@ public:
 	virtual natural dataReady() const;
 	virtual void closeOutput();
 	virtual bool headersSent() const {return bHeaderSent;}
+	virtual natural callHandler( ConstStrA host, ConstStrA path, IHttpHandler **h);
 	virtual natural callHandler(ConstStrA path, IHttpHandler **h);
-	virtual natural callHandler(IHttpRequest &request, IHttpHandler **h);
-	virtual natural callHandler(IHttpRequest &request, ConstStrA path, IHttpHandler **h)  = 0;
 	virtual natural forwardRequest(ConstStrA path);
-	virtual bool keepAlive() const {return !closeConn;}
+	virtual natural forwardRequest(ConstStrA host,ConstStrA path);
+	virtual bool keepAlive() const { return !closeConn; }
 
 
 	void finishChunk();
