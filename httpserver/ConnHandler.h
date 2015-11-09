@@ -15,6 +15,8 @@
 #include "pathMapper.h"
 #include "HttpReqImpl.h"
 #include "lightspeed/mt/semaphore.h"
+#include "hostMapper.h"
+#include "lightspeed/mt/rwlock.h"
 
 using LightSpeed::NetworkStream;
 
@@ -28,8 +30,8 @@ class ConnContext;
 class ConnHandler: public ITCPServerConnHandler, public IHttpMapper, public INetworkResource::WaitHandler {
 public:
 
-	ConnHandler(StringA baseUrl, StringA serverIdent, natural maxBusyThreads)
-		:serverIdent(serverIdent),baseUrl(baseUrl),busySemaphore((atomic)maxBusyThreads) {}
+	ConnHandler( StringA serverIdent, natural maxBusyThreads)
+		:serverIdent(serverIdent),busySemaphore((atomic)maxBusyThreads) {}
 
 	virtual Command onDataReady(const PNetworkStream &stream, ITCPServerContext *context) throw();
 	virtual Command onWriteReady(const PNetworkStream &stream, ITCPServerContext *context) throw();
@@ -45,6 +47,10 @@ public:
 
 	void addSite(ConstStrA path, IHttpHandler *handler);
 	void removeSite(ConstStrA path);
+	void mapHost(ConstStrA mapLine);
+	void unmapHost(ConstStrA mapLine);
+
+
 
 	virtual void *proxyInterface(IInterfaceRequest &p);
 	virtual const void *proxyInterface(const IInterfaceRequest &p) const;
@@ -54,15 +60,21 @@ public:
 	///wait handler
 	virtual natural wait(const INetworkResource *res, natural waitFor, natural timeout) const;
 
+	virtual natural callHandler(HttpReqImpl &rq, ConstStrA vpath, IHttpHandler **h);
+
 protected:
-	StringA serverIdent;
-	StringA baseUrl;
+	StringA serverIdent;	
 	PathMapper pathMap;
+	RWLock pathMapLock;
 	HostMapper hostMap;
 	natural numThreads;
 	mutable Semaphore busySemaphore;
 
+
+
 	ConstStrA getRealAddr(ConstStrA ip, ConstStrA proxies);
+	StringKey<StringA> mapHost(ConstStrA host, ConstStrA vpath);
+	StringA getBaseUrl(ConstStrA host);
 };
 
 
@@ -74,19 +86,23 @@ public:
 	mutable StringA peerAddrStr;
 	mutable StringA peerRealAddrStr;
 	Pointer<ITCPServerConnControl> controlObject;
-	Optional<NStream> nstream;
+	Optional<NStream> nstream;	
 	StringA ctxName;
+	StringKey<StringA> storedVPath;
+	mutable StringA storedBaseUrl;
 
 	ConnContext(ConnHandler &owner, const NetworkAddress &addr);
 	~ConnContext();
 
-	virtual natural callHandler(ConstStrA host, ConstStrA path, IHttpHandler **h);
+	virtual natural callHandler(ConstStrA vpath, IHttpHandler **h);
 
 	virtual void *proxyInterface(IInterfaceRequest &p);
 	virtual const void *proxyInterface(const IInterfaceRequest &p) const;
 	virtual const NetworkAddress &getPeerAddr() const {return peerAddr;}
 	virtual ConstStrA getPeerAddrStr() const;
 	virtual natural getSourceId() const;
+	virtual bool mapHost(ConstStrA host, ConstStrA &vpath);
+	virtual ConstStrA getBaseUrl() const;
 	void setControlObject(Pointer<ITCPServerConnControl> controlObject);
 	void prepareToDisconnect();
 	virtual void clear();

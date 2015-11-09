@@ -28,7 +28,7 @@ class ConnContext;
 class HttpReqImpl: public IHttpRequest{
 public:
 
-	HttpReqImpl(ConstStrA baseUrl, ConstStrA serverIdent, Semaphore &busySemaphore);
+	HttpReqImpl(ConstStrA serverIdent, Semaphore &busySemaphore);
 
 
 	virtual ConstStrA getMethod();
@@ -43,7 +43,6 @@ public:
 	virtual void status(natural code, ConstStrA msg = ConstStrA());
 	virtual void errorPage(natural code, ConstStrA msg = ConstStrA(), ConstStrA expl = ConstStrA());
 	virtual void redirect(ConstStrA url, int code = 0);
-	virtual ConstStrA getBaseUrl() const;
 	virtual void useHTTP11(bool use);
 	virtual bool isField(ConstStrA text, HeaderField fld) const ;
 
@@ -58,10 +57,7 @@ public:
 	virtual natural dataReady() const;
 	virtual void closeOutput();
 	virtual bool headersSent() const {return bHeaderSent;}
-	virtual natural callHandler( ConstStrA host, ConstStrA path, IHttpHandler **h);
-	virtual natural callHandler(ConstStrA path, IHttpHandler **h);
-	virtual natural forwardRequest(ConstStrA path);
-	virtual natural forwardRequest(ConstStrA host,ConstStrA path);
+	virtual natural forwardRequest(ConstStrA vpath, IHttpHandler **h = 0);
 	virtual bool keepAlive() const { return !closeConn; }
 
 
@@ -87,8 +83,10 @@ public:
 	virtual void beginIO();
 	virtual void endIO();
 
+
 	virtual void setMaxPostSize(natural bytes) ;
 	virtual void attachThread(natural status);
+	virtual bool mapHost(ConstStrA host, ConstStrA &vpath) { return true; }
 
 	ITCPServerConnHandler::Command  onUserWakeup();
 
@@ -120,7 +118,6 @@ protected:
 protected:
 	NStream *inout;
 	ConstStrA serverIdent;
-	ConstStrA baseUrl;
 	unsigned short httpMajVer;
 	unsigned short httpMinVer;
 	mutable natural remainPostData;

@@ -49,9 +49,7 @@ protected:
 	virtual void finish() {}
 	virtual bool headersSent() const {return true;}
 	virtual natural callHandler(ConstStrA , IHttpHandler ** = 0) {return 0;}
-	virtual natural callHandler(ConstStrA host, ConstStrA path, IHttpHandler **h) {return 0;}
-	virtual natural forwardRequest(ConstStrA ) {return 0;}
-	virtual natural forwardRequest(ConstStrA host, ConstStrA path) { return 0; }
+	virtual natural forwardRequest(ConstStrA, IHttpHandler ** = 0) { return 0; }
 	virtual bool keepAlive() const {return true;}
 	virtual PNetworkStream getConnection() {return nil;}
 	virtual void setRequestContext(IHttpHandlerContext *context) {

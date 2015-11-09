@@ -29,7 +29,7 @@ public:
 		StringA trustedProxies;
 	};
 
-	HttpServer(StringA baseUrl, StringA serverIdent, const Config &config);
+	HttpServer( StringA serverIdent, const Config &config);
 
 	void start(natural port, bool bindLocal = false, natural connTimeout = 30000);
 	natural addPort(natural port, bool bindLocal = false, natural connTimeout = 30000);

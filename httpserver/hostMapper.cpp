@@ -6,31 +6,48 @@ namespace BredyHttpSrv {
 
 	void HostMapper::registerUrl(ConstStrA baseUrlFormat)
 	{
+		processUrl(baseUrlFormat, false);
+	}
+	void HostMapper::processUrl(ConstStrA baseUrlFormat, bool unreg)
+	{
 		TextParser<char, SmallAlloc<256> > parser;
 		StringA data;
 		ConstStrA host;
 		ConstStrA path;
 		ConstStrA protocol;
 		ConstStrA targetVPath;
-		if (parser(" %1://%2/%%[/]*3 -> %4 ",baseUrlFormat)) {
+		if (parser(" %1://%2%%[/](*)*3 -> %4 ", baseUrlFormat)) {
 			data = baseUrlFormat;
 			protocol = ConstStrA(parser[1].str()).map(data);
 			host = ConstStrA(parser[2].str()).map(data);
 			path = ConstStrA(parser[3].str()).map(data);
 			targetVPath = ConstStrA(parser[4].str()).map(data);
 		}
-		else if (parser(" %1://%2%%[/]*3 ", baseUrlFormat)) {
+		else if (parser(" %1://%2%%[/](*)*3 ", baseUrlFormat)) {
 
 			data = baseUrlFormat;
 			protocol = ConstStrA(parser[1].str()).map(data);
 			host = ConstStrA(parser[2].str()).map(data);
 			path = ConstStrA(parser[3].str()).map(data);
-			targetVPath = ConstStrA(parser[4].str()).map(data);
+			targetVPath = ConstStrA();
 
 		}
-		if (host == "%") defaultMapping = Mapping(data, protocol, path, targetVPath);
-		else mapping.replace(host, Mapping(data, protocol, path, targetVPath));
+		if (host == "%") {
+			if (unreg)
+				defaultMapping = Mapping();
+			else
+				defaultMapping = Mapping(data, protocol, path, targetVPath);
+		}
+		else {
+			if (unreg) {
+				mapping.erase(host);
+			}
+			else {
+				mapping.replace(host, Mapping(data, protocol, path, targetVPath));
+			}
+		}
 	}
+
 
 	void HostMapper::registerHost(ConstStrA host, ConstStrA protocol, ConstStrA path, ConstStrA targetVPath)
 	{
@@ -67,6 +84,11 @@ namespace BredyHttpSrv {
 			mp = &defaultMapping;
 		return StringA(mp->protocol + ConstStrA("://") + host + mp->path);
 
+	}
+
+	void HostMapper::unregisterUrl(ConstStrA mapLine)
+	{
+		processUrl(mapLine, true);
 	}
 
 	void HostMapper::NoMappingException::message(ExceptionMsg &msg) const

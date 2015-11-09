@@ -70,8 +70,9 @@ namespace BredyHttpSrv {
 
 		///Returns base url depend on host
 		StringA getBaseUrl(ConstStrA host);
-
- 		class NoMappingException : public Exception {
+		void unregisterUrl(ConstStrA mapLine);
+		void processUrl(ConstStrA baseUrlFormat, bool param2);
+		class NoMappingException : public Exception {
 		public:
 			LIGHTSPEED_EXCEPTIONFINAL;
 			NoMappingException(const ProgramLocation &loc) :Exception(loc) {}

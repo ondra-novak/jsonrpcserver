@@ -75,6 +75,7 @@
     <ClInclude Include="client\iclient.h" />
     <ClInclude Include="httpserver\abstractWebSockets.h" />
     <ClInclude Include="httpserver\ConnHandler.h" />
+    <ClInclude Include="httpserver\headerValue.h" />
     <ClInclude Include="httpserver\hostMapper.h" />
     <ClInclude Include="httpserver\HttpReqImpl.h" />
     <ClInclude Include="httpserver\httprequest.h" />

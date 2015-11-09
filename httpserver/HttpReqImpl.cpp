@@ -135,10 +135,9 @@ static ConstStrA getStatusMessage(natural status) {
 	return ConstStrA("Unknown status code");
 }
 
-HttpReqImpl::HttpReqImpl(ConstStrA baseUrl, ConstStrA serverIdent, Semaphore &busySemaphore)
+HttpReqImpl::HttpReqImpl(ConstStrA serverIdent, Semaphore &busySemaphore)
 : inout(0)
 , serverIdent(serverIdent)
-, baseUrl(baseUrl)
 , httpMajVer(1)
 , httpMinVer(0)
 , bHeaderSent(false)
@@ -331,9 +330,6 @@ void HttpReqImpl::errorPage(natural code, ConstStrA msg, ConstStrA expl) {
 	print("</body></html>");
 }
 
-ConstStrA HttpReqImpl::getBaseUrl() const {
-	return baseUrl;
-}
 
 
 void HttpReqImpl::redirect(ConstStrA url, int code) {
@@ -507,19 +503,17 @@ natural HttpReqImpl::dataReady() const {
 }
 
 
-natural HttpReqImpl::forwardRequest(ConstStrA path) {
-	IHttpHandler *h;
-	natural r = callHandler(path,&h);
-	if (h != 0) curHandler = h;
+
+natural HttpReqImpl::forwardRequest(ConstStrA vpath, IHttpHandler **h) {
+	IHttpHandler *hx;
+	natural r = callHandler(path,&hx);
+	if (hx != 0) curHandler = hx;
+	if (h) *h = hx;
 	return r;
 
 }
 
 
-LightSpeed::natural HttpReqImpl::forwardRequest(ConstStrA host, ConstStrA path)
-{
-
-}
 
 void HttpReqImpl::finishChunk() {
 	if (!bNeedContinue) {
@@ -666,10 +660,24 @@ ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
 
 ITCPServerConnHandler::Command  HttpReqImpl::finishReadHeader() {
 
+
 	TextParser<char,StaticAlloc<256> > parser;
+
+	//open output and input, we need stream to show error pages
+	outputClosed = false;
+	inputClosed = false;
+
 
 	isHeadMethod = ConstStrA(method) == "HEAD";
 	closeConn = httpMinVer == 0;
+
+	//check host
+	ConstStrA vpath = path;
+	HeaderValue host = getHeaderField(fldHost);
+	if (!mapHost(host, vpath)) {
+		return errorPageKA(404);
+	}
+
 
 	//check connection
 	HeaderValue strconn = getHeaderField(fldConnection);
@@ -707,12 +715,12 @@ ITCPServerConnHandler::Command  HttpReqImpl::finishReadHeader() {
 		bNeedContinue = false;
 	}
 
+
+
 	//find handler
 	IHttpHandler *h;
 	curHandler = nil;
-	outputClosed = false;
-	inputClosed = false;
-	natural res = callHandler( path, &h);
+	natural res = callHandler( vpath, &h);
 	if (h == 0) return errorPageKA(404);
 	if (curHandler == nil) curHandler = h; //need this to correctly handle forward function
 	return processHandlerResponse(res);
