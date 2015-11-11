@@ -284,8 +284,13 @@ LightSpeed::StringA dateTimeToDB(const LightSpeed::JSON::INode &nd) {
 	using namespace LightSpeed;
 	if (nd.getType() == JSON::ndString) {
 		ConstStrA str = nd.getStringUtf8();
-		if (str==ConstStrA("NOW")) {
+		TextParser<char, SmallAlloc<256> > parser;
+		if (parser(" NOW ",str)) {
 			TimeStamp st = TimeStamp::now();
+			return st.formatTime(dbDateTimeFormat);
+		} else if (parser(" NOW %[-+]f1 ",str)) {
+			float ofs = parser[1];
+			TimeStamp st = TimeStamp::now() + TimeStamp(ofs);
 			return st.formatTime(dbDateTimeFormat);
 		}
 		return nd.getStringUtf8();
