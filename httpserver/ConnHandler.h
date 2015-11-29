@@ -75,6 +75,7 @@ protected:
 	ConstStrA getRealAddr(ConstStrA ip, ConstStrA proxies);
 	StringKey<StringA> mapHost(ConstStrA host, ConstStrA vpath);
 	StringA getBaseUrl(ConstStrA host);
+	StringA getAbsoluteUrl(ConstStrA host, ConstStrA curPath, ConstStrA relpath);
 };
 
 
@@ -103,6 +104,8 @@ public:
 	virtual natural getSourceId() const;
 	virtual bool mapHost(ConstStrA host, ConstStrA &vpath);
 	virtual ConstStrA getBaseUrl() const;
+	virtual StringA getAbsoluteUrl() const;
+	virtual StringA getAbsoluteUrl(ConstStrA relpath) const;
 	void setControlObject(Pointer<ITCPServerConnControl> controlObject);
 	void prepareToDisconnect();
 	virtual void clear();

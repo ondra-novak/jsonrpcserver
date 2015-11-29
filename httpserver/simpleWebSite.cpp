@@ -35,7 +35,7 @@ natural SimpleWebSite::onRequest(IHttpRequest& request,ConstStrA vpath) {
 		uri = vpath;
 	}
 	if (uri.empty()) {
-		request.redirect(StringA(request.getPath() + ConstStrA("/")+query));
+		request.redirect("+/");
 		return 0;
 	}
 	if (uri == ConstStrA("/")) {
@@ -97,7 +97,7 @@ natural SimpleWebSite::serverFile(IHttpRequest& request, ConstStrW pathName, Con
 		SeqFileOutput oup(&request);
 		oup.blockCopy(infile,abuff);
 	} catch (std::exception &e) {
-		request.errorPage(403,ConstStrA(),e.what());
+		request.errorPage(404,ConstStrA(),e.what());
 		LS_LOG.debug("Error reading: %1 - %2") << pathName << e.what();
 	}
 	return 0;

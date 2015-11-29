@@ -31,9 +31,9 @@ public:
 	HttpReqImpl(ConstStrA serverIdent, Semaphore &busySemaphore);
 
 
-	virtual ConstStrA getMethod();
-	virtual ConstStrA getPath();
-	virtual ConstStrA getProtocol();
+	virtual ConstStrA getMethod() const;
+	virtual ConstStrA getPath() const;
+	virtual ConstStrA getProtocol() const;
 	virtual HeaderValue getHeaderField(ConstStrA field) const;
 	virtual HeaderValue getHeaderField(HeaderField field) const ;
 	virtual bool enumHeader(Message<bool,HeaderFieldPair > caller)const;

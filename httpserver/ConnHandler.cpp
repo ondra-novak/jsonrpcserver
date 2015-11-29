@@ -279,6 +279,13 @@ void ConnHandler::unmapHost(ConstStrA mapLine)
 	hostMap.unregisterUrl(mapLine);
 }
 
+LightSpeed::StringA ConnHandler::getAbsoluteUrl(ConstStrA host, ConstStrA curPath, ConstStrA relpath)
+{
+	Synchronized<RWLock::ReadLock> _(pathMapLock);
+	return hostMap.getAbsoluteUrl(host, curPath, relpath);
+
+}
+
 ConstStrA ConnContext::getPeerAddrStr() const {
 	if (peerAddrStr.empty()) peerAddrStr = peerAddr.asString(false);
 	return peerAddrStr;
@@ -305,6 +312,20 @@ ConstStrA ConnContext::getBaseUrl() const
 {
 	HeaderValue host = getHeaderField(fldHost);
 	return storedBaseUrl = owner.getBaseUrl(host);
+}
+
+StringA ConnContext::getAbsoluteUrl() const
+{
+	HeaderValue host = getHeaderField(fldHost);
+	ConstStrA path = getPath();
+	return owner.getAbsoluteUrl(host, path, ConstStrA());
+}
+
+StringA ConnContext::getAbsoluteUrl(ConstStrA relpath) const
+{
+	HeaderValue host = getHeaderField(fldHost);
+	ConstStrA path = getPath();
+	return owner.getAbsoluteUrl(host, path, relpath);
 }
 
 void ConnContext::setControlObject(Pointer<ITCPServerConnControl> controlObject) {

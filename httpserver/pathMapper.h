@@ -23,6 +23,8 @@ using namespace LightSpeed;
 
 class PathMapper {
 
+	class PathOrder;
+
 	typedef StringPool<char> SPool;
 	typedef Map<SPool::Str, IHttpHandler *, std::greater<SPool::Str> > HandlerMap;
 

@@ -98,9 +98,9 @@ using namespace LightSpeed;
 		 * This exception is then caught by the server's core and silently ignored 
 		 * to achieve required function.
 		 */
-		virtual ConstStrA getMethod() = 0;
+		virtual ConstStrA getMethod() const = 0;
 		///Retrieves path requested by header
-		virtual ConstStrA getPath() = 0;
+		virtual ConstStrA getPath() const = 0;
 		///Retrieves protocol
 		/**
 		 * @retval HTTP/1.0 request in HTTP/1.0 protocol
@@ -108,7 +108,7 @@ using namespace LightSpeed;
 		 *
 		 * @note Server doesn't support HTTP/2.0 (yet)
 		 */
-		virtual ConstStrA getProtocol() = 0;
+		virtual ConstStrA getProtocol() const = 0;
 		///Retrieves header field
 		/**
 		 * @param field header field name. Note that field names are case sensitive
@@ -177,7 +177,7 @@ using namespace LightSpeed;
 		 * @param msg message (see: status() )
 		 * @param expl explanation, which appear on page
 		 *
-		 * After error page is shown, handler should exit immediatelly. No output should be emitted.
+		 * After error page is shown, handler should exit immediately. No output should be emitted.
 		 *
 		 * @note function ignores headers and status code set by functions header() and status(). It uses own headers.
 		 */
@@ -185,21 +185,59 @@ using namespace LightSpeed;
 		///Performs redirect
 		/**
 		 * @param url new url where to redirect
-		 * @param code define code use with the redirect. If default value used, temporary redirect is used. For pernament redirect use code 301
+		 * @param code define code use with the redirect. If default value used, temporary redirect is used (307) 
+		 *  
+		 * @note argument url can be relative. In that case, request's url is used. If url starts with
+		 * '/', then root of current host is returned (regardless on where the server is mapped). You can start
+		 * by various double-dots (..) to address parent directories
 		 *
-		 * @note argument url can be relative. In that case, server's baseURL
-		 * is used to compute absolute path
+		 * @note You can use "+/" as an argument to redirect into directory. In this case, default code is permanent redirect (301)
 		 *
-		 * @see getBaseURL
+		 * @code
+		 * request.redirect("+/") //append '/' to the url, repeat query. Also sets status to 301
+		 * @encode
+		 *
+		 * @see getAbsoluteUrl
 		 */
 		virtual void redirect(ConstStrA url, int code = 0) = 0;
 
 		///Retrieves base url (url for server's root)
 		/** Base url can be different than expected especially when
 		 * server runs behind the reverse proxy.
-		 * @return
+		 * @return base url
+		 *
+		 * @see getAbsoluteUrl
+		 *  
 		 */
 		virtual ConstStrA getBaseUrl() const = 0;
+		///Retrieves absolute url of the request
+		/**
+		 * Function also performs host-mapping to map host field to baseUrl, then it combines with request path
+		 * @return result should contain absolute URL of the request 
+		 */
+		virtual StringA getAbsoluteUrl() const = 0;
+		
+
+		///Calculates absolute url of a relative path
+		/*
+		 * @param relative path to the request. 
+		 * @return calculated absolute path 
+		 *
+		 * @note You can specify relpath by various ways
+		 *
+		 * empty string will return absolute URL of the current request
+		 *
+		 * relpath starting with '/' specifies absolute path for the current host. Note that vpath mapping
+		 * is applied, so if host is mapped to some vpath, you have to pretend that path to the absolute path.
+		 * Function then perform reversed host mapping to determine path relative to host's root
+		 *
+		 * relpath starting with '+/' will add slash and remain part of the string to the current path. This
+		 * also includes query string unless relpath also contains query 
+		 *
+		 *
+		 */
+		virtual StringA getAbsoluteUrl(ConstStrA relpath) const = 0;
+
 		///Enables HTTP/1.1
 		/**
 		 * By default server send replies in HTTP/1.0 protocol

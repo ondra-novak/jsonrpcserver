@@ -72,12 +72,14 @@ namespace BredyHttpSrv {
 		StringA getBaseUrl(ConstStrA host);
 		void unregisterUrl(ConstStrA mapLine);
 		void processUrl(ConstStrA baseUrlFormat, bool param2);
+		StringA getAbsoluteUrl(ConstStrA host, ConstStrA curPath, ConstStrA relpath);
 		class NoMappingException : public Exception {
 		public:
 			LIGHTSPEED_EXCEPTIONFINAL;
-			NoMappingException(const ProgramLocation &loc) :Exception(loc) {}
+			NoMappingException(const ProgramLocation &loc, StringA path) :Exception(loc) {}
 		protected:
 			void message(ExceptionMsg &msg) const;
+			StringA path;
 		};
 
 		class MappingExistException : public Exception {

@@ -24,9 +24,9 @@ public:
 	JsonRpcWebsocketsConnection * const owner;
 
 protected:
-	virtual ConstStrA getMethod() {return "WS";}
-	virtual ConstStrA getPath() {return r->getPath();}
-	virtual ConstStrA getProtocol() {return r->getProtocol();}
+	virtual ConstStrA getMethod() const {return "WS";}
+	virtual ConstStrA getPath() const {return r->getPath();}
+	virtual ConstStrA getProtocol() const {return r->getProtocol();}
 	virtual HeaderValue getHeaderField(ConstStrA field) const {return r->getHeaderField(field);}
 	virtual HeaderValue getHeaderField(HeaderField field) const {return r->getHeaderField(field);}
 	virtual bool enumHeader(HdrEnumFn fn) const {return r->enumHeader(fn);}
@@ -84,6 +84,10 @@ protected:
 		if (!x) x = r->proxyInterface(p);
 		return x;
 	}
+
+	virtual StringA getAbsoluteUrl() const { return r->getAbsoluteUrl(); }
+	virtual StringA getAbsoluteUrl(ConstStrA relpath) const { return r->getAbsoluteUrl(relpath); }
+
 
 
 	AllocPointer<IHttpHandlerContext> rctx;

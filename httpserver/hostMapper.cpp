@@ -68,7 +68,7 @@ namespace BredyHttpSrv {
 			mp = &defaultMapping;		
 
 		if (path.head(mp->path.length()) != mp->path) 
-			throw NoMappingException(THISLOCATION);
+			throw NoMappingException(THISLOCATION, StringA(host+path));
 
 		if (mp->targetVPath.empty())
 			return StringKey<StringA>(ConstStrA(path.offset(mp->path.length())));
@@ -91,9 +91,98 @@ namespace BredyHttpSrv {
 		processUrl(mapLine, true);
 	}
 
+	LightSpeed::StringA HostMapper::getAbsoluteUrl(ConstStrA host, ConstStrA curPath, ConstStrA relpath)
+	{
+		const Mapping *mp = mapping.find(host);
+		if (mp == 0)
+			mp = &defaultMapping;
+
+		StringA tmp;
+
+		if (relpath.empty()) {
+			//if relpath is empty, we can directly create url using curent path
+			//combine protocol://host/curpath
+			return StringA(mp->protocol + ConstStrA("://") + host + curPath);
+		}
+		else if (relpath.head(2) == ConstStrA("+/")) {
+			natural q = relpath.find('?');
+			natural p = curPath.find('?');
+			ConstStrA query;
+			if (p != naturalNull) {
+				query = curPath.offset(p);
+				curPath = curPath.head(p);
+			};
+			if (q != naturalNull) query.empty();
+			return StringA(mp->protocol + ConstStrA("://") + host + curPath + relpath.offset(1)+query);
+		}
+
+		else if (relpath[0] == '/') {
+			//path relative to host root
+			//path must respect current vpath mapping 
+			//so if host's root is mapped to some vpath, we need to remove that part from the relpath
+			//check whether this is valid request
+			//in context of host, function cannot create url to the paths outside of mapping
+			if (relpath.head(mp->targetVPath.length()) == mp->targetVPath) {
+				//now adjust host's relpath
+				relpath = relpath.offset(mp->targetVPath.length());
+				//no add host's path from the mapping
+				if (!mp->path.empty()) {
+					//check path for ending slash
+					bool endslash = mp->path.tail(1) == ConstStrA('/');
+					//check relpath for starting slash
+					bool startslash = relpath.head(1) == ConstStrA('/');
+					//if both have slash
+					if (endslash &&  startslash) {
+						//remove starting slash and combine path
+						tmp = mp->path + relpath.offset(1);					
+					}
+					//neither both have slash
+					else if (!endslash && !startslash)  {
+						//put slash between path and relpath
+						tmp = mp->path + ConstStrA('/') + relpath;
+					}
+					else {
+						//combine paths
+						tmp = mp->path + relpath;
+					}					
+					relpath = tmp;
+				}
+
+				//no we have path
+				// 1. removed vpath offset from mapping
+				// 2. added host's offset from mapping 
+				// (reversed mapping)
+				
+				//finally, check, whether there is slash at begging
+				if (relpath.head(1) == ConstStrA('/')) {
+					//if not. pretend one '/'
+					tmp = ConstStrA("/") + relpath;
+					relpath = tmp;
+				}
+				//combine protocol://host/relpath
+				return StringA(mp->protocol + ConstStrA("://") + host + relpath);
+			}
+			else {
+				throw NoMappingException(THISLOCATION,relpath);
+			}
+		}
+		else {
+			//remove query: /aa/bbb/c?x=0 -> /aa/bbb/c
+			natural query = curPath.find('?');
+			if (query != naturalNull) curPath = curPath.head(query);
+
+			//remove filename: /aa/bbb/c -> /aa/bbb/
+			natural slash = curPath.findLast('/');
+			curPath = curPath.head(slash + 1);
+
+			//combine protocol://host/path/relpath
+			return StringA(mp->protocol + ConstStrA("://") + host + curPath + relpath);
+		}
+	}
+
 	void HostMapper::NoMappingException::message(ExceptionMsg &msg) const
 	{
-		msg("No mapping for given host and path");
+		msg("No mapping for given host and path: %1") << path;
 	}
 
 	LightSpeed::ConstStrA HostMapper::MappingExistException::getHost() const

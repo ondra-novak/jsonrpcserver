@@ -152,15 +152,15 @@ HttpReqImpl::HttpReqImpl(ConstStrA serverIdent, Semaphore &busySemaphore)
 
 }
 
-ConstStrA HttpReqImpl::getMethod() {
+ConstStrA HttpReqImpl::getMethod() const {
 	return method;
 }
 
-ConstStrA HttpReqImpl::getPath() {
+ConstStrA HttpReqImpl::getPath() const {
 	return path;
 }
 
-ConstStrA HttpReqImpl::getProtocol() {
+ConstStrA HttpReqImpl::getProtocol() const {
 	return protocol;
 }
 
@@ -308,11 +308,13 @@ void HttpReqImpl::status(natural code, ConstStrA msg) {
 	statusMsg = responseHdrPool.add(msg);
 }
 void HttpReqImpl::errorPage(natural code, ConstStrA msg, ConstStrA expl) {
-	if (msg.empty()) msg = getStatusMessage(code);
-	SeqFileOutput f(this);
-	if (msg.empty()) msg = getStatusMessage(code);
-	PrintTextA print(f);
 	if (!bHeaderSent) {
+		if (msg.empty()) msg = getStatusMessage(code);
+		SeqFileOutput f(this);
+		if (msg.empty()) msg = getStatusMessage(code);
+		PrintTextA print(f);
+		//clear headers - they can be damaged
+		responseHdrs.clear();
 		status(code,msg);
 		if (code == 204 || code == 205 || code == 304) {
 			header(fldContentLength,"0");
@@ -321,39 +323,38 @@ void HttpReqImpl::errorPage(natural code, ConstStrA msg, ConstStrA expl) {
 		} else {
 			closeConn = true;
 		}
+		print("<html><head><title>%1 %2</title></head><body><h1>%1 %2</h1>")
+				<< code << msg;
+		if (!expl.empty()) print("<pre>%1</pre>")<< expl;
+		print("<hr>");
+		print("<small><em>Powered by Bredy's JsonRpcServer - C++ http & jsonrpc server - <a href=\"https://github.com/ondra-novak/jsonrpcserver\">sources available</a></em></small>");
+		print("</body></html>");
 	}
-	print("<html><head><title>%1 %2</title></head><body><h1>%1 %2</h1>")
-		<< code << msg;
-	if (!expl.empty()) print("<pre>%3</pre>")<< expl;
-	print("<hr>");
-	print("<small><em>Powered by Bredy's JsonRpcServer - C++ http & jsonrpc server - <a href=\"https://github.com/ondra-novak/jsonrpcserver\">sources available</a></em></small>");
-	print("</body></html>");
+	else {
+		closeConn = true;
+	}
 }
 
 
 
 void HttpReqImpl::redirect(ConstStrA url, int code) {
-	if (code == 0)
-		code = 302;
+	if (code == 0) {
+		if (url.head(1) == ConstStrA('+')) code = 301;
+		else code = 307;
+	}
+
 
 	TextParser<char> parser;
 	if (parser("%[a-z]0://%",url)) {
 		header(fldLocation, url);
 	} else {
-		StringA totalurl ;
-		if (url.empty() || url[0] != '/') {
-			ConstStrA curPath = path;
-			natural qm = curPath.find('?');
-			if (qm != naturalNull) curPath = curPath.head(qm);
-			natural so = curPath.findLast('/');
-			if (so != naturalNull) curPath = curPath.head(so+1);
-			totalurl = getBaseUrl() + curPath + url;
-		}
-		else
-			totalurl = getBaseUrl()+url;
-		header(fldLocation, totalurl);
+		StringA absurl = getAbsoluteUrl(url);
+		header(fldLocation, absurl);
 	}
-	errorPage(code,ConstStrA(),url);
+	header(fldContentLength, "0");
+	status(code);
+	sendHeaders();
+
 }
 void HttpReqImpl::useHTTP11(bool use) {
 	httpMinVer = use ? 1 : 0;
