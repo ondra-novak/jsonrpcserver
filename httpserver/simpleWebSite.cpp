@@ -78,19 +78,19 @@ natural SimpleWebSite::onRequest(IHttpRequest& request,ConstStrA vpath) {
 natural SimpleWebSite::serverFile(IHttpRequest& request, ConstStrW pathName, ConstStrA contentType, ConstStrA) {
 
 	IFileIOServices &svc = IFileIOServices::getIOServices();
-
-	PFolderIterator finfo = svc.getFileInfo(pathName);
-	ToString<lnatural> etag(finfo->getModifiedTime().asUnix(), 36);
-
-	HeaderValue v = request.getHeaderField(IHttpRequest::fldIfNoneMatch);
-	if (v.defined && v == etag) return stNotModified;
-
-	request.header(IHttpRequest::fldContentLength, ToString<lnatural>(finfo->getSize()));
-	request.header(IHttpRequest::fldETag, etag);
-	request.header(IHttpRequest::fldContentType,contentType);
-	if (!cacheStr.empty()) request.header(IHttpRequest::fldCacheControl, cacheStr);
-
 	try {
+
+		PFolderIterator finfo = svc.getFileInfo(pathName);
+		ToString<lnatural> etag(finfo->getModifiedTime().asUnix(), 36);
+
+		HeaderValue v = request.getHeaderField(IHttpRequest::fldIfNoneMatch);
+		if (v.defined && v == etag) return stNotModified;
+
+		request.header(IHttpRequest::fldContentLength, ToString<lnatural>(finfo->getSize()));
+		request.header(IHttpRequest::fldETag, etag);
+		request.header(IHttpRequest::fldContentType,contentType);
+		if (!cacheStr.empty()) request.header(IHttpRequest::fldCacheControl, cacheStr);
+
 		byte buff[4096];
 		ArrayRef<byte> abuff(buff,countof(buff));
 		SeqFileInput infile(pathName,0);

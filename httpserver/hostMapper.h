@@ -92,6 +92,16 @@ namespace BredyHttpSrv {
 			void message(ExceptionMsg &msg) const;
 		};
 
+		class MappingSyntaxError: public Exception {
+		public:
+			LIGHTSPEED_EXCEPTIONFINAL;
+			MappingSyntaxError(const ProgramLocation &loc, StringA line) :Exception(loc), line(line) {}
+			ConstStrA getLine() const;
+		protected:
+			StringA line;
+			void message(ExceptionMsg &msg) const;
+		};
+
 
 	protected:
 

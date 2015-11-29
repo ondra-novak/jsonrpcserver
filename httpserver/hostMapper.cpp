@@ -16,14 +16,14 @@ namespace BredyHttpSrv {
 		ConstStrA path;
 		ConstStrA protocol;
 		ConstStrA targetVPath;
-		if (parser(" %1://%2%%[/](*)*3 -> %4 ", baseUrlFormat)) {
+		if (parser(" %[a-zA-Z0-9]1://%[a-zA-Z0-9-._:]2%%[/](*)[*^> ]3 -> %4 ", baseUrlFormat)) {
 			data = baseUrlFormat;
 			protocol = ConstStrA(parser[1].str()).map(data);
 			host = ConstStrA(parser[2].str()).map(data);
 			path = ConstStrA(parser[3].str()).map(data);
 			targetVPath = ConstStrA(parser[4].str()).map(data);
 		}
-		else if (parser(" %1://%2%%[/](*)*3 ", baseUrlFormat)) {
+		else if (parser(" %[a-zA-Z0-9]1://%[a-zA-Z0-9-._:]2%%[/](*)[^> ]3 ", baseUrlFormat)) {
 
 			data = baseUrlFormat;
 			protocol = ConstStrA(parser[1].str()).map(data);
@@ -31,6 +31,9 @@ namespace BredyHttpSrv {
 			path = ConstStrA(parser[3].str()).map(data);
 			targetVPath = ConstStrA();
 
+		}
+		else {
+			throw MappingSyntaxError(THISLOCATION, baseUrlFormat);
 		}
 		if (host == "%") {
 			if (unreg)
@@ -193,6 +196,11 @@ namespace BredyHttpSrv {
 	void HostMapper::MappingExistException::message(ExceptionMsg &msg) const
 	{
 		msg("Mapping already exists for the host %1") << host;
+	}
+
+	void HostMapper::MappingSyntaxError::message(ExceptionMsg &msg) const
+	{
+		msg("Host mapping - syntax error: %1") << line;
 	}
 
 }

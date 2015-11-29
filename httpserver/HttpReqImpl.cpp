@@ -679,6 +679,10 @@ ITCPServerConnHandler::Command  HttpReqImpl::finishReadHeader() {
 		return errorPageKA(404);
 	}
 
+	if (vpath.empty()) {
+		redirect("+/");
+		return processHandlerResponse(0);
+	}
 
 	//check connection
 	HeaderValue strconn = getHeaderField(fldConnection);

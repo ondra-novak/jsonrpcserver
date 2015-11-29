@@ -249,6 +249,9 @@ void AbstractServerMain::readMainConfig(const IniConfig& cfg) {
 	for (int i = 0; sect.get(stmp, "baseUrl", i); i++) {
 		hostMappingUrls.add(stmp);
 	}
+	for (int i = 0; sect.get(stmp, "mapHost", i); i++) {
+		hostMappingUrls.add(stmp);
+	}
 	serverConfig.newThreadTimeout = 0;
 	serverConfig.threadIdleTimeout = 120000;
 	sect.required(serverConfig.maxThreads,"threads");
