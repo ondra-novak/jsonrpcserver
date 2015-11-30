@@ -1,6 +1,6 @@
 #include "abstractWebSockets.tcc"
-#include "lightspeed\base\memory\dynobject.h"
-#include "lightspeed\base\streams\secureRandom.h"
+#include "lightspeed/base/memory/dynobject.h"
+#include "lightspeed/base/streams/secureRandom.h"
 
 namespace BredyHttpSrv {
 
