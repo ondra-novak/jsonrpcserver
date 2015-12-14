@@ -519,12 +519,6 @@ JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA met
 		try {
 			//call method
 			result.result = call(&rq);
-			//call global handlers (called only if success)
-			for (HandlerMap::Iterator iter = globalHandlers.getFwIter(); iter.hasItems();) {
-				IRpcCall &gcall = *(iter.getNext().value.get());
-				gcall(&rq);
-			}
-			//set error to NULL
 			result.error = f->newNullNode();
 			//set new context
 			result.newContext = rq.contextOut;
@@ -618,13 +612,13 @@ JSON::PNode JsonRpc::rpcMulticallN(RpcRequest *rq) {
 
 }
 
-void JsonRpc::registerGlobalHandler(ConstStrA methodUID, const IRpcCall & method) {
-	Str m = strings(methodUID);
-	globalHandlers(m) = method.clone();
+void JsonRpc::registerGlobalHandler(ConstStrA , const IRpcCall & ) {
+	//no longer supported
+	throwUnsupportedFeature(THISLOCATION,this,"registerGlobalHandler");
 }
-void JsonRpc::eraseGlobalHandler(ConstStrA methodUID) {
-	globalHandlers.erase(methodUID);
-
+void JsonRpc::eraseGlobalHandler(ConstStrA ) {
+	//no longer supported
+	throwUnsupportedFeature(THISLOCATION,this,"unregisterGlobalHandler");
 }
 
 JsonRpc::JsonRpc():maxRequestSize(4*1024*1024) {
