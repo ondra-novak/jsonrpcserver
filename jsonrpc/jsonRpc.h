@@ -16,15 +16,15 @@
 #include "lightspeed/base/containers/stringpool.h"
 #include "lightspeed/base/containers/map.h"
 #include "lightspeed/base/memory/sharedPtr.h"
+#include "ijsonrpc.h"
 #include "lightspeed/base/containers/set.h"
 
-#include "ijsonrpcver.h"
 namespace jsonsrv {
 
 using namespace BredyHttpSrv;
 using namespace LightSpeed;
 
-class JsonRpc : public IHttpHandler, public IJsonRpcVer
+class JsonRpc : public IHttpHandler, public IJsonRpc
 {
 	struct CmpMethodPrototype {
 		bool operator()(ConstStrA a, ConstStrA b) const;
@@ -64,12 +64,6 @@ public:
     virtual void setRequestMaxSize(natural bytes);
     virtual RpcError onException(JSON::IFactory *json, const std::exception &e);
 
-	virtual void registerMethod(natural ver, ConstStrA method, const IRpcCall & handler);
-    virtual void setHelp(ConstStrA method, ConstStrA text);
-    virtual void unsetHelp(ConstStrA method);
-    virtual CallResult callMethod(IHttpRequest *httpRequest, natural version, ConstStrA methodName, JSON::INode *args, JSON::INode *context, JSON::INode *id);
-	virtual void removeMethod(natural ver, ConstStrA method);
-
 
 
 protected:
@@ -81,6 +75,7 @@ protected:
     HandlerMap methodMap;
     MethodHelp methodHelp;
     ObsoleteMethods obsoleteMap;
+    HandlerMap globalHandlers;
     HandlerMap statHandlerMap;
     Pointer<IJsonRpcLogObject> logObject;
     natural maxRequestSize;
