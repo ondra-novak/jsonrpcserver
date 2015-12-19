@@ -507,7 +507,7 @@ natural HttpReqImpl::dataReady() const {
 
 natural HttpReqImpl::forwardRequest(ConstStrA vpath, IHttpHandler **h) {
 	IHttpHandler *hx;
-	natural r = callHandler(path,&hx);
+	natural r = callHandler(vpath,&hx);
 	if (hx != 0) curHandler = hx;
 	if (h) *h = hx;
 	return r;
@@ -751,7 +751,7 @@ ITCPServerConnHandler::Command  HttpReqImpl::processHandlerResponse(natural res)
 	attachStatus = IHttpHandler::stReject;
 	//depend on whether headers has been sent
 	if (bHeaderSent) {
-		//in case of 100 response, keep connectnion online
+		//in case of 100 response, keep connection on-line
 		if (res == 100) {
 			if (!isInputAvailable()) {
 				res = curHandler->onData(*this);

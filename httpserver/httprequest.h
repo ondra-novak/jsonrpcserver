@@ -334,7 +334,7 @@ using namespace LightSpeed;
 		*
 		* @note Although the vpath is rewritten, absolute path of the request is unchanged. Because
 		*  handlers should rely on vpath, this should not be an issue, however keep in mind that
-		*  vpath no longer match to absolute path.
+		*  vpath no longer match the absolute path.
 		*  
 		*/
 		virtual natural callHandler(ConstStrA vpath, IHttpHandler **h = 0) = 0;
@@ -342,9 +342,9 @@ using namespace LightSpeed;
 		///Forwards request to another handler
 		/** Function is useful to handle path rewriting
 		 *
-		 * @param vpath new vpath. Handler will be selected by virtual path mapping.
-		 * @param h pointer to a variable which will receive pointer to chosen handler. Pointer can be
-		 *  nullptr, in this case, no value is stored. If no handler matches to specified vpath, nullptr
+		 * @param vpath new vpath. Handler will be selected by the virtual path mapping.
+		 * @param h pointer to a variable which will receive pointer to the chosen handler. Pointer can be
+		 *  nullptr - in this case, no value is stored. If no handler matches to specified vpath, nullptr
 		 *  is stored
 		 * @return a value returned by the handler after execution.
 		 *
@@ -354,8 +354,8 @@ using namespace LightSpeed;
 		 * @note current handler will not be executed again recursively
 		 *
 		 * @note Although the vpath is rewritten, absolute path of the request is unchanged. Because
-		 *  handlers should rely on vpath, this should not be an issue, however keep in mind that
-		 *  vpath no longer match to absolute path.
+		 *  handlers should rely on the vpath, this should not be an issue, however keep in mind that
+		 *  vpath no longer match the absolute path.
 		 *
 		 */
 		 virtual natural forwardRequest(ConstStrA vpath, IHttpHandler **h = 0) = 0;
