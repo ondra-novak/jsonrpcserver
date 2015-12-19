@@ -1,6 +1,6 @@
 #include "hostMapper.h"
-#include "lightspeed\base\text\textParser.tcc"
-#include "lightspeed\base\memory\smallAlloc.h"
+#include "lightspeed/base/text/textParser.tcc"
+#include "lightspeed/base/memory/smallAlloc.h"
 
 namespace BredyHttpSrv {
 

@@ -1,8 +1,8 @@
 #pragma once
-#include "lightspeed\base\containers\constStr.h"
-#include "lightspeed\base\containers\string.h"
-#include "lightspeed\base\containers\stringKey.h"
-#include "lightspeed\base\containers\map.h"
+#include "lightspeed/base/containers/constStr.h"
+#include "lightspeed/base/containers/string.h"
+#include "lightspeed/base/containers/stringKey.h"
+#include "lightspeed/base/containers/map.h"
 
 
 

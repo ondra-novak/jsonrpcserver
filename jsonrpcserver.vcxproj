@@ -104,6 +104,7 @@
     <ClInclude Include="jsonrpc\restHandler.h" />
     <ClInclude Include="jsonrpc\rpc.js.h" />
     <ClInclude Include="jsonrpc\rpchandler.h" />
+    <ClInclude Include="jsonrpc\rpcnotify.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="httpserver\abstractWebSockets.cpp" />

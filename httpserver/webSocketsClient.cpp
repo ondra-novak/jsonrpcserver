@@ -1,5 +1,5 @@
 #include "webSocketsClient.h"
-#include "lightspeed\base\exceptions\httpStatusException.h"
+#include "lightspeed/base/exceptions/httpStatusException.h"
 
 namespace BredyHttpSrv {
 
