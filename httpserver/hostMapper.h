@@ -77,6 +77,7 @@ namespace BredyHttpSrv {
 		public:
 			LIGHTSPEED_EXCEPTIONFINAL;
 			NoMappingException(const ProgramLocation &loc, StringA path) :Exception(loc) {}
+			virtual ~NoMappingException() throw() {}
 		protected:
 			void message(ExceptionMsg &msg) const;
 			StringA path;
@@ -87,6 +88,7 @@ namespace BredyHttpSrv {
 			LIGHTSPEED_EXCEPTIONFINAL;
 			MappingExistException(const ProgramLocation &loc, StringA host) :Exception(loc),host(host) {}
 			ConstStrA getHost() const;
+			virtual ~MappingExistException() throw() {}
 		protected:
 			StringA host;
 			void message(ExceptionMsg &msg) const;
@@ -97,6 +99,7 @@ namespace BredyHttpSrv {
 			LIGHTSPEED_EXCEPTIONFINAL;
 			MappingSyntaxError(const ProgramLocation &loc, StringA line) :Exception(loc), line(line) {}
 			ConstStrA getLine() const;
+			virtual ~MappingSyntaxError() throw() {}
 		protected:
 			StringA line;
 			void message(ExceptionMsg &msg) const;
