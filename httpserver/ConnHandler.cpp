@@ -155,14 +155,27 @@ natural ConnHandler::callHandler(HttpReqImpl &rq, ConstStrA vpath, IHttpHandler 
 }
 
 
+static Bin::natural32 fnv1a(ConstStrA text) {
+	Bin::natural32 hash = 2166136261;
+	for (ConstStrA::Iterator iter = text.getFwIter(); iter.hasItems();) {
+		byte b = (byte)iter.getNext();
+		hash = hash ^ b;
+		hash = hash * 16777619;
+	}
+	return hash;
+}
 
 ConnContext::ConnContext(ConnHandler &owner, const NetworkAddress &addr)
 	:HttpReqImpl(owner.serverIdent, owner.busySemaphore), owner(owner) {
+	
 	natural contextId = lockInc(contextCounter);
 	peerAddr = addr;
 
+	buildPeerRealAddr();
+	Bin::natural32 peerIdent = fnv1a(peerRealAddrStr);
+
 	TextFormatBuff<char, StaticAlloc<100> > fmt;
-	fmt("Http:%1") << contextId;
+	fmt("Http:%{08}1:%2") << setBase(16) << peerIdent << setBase(10) << contextId;
 	ctxName = fmt.write();
 
 
@@ -349,17 +362,19 @@ void ConnContext::clear()
 
 LightSpeed::ConstStrA ConnContext::getPeerRealAddr() const
 {
-	if (peerRealAddrStr.empty()) {
-		StringA ipport = getPeerAddrStr();
-		natural sep = ipport.findLast(':');
-		ConstStrA ip = ipport.head(sep);
-		HeaderValue proxies = getHeaderField(fldXForwardedFor);
-		if (proxies.defined)
-			peerRealAddrStr = owner.getRealAddr(ip, proxies);
-		else
-			peerRealAddrStr = ip;
-	}
 	return peerRealAddrStr;
+}
+
+void ConnContext::buildPeerRealAddr() const
+{
+	StringA ipport = getPeerAddrStr();
+	natural sep = ipport.findLast(':');
+	ConstStrA ip = ipport.head(sep);
+	HeaderValue proxies = getHeaderField(fldXForwardedFor);
+	if (proxies.defined)
+		peerRealAddrStr = owner.getRealAddr(ip, proxies);
+	else
+		peerRealAddrStr = ip;
 }
 
 }

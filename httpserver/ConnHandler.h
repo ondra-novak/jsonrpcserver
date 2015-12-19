@@ -112,6 +112,8 @@ public:
 
 	virtual ConstStrA getPeerRealAddr() const;
 
+	void buildPeerRealAddr() const;
+
 };
 
 } /* namespace jsonsvc */
