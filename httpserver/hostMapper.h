@@ -76,7 +76,7 @@ namespace BredyHttpSrv {
 		class NoMappingException : public Exception {
 		public:
 			LIGHTSPEED_EXCEPTIONFINAL;
-			NoMappingException(const ProgramLocation &loc, StringA path) :Exception(loc) {}
+			NoMappingException(const ProgramLocation &loc, StringA path) :Exception(loc),path(path) {}
 			virtual ~NoMappingException() throw() {}
 		protected:
 			void message(ExceptionMsg &msg) const;

@@ -902,6 +902,15 @@ void HttpReqImpl::attachThread( natural status )
 	control.getUserSleeper()->wakeUp(0);
 }
 
+bool HttpReqImpl::mapHost(ConstStrA , ConstStrA &)
+{
+
+	//base implementation doesn't support host mapping, so function
+	//doesn't change anything and just returns success - this makes 1:1
+	//mapping despite on which host was specified.
+	return true;
+}
+
 void HttpReqImpl::closeOutput() {
 	flush();
 	finishChunk();

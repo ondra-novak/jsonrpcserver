@@ -86,7 +86,19 @@ public:
 
 	virtual void setMaxPostSize(natural bytes) ;
 	virtual void attachThread(natural status);
-	virtual bool mapHost(ConstStrA host, ConstStrA &vpath) { return true; }
+	///converts host and path to the vpath
+	/**
+	 @param host host read from the request
+	 @param vpath original path. Function replaces value with new vpath. In case
+	   that vpath is not part of original path, function must allocate string 
+	   somewhere in the instance of the request and keep it until request is destroyed
+	   or until the function is called again
+
+	@retval true successfully mapped
+	@retval false mapping impossible. In this case, request is rejected with 
+		the error 404 without passing it to the handler map
+	 */
+	virtual bool mapHost(ConstStrA host, ConstStrA &vpath);
 
 	ITCPServerConnHandler::Command  onUserWakeup();
 
