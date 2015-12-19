@@ -10,6 +10,7 @@
 #include "abstractWebSockets.h"
 #include <lightspeed/base/streams/random.h>
 #include <lightspeed/mt/threadId.h>
+#include "lightspeed/base/timestamp.h"
 
 namespace BredyHttpSrv {
 
