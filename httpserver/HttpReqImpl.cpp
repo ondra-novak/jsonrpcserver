@@ -517,7 +517,7 @@ natural HttpReqImpl::forwardRequest(ConstStrA vpath, IHttpHandler **h) {
 
 
 void HttpReqImpl::finishChunk() {
-	if (!bNeedContinue) {
+	if (!bNeedContinue && !closeConn) {
 		while (remainPostData > 0) {
 			char buff[256];
 			read(buff,256);
@@ -672,18 +672,6 @@ ITCPServerConnHandler::Command  HttpReqImpl::finishReadHeader() {
 	isHeadMethod = ConstStrA(method) == "HEAD";
 	closeConn = httpMinVer == 0;
 
-	//check host
-	ConstStrA vpath = path;
-	HeaderValue host = getHeaderField(fldHost);
-	if (!mapHost(host, vpath)) {
-		return errorPageKA(404);
-	}
-
-	if (vpath.empty()) {
-		redirect("+/");
-		return processHandlerResponse(0);
-	}
-
 	//check connection
 	HeaderValue strconn = getHeaderField(fldConnection);
 	if (strconn.defined) {
@@ -720,6 +708,17 @@ ITCPServerConnHandler::Command  HttpReqImpl::finishReadHeader() {
 		bNeedContinue = false;
 	}
 
+	//check host
+	ConstStrA vpath = path;
+	HeaderValue host = getHeaderField(fldHost);
+	if (!mapHost(host, vpath)) {
+		return errorPageKA(404);
+	}
+
+	if (vpath.empty()) {
+		redirect("+/");
+		return processHandlerResponse(0);
+	}
 
 
 	//find handler
