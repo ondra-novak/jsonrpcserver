@@ -218,10 +218,9 @@ void HttpReqImpl::sendHeaders() {
 		useChunked = false;
 		remainPostData = naturalNull;
 		switchedProtocol = true;
-		LS_LOG.progress("%7 - %3 %4 HTTP/%1.%2 %5 %6")
-				<< httpMajVer << httpMajVer << ConstStrA(method)
-				<< ConstStrA(path) << statusCode << statusMsgStr
-				<< getIfc<IHttpPeerInfo>().getPeerRealAddr();
+		TimeStamp reqEndTime = TimeStamp::now();
+		natural reqTime = (reqEndTime - reqBeginTime).getMilis();
+		logRequest(reqTime);
 	}
 
 	for (HeaderMap::Iterator iter = responseHdrs.getFwIter(); iter.hasItems();) {
@@ -710,7 +709,7 @@ ITCPServerConnHandler::Command  HttpReqImpl::finishReadHeader() {
 
 	//check host
 	ConstStrA vpath = path;
-	HeaderValue host = getHeaderField(fldHost);
+	host = getHeaderField(fldHost);
 	if (!mapHost(host, vpath)) {
 		return errorPageKA(404);
 	}
@@ -821,12 +820,9 @@ void HttpReqImpl::finish() {
 	}
 	if (!method.empty()) {
 		TimeStamp reqEndTime = TimeStamp::now();
-		LogObject(THISLOCATION).progress("%7 - %3 %4 HTTP/%1.%2 %5 %6 %8 (%9 ms)")
-				<< httpMajVer << httpMajVer << ConstStrA(method)
-				<< ConstStrA(path) << statusCode << statusMsg
-				<< getIfc<IHttpPeerInfo>().getPeerRealAddr()
-				<< requestName
-				<< (reqEndTime - reqBeginTime).getMilis();
+		natural reqTime = (reqEndTime - reqBeginTime).getMilis();
+		logRequest(reqTime);
+
 
 	}
 	clear();
@@ -922,6 +918,17 @@ void HttpReqImpl::closeOutput() {
 
 void HttpReqImpl::setRequestName(ConstStrA name) {
 	requestName = responseHdrPool.add(name);
+}
+
+void HttpReqImpl::logRequest(natural reqTime)
+{
+	LogObject(THISLOCATION).progress("%7 - %10 %3 %4 HTTP/%1.%2 %5 %6 %8 (%9 ms)")
+		<< httpMajVer << httpMajVer << ConstStrA(method)
+		<< ConstStrA(path) << statusCode << statusMsg
+		<< getIfc<IHttpPeerInfo>().getPeerRealAddr()
+		<< requestName
+		<< reqTime
+		<< host;
 }
 
 }

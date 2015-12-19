@@ -51,6 +51,9 @@ public:
     virtual natural write(const void *buffer,  natural size);
 	virtual natural peek(void *buffer, natural size) const;
 	virtual void finish();
+
+	void logRequest(natural reqTime);
+
 	virtual bool canRead() const;
 	virtual bool canWrite() const;
 	virtual void flush();
@@ -152,6 +155,7 @@ protected:
 	POutputStream curOutput;
 
 	HdrStr method,path,protocol;
+	ConstStrA host;
 	Pointer<IHttpHandler> curHandler;
 	AllocPointer<IHttpHandlerContext> requestContext;
 	AllocPointer<IHttpHandlerContext> connectionContext;
