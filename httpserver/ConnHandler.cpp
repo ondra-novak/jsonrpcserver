@@ -105,10 +105,12 @@ ConnHandler::Command ConnHandler::onAccept(ITCPServerConnControl *controlObject,
 
 
 void ConnHandler::addSite(ConstStrA path, IHttpHandler* handler) {
+	Synchronized<RWLock::WriteLock> _(pathMapLock);
 	pathMap.addHandler(path,handler);
 }
 
 void ConnHandler::removeSite(ConstStrA path) {
+	Synchronized<RWLock::WriteLock> _(pathMapLock);
 	pathMap.removeHandler(path);
 }
 
@@ -130,15 +132,20 @@ protected:
 	SysTime begin;
 };
 
-natural ConnContext::callHandler(IHttpRequest &request, ConstStrA path, IHttpHandler **h) {
+natural ConnContext::callHandler(ConstStrA vpath, IHttpHandler **h) {
+	return owner.callHandler(*this, vpath, h);
+}
+natural ConnHandler::callHandler(HttpReqImpl &rq, ConstStrA vpath, IHttpHandler **h){
+	
+	Synchronized<RWLock::ReadLock> _(pathMapLock);
+	DurationMeasure __(this);
 
-	DurationMeasure _(&owner);
-	PathMapper::MappingIter iter = owner.pathMap.findPathMapping(path);
+	PathMapper::MappingIter iter = pathMap.findPathMapping(vpath);
 	while (iter.hasItems()) {
 		const PathMapper::Record &rc = iter.getNext();
-		ConstStrA vpath = path.offset(rc.key.length());
-		natural res = rc.value->onRequest(request,vpath);
-		if (request.headersSent() || res != 0) {
+		ConstStrA vpathmapped = vpath.offset(rc.key.length());
+		natural res = rc.value->onRequest(rq, vpathmapped);
+		if (rq.headersSent() || res != 0) {
 			if (h) *h = rc.value;
 			return res;
 		}
@@ -150,7 +157,7 @@ natural ConnContext::callHandler(IHttpRequest &request, ConstStrA path, IHttpHan
 
 
 ConnContext::ConnContext(ConnHandler &owner, const NetworkAddress &addr)
-	:HttpReqImpl(owner.baseUrl,owner.serverIdent, owner.busySemaphore), owner(owner) {
+	:HttpReqImpl(owner.serverIdent, owner.busySemaphore), owner(owner) {
 	natural contextId = lockInc(contextCounter);
 	peerAddr = addr;
 
@@ -246,6 +253,39 @@ ConstStrA ConnHandler::getRealAddr(ConstStrA ip, ConstStrA proxies)
 
 }
 
+StringKey<StringA> ConnHandler::mapHost(ConstStrA host, ConstStrA vpath)
+{
+	Synchronized<RWLock::ReadLock> _(pathMapLock);
+	return hostMap.mapRequest(host, vpath);
+}
+
+void ConnHandler::mapHost(ConstStrA mapLine)
+{
+	Synchronized<RWLock::WriteLock> _(pathMapLock);
+	hostMap.registerUrl(mapLine);
+
+}
+
+StringA ConnHandler::getBaseUrl(ConstStrA host)
+{
+	Synchronized<RWLock::ReadLock> _(pathMapLock);
+	return hostMap.getBaseUrl(host);
+
+}
+
+void ConnHandler::unmapHost(ConstStrA mapLine)
+{
+	Synchronized<RWLock::WriteLock> _(pathMapLock);
+	hostMap.unregisterUrl(mapLine);
+}
+
+LightSpeed::StringA ConnHandler::getAbsoluteUrl(ConstStrA host, ConstStrA curPath, ConstStrA relpath)
+{
+	Synchronized<RWLock::ReadLock> _(pathMapLock);
+	return hostMap.getAbsoluteUrl(host, curPath, relpath);
+
+}
+
 ConstStrA ConnContext::getPeerAddrStr() const {
 	if (peerAddrStr.empty()) peerAddrStr = peerAddr.asString(false);
 	return peerAddrStr;
@@ -254,6 +294,38 @@ ConstStrA ConnContext::getPeerAddrStr() const {
 
 natural ConnContext::getSourceId() const {
 	return controlObject->getSourceId();
+}
+
+bool ConnContext::mapHost(ConstStrA host, ConstStrA &vpath)
+{
+	try {
+		storedVPath = owner.mapHost(host, vpath);
+		vpath = storedVPath;
+		return true;
+	}
+	catch (HostMapper::NoMappingException &) {
+		return false;
+	}
+}
+
+ConstStrA ConnContext::getBaseUrl() const
+{
+	HeaderValue host = getHeaderField(fldHost);
+	return storedBaseUrl = owner.getBaseUrl(host);
+}
+
+StringA ConnContext::getAbsoluteUrl() const
+{
+	HeaderValue host = getHeaderField(fldHost);
+	ConstStrA path = getPath();
+	return owner.getAbsoluteUrl(host, path, ConstStrA());
+}
+
+StringA ConnContext::getAbsoluteUrl(ConstStrA relpath) const
+{
+	HeaderValue host = getHeaderField(fldHost);
+	ConstStrA path = getPath();
+	return owner.getAbsoluteUrl(host, path, relpath);
 }
 
 void ConnContext::setControlObject(Pointer<ITCPServerConnControl> controlObject) {

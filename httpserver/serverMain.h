@@ -107,11 +107,12 @@ protected:
 
 protected:
     typedef AutoArray<natural> PortList;
+	typedef  AutoArray<StringA> HostList;
 	natural port;
 	PortList otherPorts;
+	HostList hostMappingUrls;
 	HttpServer::Config serverConfig;
 	bool started;
-	StringA baseUrl;
 	StringA serverIdent;
 	lnatural exceptSumTm;
 	StringA livelog;
@@ -122,7 +123,7 @@ protected:
 	String cfgPath;
 	StringA usergroup;
 	FilePath appPath;
-
+	
 
 
 	void readMainConfig(const IniConfig &cfg);

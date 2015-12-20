@@ -12,7 +12,6 @@
 namespace BredyHttpSrv {
 
 
-
 void PathMapper::addHandler(ConstStrA path, IHttpHandler* h) {
 
 	bool found = false;
@@ -57,9 +56,14 @@ const PathMapper::Record& PathMapper::MappingIter::peek() {
 }
 
 void PathMapper::MappingIter::fetchNext() {
-	natural p = path.findLast('/');
-	if (p == naturalNull) fetched = 0;
+	if (path.empty()) {
+		fetched = 0;
+	}
 	else {
+		natural p = path.findLast('/');
+		if (p == naturalNull) {
+			p = 0;
+		}
 		path = path.head(p);
 		fetchFirst();
 	}

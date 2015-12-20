@@ -24,9 +24,9 @@ public:
 	JsonRpcWebsocketsConnection * const owner;
 
 protected:
-	virtual ConstStrA getMethod() {return "WS";}
-	virtual ConstStrA getPath() {return r->getPath();}
-	virtual ConstStrA getProtocol() {return r->getProtocol();}
+	virtual ConstStrA getMethod() const {return "WS";}
+	virtual ConstStrA getPath() const {return r->getPath();}
+	virtual ConstStrA getProtocol() const {return r->getProtocol();}
 	virtual HeaderValue getHeaderField(ConstStrA field) const {return r->getHeaderField(field);}
 	virtual HeaderValue getHeaderField(HeaderField field) const {return r->getHeaderField(field);}
 	virtual bool enumHeader(HdrEnumFn fn) const {return r->enumHeader(fn);}
@@ -49,8 +49,7 @@ protected:
 	virtual void finish() {}
 	virtual bool headersSent() const {return true;}
 	virtual natural callHandler(ConstStrA , IHttpHandler ** = 0) {return 0;}
-	virtual natural callHandler(IHttpRequest &, IHttpHandler ** = 0) {return 0;}
-	virtual natural forwardRequest(ConstStrA ) {return 0;}
+	virtual natural forwardRequest(ConstStrA, IHttpHandler ** = 0) { return 0; }
 	virtual bool keepAlive() const {return true;}
 	virtual PNetworkStream getConnection() {return nil;}
 	virtual void setRequestContext(IHttpHandlerContext *context) {
@@ -85,6 +84,10 @@ protected:
 		if (!x) x = r->proxyInterface(p);
 		return x;
 	}
+
+	virtual StringA getAbsoluteUrl() const { return r->getAbsoluteUrl(); }
+	virtual StringA getAbsoluteUrl(ConstStrA relpath) const { return r->getAbsoluteUrl(relpath); }
+
 
 
 	AllocPointer<IHttpHandlerContext> rctx;

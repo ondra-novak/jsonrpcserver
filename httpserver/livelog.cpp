@@ -251,7 +251,7 @@ namespace BredyHttpSrv {
 		ConstStrA levelDesc = parser.getPath();
 
 		if (levelDesc.empty()) {
-			request.redirect(StringA(request.getPath()+ConstStrA("/")));
+			request.redirect("+/");
 			return stOK;
 		}
 

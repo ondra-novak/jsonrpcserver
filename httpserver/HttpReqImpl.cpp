@@ -135,10 +135,9 @@ static ConstStrA getStatusMessage(natural status) {
 	return ConstStrA("Unknown status code");
 }
 
-HttpReqImpl::HttpReqImpl(ConstStrA baseUrl, ConstStrA serverIdent, Semaphore &busySemaphore)
+HttpReqImpl::HttpReqImpl(ConstStrA serverIdent, Semaphore &busySemaphore)
 : inout(0)
 , serverIdent(serverIdent)
-, baseUrl(baseUrl)
 , httpMajVer(1)
 , httpMinVer(0)
 , bHeaderSent(false)
@@ -153,15 +152,15 @@ HttpReqImpl::HttpReqImpl(ConstStrA baseUrl, ConstStrA serverIdent, Semaphore &bu
 
 }
 
-ConstStrA HttpReqImpl::getMethod() {
+ConstStrA HttpReqImpl::getMethod() const {
 	return method;
 }
 
-ConstStrA HttpReqImpl::getPath() {
+ConstStrA HttpReqImpl::getPath() const {
 	return path;
 }
 
-ConstStrA HttpReqImpl::getProtocol() {
+ConstStrA HttpReqImpl::getProtocol() const {
 	return protocol;
 }
 
@@ -219,10 +218,9 @@ void HttpReqImpl::sendHeaders() {
 		useChunked = false;
 		remainPostData = naturalNull;
 		switchedProtocol = true;
-		LS_LOG.progress("%7 - %3 %4 HTTP/%1.%2 %5 %6")
-				<< httpMajVer << httpMajVer << ConstStrA(method)
-				<< ConstStrA(path) << statusCode << statusMsgStr
-				<< getIfc<IHttpPeerInfo>().getPeerRealAddr();
+		TimeStamp reqEndTime = TimeStamp::now();
+		natural reqTime = (reqEndTime - reqBeginTime).getMilis();
+		logRequest(reqTime);
 	}
 
 	for (HeaderMap::Iterator iter = responseHdrs.getFwIter(); iter.hasItems();) {
@@ -309,11 +307,13 @@ void HttpReqImpl::status(natural code, ConstStrA msg) {
 	statusMsg = responseHdrPool.add(msg);
 }
 void HttpReqImpl::errorPage(natural code, ConstStrA msg, ConstStrA expl) {
-	if (msg.empty()) msg = getStatusMessage(code);
-	SeqFileOutput f(this);
-	if (msg.empty()) msg = getStatusMessage(code);
-	PrintTextA print(f);
 	if (!bHeaderSent) {
+		if (msg.empty()) msg = getStatusMessage(code);
+		SeqFileOutput f(this);
+		if (msg.empty()) msg = getStatusMessage(code);
+		PrintTextA print(f);
+		//clear headers - they can be damaged
+		responseHdrs.clear();
 		status(code,msg);
 		if (code == 204 || code == 205 || code == 304) {
 			header(fldContentLength,"0");
@@ -322,42 +322,38 @@ void HttpReqImpl::errorPage(natural code, ConstStrA msg, ConstStrA expl) {
 		} else {
 			closeConn = true;
 		}
+		print("<html><head><title>%1 %2</title></head><body><h1>%1 %2</h1>")
+				<< code << msg;
+		if (!expl.empty()) print("<pre>%1</pre>")<< expl;
+		print("<hr>");
+		print("<small><em>Powered by Bredy's JsonRpcServer - C++ http & jsonrpc server - <a href=\"https://github.com/ondra-novak/jsonrpcserver\">sources available</a></em></small>");
+		print("</body></html>");
 	}
-	print("<html><head><title>%1 %2</title></head><body><h1>%1 %2</h1>")
-		<< code << msg;
-	if (!expl.empty()) print("<pre>%3</pre>")<< expl;
-	print("<hr>");
-	print("<small><em>Powered by Bredy's JsonRpcServer - C++ http & jsonrpc server - <a href=\"https://github.com/ondra-novak/jsonrpcserver\">sources available</a></em></small>");
-	print("</body></html>");
+	else {
+		closeConn = true;
+	}
 }
 
-ConstStrA HttpReqImpl::getBaseUrl() const {
-	return baseUrl;
-}
 
 
 void HttpReqImpl::redirect(ConstStrA url, int code) {
-	if (code == 0)
-		code = 302;
+	if (code == 0) {
+		if (url.head(1) == ConstStrA('+')) code = 301;
+		else code = 307;
+	}
+
 
 	TextParser<char> parser;
 	if (parser("%[a-z]0://%",url)) {
 		header(fldLocation, url);
 	} else {
-		StringA totalurl ;
-		if (url.empty() || url[0] != '/') {
-			ConstStrA curPath = path;
-			natural qm = curPath.find('?');
-			if (qm != naturalNull) curPath = curPath.head(qm);
-			natural so = curPath.findLast('/');
-			if (so != naturalNull) curPath = curPath.head(so+1);
-			totalurl = getBaseUrl() + curPath + url;
-		}
-		else
-			totalurl = getBaseUrl()+url;
-		header(fldLocation, totalurl);
+		StringA absurl = getAbsoluteUrl(url);
+		header(fldLocation, absurl);
 	}
-	errorPage(code,ConstStrA(),url);
+	header(fldContentLength, "0");
+	status(code);
+	sendHeaders();
+
 }
 void HttpReqImpl::useHTTP11(bool use) {
 	httpMinVer = use ? 1 : 0;
@@ -506,25 +502,21 @@ natural HttpReqImpl::dataReady() const {
 	if(canRead() ) return inout->dataReady(); else return 0;
 }
 
-natural HttpReqImpl::callHandler(ConstStrA path, IHttpHandler **h) {
-	return callHandler(*this,path,h);
-}
 
-natural HttpReqImpl::callHandler(IHttpRequest& request, IHttpHandler **h) {
-	return callHandler(request,request.getPath(),h);
-}
 
-natural HttpReqImpl::forwardRequest(ConstStrA path) {
-	IHttpHandler *h;
-	natural r = callHandler(*this,path,&h);
-	if (h != 0) curHandler = h;
+natural HttpReqImpl::forwardRequest(ConstStrA vpath, IHttpHandler **h) {
+	IHttpHandler *hx;
+	natural r = callHandler(vpath,&hx);
+	if (hx != 0) curHandler = hx;
+	if (h) *h = hx;
 	return r;
 
 }
 
 
+
 void HttpReqImpl::finishChunk() {
-	if (!bNeedContinue) {
+	if (!bNeedContinue && !closeConn) {
 		while (remainPostData > 0) {
 			char buff[256];
 			read(buff,256);
@@ -668,7 +660,13 @@ ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
 
 ITCPServerConnHandler::Command  HttpReqImpl::finishReadHeader() {
 
+
 	TextParser<char,StaticAlloc<256> > parser;
+
+	//open output and input, we need stream to show error pages
+	outputClosed = false;
+	inputClosed = false;
+
 
 	isHeadMethod = ConstStrA(method) == "HEAD";
 	closeConn = httpMinVer == 0;
@@ -709,12 +707,23 @@ ITCPServerConnHandler::Command  HttpReqImpl::finishReadHeader() {
 		bNeedContinue = false;
 	}
 
+	//check host
+	ConstStrA vpath = path;
+	host = getHeaderField(fldHost);
+	if (!mapHost(host, vpath)) {
+		return errorPageKA(404);
+	}
+
+	if (vpath.empty()) {
+		redirect("+/");
+		return processHandlerResponse(0);
+	}
+
+
 	//find handler
 	IHttpHandler *h;
 	curHandler = nil;
-	outputClosed = false;
-	inputClosed = false;
-	natural res = callHandler(*this,path, &h);
+	natural res = callHandler( vpath, &h);
 	if (h == 0) return errorPageKA(404);
 	if (curHandler == nil) curHandler = h; //need this to correctly handle forward function
 	return processHandlerResponse(res);
@@ -740,7 +749,7 @@ ITCPServerConnHandler::Command  HttpReqImpl::processHandlerResponse(natural res)
 	attachStatus = IHttpHandler::stReject;
 	//depend on whether headers has been sent
 	if (bHeaderSent) {
-		//in case of 100 response, keep connectnion online
+		//in case of 100 response, keep connection on-line
 		if (res == 100) {
 			if (!isInputAvailable()) {
 				res = curHandler->onData(*this);
@@ -811,12 +820,9 @@ void HttpReqImpl::finish() {
 	}
 	if (!method.empty()) {
 		TimeStamp reqEndTime = TimeStamp::now();
-		LogObject(THISLOCATION).progress("%7 - %3 %4 HTTP/%1.%2 %5 %6 %8 (%9 ms)")
-				<< httpMajVer << httpMajVer << ConstStrA(method)
-				<< ConstStrA(path) << statusCode << statusMsg
-				<< getIfc<IHttpPeerInfo>().getPeerRealAddr()
-				<< requestName
-				<< (reqEndTime - reqBeginTime).getMilis();
+		natural reqTime = (reqEndTime - reqBeginTime).getMilis();
+		logRequest(reqTime);
+
 
 	}
 	clear();
@@ -891,6 +897,15 @@ void HttpReqImpl::attachThread( natural status )
 	control.getUserSleeper()->wakeUp(0);
 }
 
+bool HttpReqImpl::mapHost(ConstStrA , ConstStrA &)
+{
+
+	//base implementation doesn't support host mapping, so function
+	//doesn't change anything and just returns success - this makes 1:1
+	//mapping despite on which host was specified.
+	return true;
+}
+
 void HttpReqImpl::closeOutput() {
 	flush();
 	finishChunk();
@@ -903,6 +918,17 @@ void HttpReqImpl::closeOutput() {
 
 void HttpReqImpl::setRequestName(ConstStrA name) {
 	requestName = responseHdrPool.add(name);
+}
+
+void HttpReqImpl::logRequest(natural reqTime)
+{
+	LogObject(THISLOCATION).progress("%7 - %10 %3 %4 HTTP/%1.%2 %5 %6 %8 (%9 ms)")
+		<< httpMajVer << httpMajVer << ConstStrA(method)
+		<< ConstStrA(path) << statusCode << statusMsg
+		<< getIfc<IHttpPeerInfo>().getPeerRealAddr()
+		<< requestName
+		<< reqTime
+		<< host;
 }
 
 }

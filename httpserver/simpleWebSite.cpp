@@ -35,7 +35,7 @@ natural SimpleWebSite::onRequest(IHttpRequest& request,ConstStrA vpath) {
 		uri = vpath;
 	}
 	if (uri.empty()) {
-		request.redirect(StringA(request.getPath() + ConstStrA("/")+query));
+		request.redirect("+/");
 		return 0;
 	}
 	if (uri == ConstStrA("/")) {
@@ -78,26 +78,26 @@ natural SimpleWebSite::onRequest(IHttpRequest& request,ConstStrA vpath) {
 natural SimpleWebSite::serverFile(IHttpRequest& request, ConstStrW pathName, ConstStrA contentType, ConstStrA) {
 
 	IFileIOServices &svc = IFileIOServices::getIOServices();
-
-	PFolderIterator finfo = svc.getFileInfo(pathName);
-	ToString<lnatural> etag(finfo->getModifiedTime().asUnix(), 36);
-
-	HeaderValue v = request.getHeaderField(IHttpRequest::fldIfNoneMatch);
-	if (v.defined && v == etag) return stNotModified;
-
-	request.header(IHttpRequest::fldContentLength, ToString<lnatural>(finfo->getSize()));
-	request.header(IHttpRequest::fldETag, etag);
-	request.header(IHttpRequest::fldContentType,contentType);
-	if (!cacheStr.empty()) request.header(IHttpRequest::fldCacheControl, cacheStr);
-
 	try {
+
+		PFolderIterator finfo = svc.getFileInfo(pathName);
+		ToString<lnatural> etag(finfo->getModifiedTime().asUnix(), 36);
+
+		HeaderValue v = request.getHeaderField(IHttpRequest::fldIfNoneMatch);
+		if (v.defined && v == etag) return stNotModified;
+
+		request.header(IHttpRequest::fldContentLength, ToString<lnatural>(finfo->getSize()));
+		request.header(IHttpRequest::fldETag, etag);
+		request.header(IHttpRequest::fldContentType,contentType);
+		if (!cacheStr.empty()) request.header(IHttpRequest::fldCacheControl, cacheStr);
+
 		byte buff[4096];
 		ArrayRef<byte> abuff(buff,countof(buff));
 		SeqFileInput infile(pathName,0);
 		SeqFileOutput oup(&request);
 		oup.blockCopy(infile,abuff);
 	} catch (std::exception &e) {
-		request.errorPage(403,ConstStrA(),e.what());
+		request.errorPage(404,ConstStrA(),e.what());
 		LS_LOG.debug("Error reading: %1 - %2") << pathName << e.what();
 	}
 	return 0;

@@ -111,7 +111,7 @@ integer AbstractServerMain::startService() {
 	lg.note("Configuration: port=%1, maxThreads=%2, maxBusyThreads=%3") << port << serverConfig.maxThreads << serverConfig.maxBusyThreads;
 	lg.note("Configuration: newThreadTimeout=%1, threadIdleTimeout = %2") << serverConfig.newThreadTimeout << serverConfig.threadIdleTimeout;
 
-	HttpServer srv(baseUrl,serverIdent, serverConfig);
+	HttpServer srv(serverIdent, serverConfig);
 	natural res = onStartServer(srv);
 	if (res != 0) {
 		lg.fatal("onStartServer returned nonzero result: %1 - exiting") << res;
@@ -138,6 +138,15 @@ integer AbstractServerMain::startService() {
 		natural k = srv.addPort(port);
 		lg.progress("Added port (id:%2) : %1") << port << k;
 	}
+	for (HostList::Iterator iter = hostMappingUrls.getFwIter(); iter.hasItems();) {
+		StringA mapping = iter.getNext();
+		srv.mapHost(mapping);
+		lg.progress("Added mapping for url %1") << mapping;
+	}
+	//no longer needed
+	otherPorts.clear();
+	//no longer needed
+	hostMappingUrls.clear();
 
 #ifdef LIGHTSPEED_PLATFORM_LINUX
 	if (!usergroup.empty()) {
@@ -232,15 +241,22 @@ void AbstractServerMain::readMainConfig(const IniConfig& cfg) {
 	String logfile;
 	natural tmp;
 	StringA loglevel = "all";
+	StringA stmp;
 	sect.required(port, "port",0);
 	for (int i = 1; sect.get(tmp,"port",i); i++) {
 		otherPorts.add(tmp);
+	}
+	for (int i = 0; sect.get(stmp, "baseUrl", i); i++) {
+		hostMappingUrls.add(stmp);
+	}
+	for (int i = 0; sect.get(stmp, "mapHost", i); i++) {
+		hostMappingUrls.add(stmp);
 	}
 	serverConfig.newThreadTimeout = 0;
 	serverConfig.threadIdleTimeout = 120000;
 	sect.required(serverConfig.maxThreads,"threads");
 	sect.required(serverIdent,"serverIdent");
-	sect.required(baseUrl,"baseUrl");
+//	sect.required(baseUrl,"baseUrl");
 	sect.required(serverConfig.maxBusyThreads, "busyThreads");
 	sect.get(serverConfig.newThreadTimeout, "newThreadTimeout");
 	sect.get(serverConfig.threadIdleTimeout, "threadIdleTimeout");

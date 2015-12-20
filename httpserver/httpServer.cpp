@@ -22,8 +22,8 @@
 namespace BredyHttpSrv {
 
 
-HttpServer::HttpServer(StringA baseUrl, StringA serverIdent, const Config &config)
-	:BredyHttpSrv::ConnHandler(baseUrl, serverIdent, config.maxBusyThreads)
+HttpServer::HttpServer(StringA serverIdent, const Config &config)
+	:BredyHttpSrv::ConnHandler(serverIdent, config.maxBusyThreads)
 	 ,threadPool(config)
 	 ,tcplisten(*this,&threadPool)
 	 , trustedProxies(config.trustedProxies)

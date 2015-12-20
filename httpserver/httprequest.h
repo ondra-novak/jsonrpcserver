@@ -88,21 +88,27 @@ using namespace LightSpeed;
 		 * @retval GET this is ordinary GET method
 		 * @retval POST post method, form data can be read by getPostData()
 		 * @retval HEAD head method. Handler can process as GET method, but
-		 * 	  no output will be emited (only headers). this is directly handled
+		 * 	  no output will be produced (only headers). this is directly handled
 		 * 	  by method write()
 		 * @retval PUT method PUT. Handler must check Length and size of data
 		 *    returned by GetPostData(). Additional data must be read by
 		 *    read function. In this case canRead will return true.
+		 *
+		 * @note Sending data while the method HEAD is active causes an exception. 
+		 * This exception is then caught by the server's core and silently ignored 
+		 * to achieve required function.
 		 */
-		virtual ConstStrA getMethod() = 0;
+		virtual ConstStrA getMethod() const = 0;
 		///Retrieves path requested by header
-		virtual ConstStrA getPath() = 0;
+		virtual ConstStrA getPath() const = 0;
 		///Retrieves protocol
 		/**
 		 * @retval HTTP/1.0 request in HTTP/1.0 protocol
 		 * @retval HTTP/1.1 request in HTTP/1.1 protocol
+		 *
+		 * @note Server doesn't support HTTP/2.0 (yet)
 		 */
-		virtual ConstStrA getProtocol() = 0;
+		virtual ConstStrA getProtocol() const = 0;
 		///Retrieves header field
 		/**
 		 * @param field header field name. Note that field names are case sensitive
@@ -171,7 +177,7 @@ using namespace LightSpeed;
 		 * @param msg message (see: status() )
 		 * @param expl explanation, which appear on page
 		 *
-		 * After error page is shown, handler should exit immediatelly. No output should be emitted.
+		 * After error page is shown, handler should exit immediately. No output should be emitted.
 		 *
 		 * @note function ignores headers and status code set by functions header() and status(). It uses own headers.
 		 */
@@ -179,21 +185,59 @@ using namespace LightSpeed;
 		///Performs redirect
 		/**
 		 * @param url new url where to redirect
-		 * @param code define code use with the redirect. If default value used, temporary redirect is used. For pernament redirect use code 301
+		 * @param code define code use with the redirect. If default value used, temporary redirect is used (307) 
+		 *  
+		 * @note argument url can be relative. In that case, request's url is used. If url starts with
+		 * '/', then root of current host is returned (regardless on where the server is mapped). You can start
+		 * by various double-dots (..) to address parent directories
 		 *
-		 * @note argument url can be relative. In that case, server's baseURL
-		 * is used to compute absolute path
+		 * @note You can use "+/" as an argument to redirect into directory. In this case, default code is permanent redirect (301)
 		 *
-		 * @see getBaseURL
+		 * @code
+		 * request.redirect("+/") //append '/' to the url, repeat query. Also sets status to 301
+		 * @encode
+		 *
+		 * @see getAbsoluteUrl
 		 */
 		virtual void redirect(ConstStrA url, int code = 0) = 0;
 
 		///Retrieves base url (url for server's root)
 		/** Base url can be different than expected especially when
 		 * server runs behind the reverse proxy.
-		 * @return
+		 * @return base url
+		 *
+		 * @see getAbsoluteUrl
+		 *  
 		 */
 		virtual ConstStrA getBaseUrl() const = 0;
+		///Retrieves absolute url of the request
+		/**
+		 * Function also performs host-mapping to map host field to baseUrl, then it combines with request path
+		 * @return result should contain absolute URL of the request 
+		 */
+		virtual StringA getAbsoluteUrl() const = 0;
+		
+
+		///Calculates absolute url of a relative path
+		/*
+		 * @param relative path to the request. 
+		 * @return calculated absolute path 
+		 *
+		 * @note You can specify relpath by various ways
+		 *
+		 * empty string will return absolute URL of the current request
+		 *
+		 * relpath starting with '/' specifies absolute path for the current host. Note that vpath mapping
+		 * is applied, so if host is mapped to some vpath, you have to pretend that path to the absolute path.
+		 * Function then perform reversed host mapping to determine path relative to host's root
+		 *
+		 * relpath starting with '+/' will add slash and remain part of the string to the current path. This
+		 * also includes query string unless relpath also contains query 
+		 *
+		 *
+		 */
+		virtual StringA getAbsoluteUrl(ConstStrA relpath) const = 0;
+
 		///Enables HTTP/1.1
 		/**
 		 * By default server send replies in HTTP/1.0 protocol
@@ -270,31 +314,51 @@ using namespace LightSpeed;
 		 * @retval false headers has not been sent yet. You can add headers or change status code
 		 * @return
 		 */
-		virtual bool headersSent() const = 0;
+		virtual bool headersSent() const = 0;	
+
 		///Allows to call handler with new path
-		/**Function is useful to handle path rewrittng
+		/**Function is useful to handle path rewriting
+		*
+		* @param vpath new vpath. Handler will be selected by virtual path mapping.
+		* @param h pointer to a variable which will receive pointer to chosen handler. Pointer can be
+		*  nullptr, in this case, no value is stored. If no handler matches to specified vpath, nullptr
+		*  is stored
+		* @return a value returned by the handler after execution.
+		*
+		* Function doesn't provide the internal redirection. If the request need additional calls
+		* of the function onData, they are executed on the original handler. If you need to forward
+		* these call to the new handler, you should use stored pointer in the variable 'h' to
+		* execute onData() manually. You can also consider the function forwardRequest().
+		*
+		* @note current handler will not be executed again recursively
+		*
+		* @note Although the vpath is rewritten, absolute path of the request is unchanged. Because
+		*  handlers should rely on vpath, this should not be an issue, however keep in mind that
+		*  vpath no longer match the absolute path.
+		*  
+		*/
+		virtual natural callHandler(ConstStrA vpath, IHttpHandler **h = 0) = 0;
+
+		///Forwards request to another handler
+		/** Function is useful to handle path rewriting
 		 *
-		 * @param path new path. Handler will be choosen by mapping depend of this argument
-		 * @retval true handler has been executed
-		 * @retval false no handler found or all found handlers rejected the request
+		 * @param vpath new vpath. Handler will be selected by the virtual path mapping.
+		 * @param h pointer to a variable which will receive pointer to the chosen handler. Pointer can be
+		 *  nullptr - in this case, no value is stored. If no handler matches to specified vpath, nullptr
+		 *  is stored
+		 * @return a value returned by the handler after execution.
+		 *
+		 * Function also provides internal redirection, so additional calls of the function onData()
+		 * will be processed by the new handler instead of the original handler.
 		 *
 		 * @note current handler will not be executed again recursively
+		 *
+		 * @note Although the vpath is rewritten, absolute path of the request is unchanged. Because
+		 *  handlers should rely on the vpath, this should not be an issue, however keep in mind that
+		 *  vpath no longer match the absolute path.
+		 *
 		 */
-		virtual natural callHandler(ConstStrA path, IHttpHandler **h = 0) = 0;
-
-		///Allows to call handler with modified request
-		/**
-		 * Caller must implement own version of IHttpRequest. Function getPath() should return new path to perform handler mapping
-		 * @param request modified request. Class may refer to original request object. Note that handler will use write() functions to emit output. This
-		 * allows to implement translators, buffering, and so on.
-		 * @return true handler has been executed
-		 * @retval false no handler found or all found handlers rejected the request
-		 * @note current handler will not be executed again recursively
-		 */
-		virtual natural callHandler(IHttpRequest &request, IHttpHandler **h = 0) = 0;
-
-
-		virtual natural forwardRequest(ConstStrA path) = 0;
+		 virtual natural forwardRequest(ConstStrA vpath, IHttpHandler **h = 0) = 0;
 
 		///Contains information whether caller should close connection after request is processed
 		/**
@@ -305,20 +369,20 @@ using namespace LightSpeed;
 		 * @retval false connection will be closed. This  result is returned when
 		 *   HTTP/1.1 is disabled or when Connection header is set to close under  HTTP/1.1
 		 *
-		 *   By default, server also check input protocol header. In http/1.0 with no
+		 *   By default, server also checks input protocol header. In http/1.0 with no
 		 *   Connection field in output header function returns false, because server
 		 *   doesn't support keep-alive for HTTP/1.0 protocol. But handler can
-		 *   supply right headers to keep connection alive. If this emited in the header
+		 *   supply right headers to keep connection alive. If this emitted in the header
 		 *   field, function starts returning true and server will not close connection
 		 *   after handler returns.
 		 *
 		 *   When HTTP/1.1 is enabled, chunked transfer encoding is in effect. By default,
-		 *   server reports this in the headers and sets keepAlive to true. When there
+		 *   the server reports this in the headers and it sets keepAlive to true. When there
 		 *   is user header Transfer-Encoding, "chunked" is not enabled by default and
 		 *   handler must implement own keep-alive mechanism. If handler don't want to use
-		 *   keep-alive, it must emit header Connection: close. If request contains
-		 *   Connection: close and no Connection: close header is emited, server
-		 *   adds own header to ensure client, that connection will be closed
+		 *   keep-alive, it must emit header Connection: close. If the request contains
+		 *   Connection: close and no Connection: close header is emitted, server
+		 *   adds own header to assure the client that the connection will be closed.
 		 */
 		virtual bool keepAlive() const = 0;
 
@@ -545,6 +609,30 @@ using namespace LightSpeed;
 	public:
 		virtual void addSite(ConstStrA path, IHttpHandler *handler) = 0;
 		virtual void removeSite(ConstStrA path) = 0;
+
+		///Maps host to vpath
+		/**
+		 @param mapLine mapping in special format. There can be ether simple url, which
+		   is taken to create mapping from given url to server's root or you can use
+		   the following format
+		   
+		   "http://domain/path/path => /vpath/dir"
+
+		   which will create mapping host and path to the specified vpath. 
+
+		   For default mapping, use
+
+		   "http://%/path/path => /vpath/dir"
+
+		   @note there can by just one mapping per hostname!
+		   */
+
+		virtual void mapHost(ConstStrA mapLine) = 0;
+		///unmaps host
+		/**
+		 @param mapLine original definition, or any definition where host can be extracted
+		 */
+		virtual void unmapHost(ConstStrA mapLine) = 0;
 	};
 
 

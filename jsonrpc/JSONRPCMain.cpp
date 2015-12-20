@@ -112,9 +112,9 @@ integer AbstractJSONRPCServer::initService(const Args& args, SeqFileOutput serr)
 
 class JsonHttpServer: public JsonRpc, public BredyHttpSrv::HttpServer, public IJsonRpcLogObject {
 public:
-	JsonHttpServer(AbstractJSONRPCServer &owner, StringA baseUrl,
+	JsonHttpServer(AbstractJSONRPCServer &owner, 
 			StringA serverIdent, const Config &cfg, String logFileName)
-		:BredyHttpSrv::HttpServer(baseUrl, serverIdent,cfg),owner(owner),logFileName(logFileName)
+		:BredyHttpSrv::HttpServer(serverIdent,cfg),owner(owner),logFileName(logFileName)
 	{
 			addSite("/RPC",this);
 			setLogObject(this);
@@ -290,7 +290,7 @@ integer AbstractJSONRPCServer::startService() {
 	lg.note("Configuration: newThreadTimeout=%1, threadIdleTimeout = %2") << serverConfig.newThreadTimeout << serverConfig.threadIdleTimeout;
 	lg.note("Configuration: serverControl=%1, clientAppPath=%2") << serverControl << clientPage;
 
-	JsonHttpServer srv(*this,baseUrl,serverIdent,serverConfig,rpclogfile);
+	JsonHttpServer srv(*this,serverIdent,serverConfig,rpclogfile);
 	srv.openLog();
 	jsonrpcserver = &srv;
 	FilePath p(getAppPathname());
