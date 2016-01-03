@@ -110,7 +110,7 @@ void JsonRpcWebsocketsConnection::sendNotification(ConstStrA name, JSON::PNode a
 	this->sendTextMessage(msg,true);
 }
 
-Promise<JSON::PNode> JsonRpcWebsocketsConnection::callMethod(ConstStrA name, JSON::PNode arguments) {
+Future<JSON::PNode> JsonRpcWebsocketsConnection::callMethod(ConstStrA name, JSON::PNode arguments) {
 	Synchronized<FastLock> _(lock);
 	natural promiseId = nextPromiseId++;
 	JSON::PNode req = json("method",name)
@@ -119,8 +119,8 @@ Promise<JSON::PNode> JsonRpcWebsocketsConnection::callMethod(ConstStrA name, JSO
 	ConstStrA msg = json.factory->toString(*req);
 	this->sendTextMessage(msg,true);
 
-	Promise<JSON::PNode> promise;
-	waitingPromises.insert(promiseId,promise.createResult());
+	Future<JSON::PNode> promise;
+	waitingPromises.insert(promiseId,promise.getPromise());
 	return promise;
 }
 
@@ -146,9 +146,9 @@ void JsonRpcWebsocketsConnection::onTextMessage(ConstStrA msg) {
 	JSON::PNode req = json.factory->fromString(msg);
 	if (req->getPtr("result")) {
 		natural id = req["id"]->getUInt();
-		const Promise<JSON::PNode>::Result *pres = waitingPromises.find(id);
+		const Promise<JSON::PNode> *pres = waitingPromises.find(id);
 		if (pres == 0) return;
-		Promise<JSON::PNode>::Result p = *pres;
+		Promise<JSON::PNode> p = *pres;
 		waitingPromises.erase(id);
 		if (req["error"]->isNull()) p.resolve(req["result"]);
 		else p.reject(RpcError(THISLOCATION,req["error"]));

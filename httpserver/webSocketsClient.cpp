@@ -9,14 +9,14 @@ WebSocketClientConnection::WebSocketClientConnection(PNetworkStream &stream)
 	
 }
 
-Promise<void> WebSocketClientConnection::connectToServer(ConstStrA host, ConstStrA path, ConstStrA method /*= ConstStrA()*/, ConstStringT<HeaderLine> headers /*= ConstStringT<HeaderLine>()*/)
+Future<void> WebSocketClientConnection::connectToServer(ConstStrA host, ConstStrA path, ConstStrA method /*= ConstStrA()*/, ConstStringT<HeaderLine> headers /*= ConstStringT<HeaderLine>()*/)
 {
 	if (connected) {
 		throw AlreadyConnected(THISLOCATION);
 	}
 
-	Promise<void> retval;
-	connectResolution = retval.createResult();
+	Future<void> retval;
+	connectResolution = retval.getPromise();
 	
 	SeqTextOutA textOut(stream);
 	PrintTextA print(textOut);
