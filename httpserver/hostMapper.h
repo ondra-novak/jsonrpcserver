@@ -116,7 +116,7 @@ namespace BredyHttpSrv {
 
 			Mapping(StringA data, ConstStrA protocol, ConstStrA path, ConstStrA targetVPath)
 				:data(data), protocol(protocol), path(path), targetVPath(targetVPath) {};
-			Mapping():path("/") {}
+			Mapping():protocol("http"),path("/") {}
 		};
 
 
