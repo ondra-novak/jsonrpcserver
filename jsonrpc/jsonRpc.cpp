@@ -51,8 +51,11 @@ natural JsonRpc::onRequest(IHttpRequest& request, ConstStrA vpath) {
 		return loadHTMLClient(request);
 	} else if (request.getMethod() == "POST") {
 		return initJSONRPC(request);
-	} else {
-		return stMethodNotAllowed;
+	} else {		
+		initJSONRPC(request);
+		request.status(request.getMethod() == "OPTIONS"?stOK:stMethodNotAllowed);
+		request.sendHeaders();
+		return 0;
 	}
 }
 
@@ -74,7 +77,10 @@ natural JsonRpc::loadHTMLClient(IHttpRequest& request) {
 
 natural JsonRpc::initJSONRPC(IHttpRequest& request) {
 	request.header(IHttpRequest::fldContentType,"application/json");
-	request.header(IHttpRequest::fldAccessControlAllowOrigin,"*"); ///< enable XDR
+	request.header(IHttpRequest::fldAllow,"POST, GET, OPTIONS");
+	request.header(IHttpRequest::fldAccessControlAllowMethods, "POST, GET, OPTIONS");
+	request.header(IHttpRequest::fldAccessControlAllowHeaders, "Content-Type");
+	request.header(IHttpRequest::fldAccessControlAllowOrigin,"*");
 	return stContinue;
 }
 

@@ -73,6 +73,7 @@ using namespace LightSpeed;
 			fldUnknown,
 			fldUpgrade,
 			fldAccessControlAllowMethods,
+			fldAccessControlAllowHeaders,
 			fldXForwardedFor
 
 

@@ -57,6 +57,7 @@ static ConstStrA hdrfields[] = {
 		/*fldUnknown,*/ "Undefined",
 		/*fldUpgrade,*/ "Upgrade",
 		/*fldAccessControlAllowMethods,*/ "Access-Control-Allow-Methods",
+		/*fldAccessControlAllowHeaders,*/ "Access-Control-Allow-Headers",
 		/*fldXForwardedFor*/ "X-Forwarded-For"
 };
 
