@@ -54,10 +54,19 @@ namespace jsonsrv {
 			rpclogfilePath = p / rpclogfile;
 		}
 
-		init(rpclogfilePath, helpdirPath, clientPagePath);
+		Optional<StringA> corsOrigin;
+
+		bool corsEnable;
+		sect.get(corsEnable, "cors.enable");
+		if (corsEnable) {
+			sect.required(corsOrigin,"cors.allowoAigin");
+
+		}
+
+		init(rpclogfilePath, helpdirPath, clientPagePath, corsOrigin);
 	}
 
-	void JsonRpcServer::init( const FilePath &rpclogfilePath, const FilePath &helpdirPath, const FilePath &clientPagePath )
+	void JsonRpcServer::init( const FilePath &rpclogfilePath, const FilePath &helpdirPath, const FilePath &clientPagePath, const Optional<StringA> corsOrigin )
 	{
 		LogObject lg(THISLOCATION);
 		logFileName = rpclogfilePath;
@@ -79,6 +88,7 @@ namespace jsonsrv {
 		setClientPage(clientPagePath);
 		registerServerMethods(true);
 		registerStatHandler("server",RpcCall::create(this,&JsonRpcServer::rpcHttpStatHandler));
+		if (corsOrigin != nil) setCORSOrigin((StringA)corsOrigin);
 	}
 
 	void JsonRpcServer::logMethod( IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *logOutput )

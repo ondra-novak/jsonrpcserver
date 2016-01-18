@@ -52,6 +52,28 @@ public:
     void eraseMethod(ConstStrA methodName);
     void registerStatHandler(ConstStrA handlerName, const IRpcCall & method);
     void eraseStatHandler(ConstStrA handlerName);
+    ///Enables Cross Origin HTTP Request
+    /**
+     * @param enable true to enable, false to disable.
+     *
+     * @note You can specify CORS allow-origin. Default is '*' so every client can access the server
+     */
+    void enableCORS(bool enable);
+    ///Determines CORS allowed state
+    /**
+     * @retval true CORS is enabled
+     * @retval false CORS is disabled
+     */
+    bool isCORSEnabled() const;
+    ///Changes CORS origin
+    /**
+     * @param origin new CORS allow-origin. Function doesn't allow the CORS, you have to call enableCORS()
+     */
+    void setCORSOrigin(ConstStrA origin);
+    ///Retrieves current CORS origin<
+    ConstStrA getCORSOrigin() const;
+
+
 
     String getClientPage() const    {return clientPage;}
     void setClientPage(String clientPage){this->clientPage = clientPage;}
@@ -79,6 +101,9 @@ protected:
     HandlerMap statHandlerMap;
     Pointer<IJsonRpcLogObject> logObject;
     natural maxRequestSize;
+
+    bool corsEnabled;
+    StringA corsOrigin;
 
     JSON::PNode parseRequest(IHttpRequest& request, JSON::IFactory *factory);
     JSON::PFactory getFactory();

@@ -27,7 +27,8 @@ namespace jsonsrv {
 		 */
 		void init(const FilePath &rpclogfilePath,
 						const FilePath &helpdirPath,
-						const FilePath &clientPagePath);
+						const FilePath &clientPagePath,
+						const Optional<StringA> corsOrigin);
 
 		///Perform logRotate of the rpclog
 		void logRotate() {openLog();}
