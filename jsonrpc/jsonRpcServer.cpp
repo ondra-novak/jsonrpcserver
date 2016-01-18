@@ -37,43 +37,43 @@ namespace jsonsrv {
 
 
 		FilePath p(App::current().getAppPathname());
-		FilePath clientPagePath;
-		FilePath helpdirPath;
-		FilePath rpclogfilePath;
-
-		sect.get(clientPage,"clientPage");
+		Options opts;		
+		
+		sect.get(clientPage, "clientPage");
 		if (!clientPage.empty()) {
-			clientPagePath = p / clientPage;				
+			opts.clientPage = p / clientPage;				
 		}
 		sect.get(helpdir,"helpDir");
 		if (!helpdir.empty()) {
-			helpdirPath = p / helpdir;
+			opts.helpDir = p / helpdir;
 		}
 		sect.get(rpclogfile,"rpcLog");
 		if (!rpclogfile.empty()) {
-			rpclogfilePath = p / rpclogfile;
+			opts.logFile = p / rpclogfile;
 		}
 
 		Optional<StringA> corsOrigin;
 
-		bool corsEnable;
+		bool corsEnable = false;
 		sect.get(corsEnable, "cors.enable");
 		if (corsEnable) {
-			sect.required(corsOrigin,"cors.allowoAigin");
+			opts.corsOrigin = StringA();
+			sect.required(opts.corsOrigin,"cors.allowoAigin");
 
 		}
+		sect.get(opts.allowNullOrigin, "allowNullOrigin");
 
-		init(rpclogfilePath, helpdirPath, clientPagePath, corsOrigin);
+		init(opts);
 	}
 
-	void JsonRpcServer::init( const FilePath &rpclogfilePath, const FilePath &helpdirPath, const FilePath &clientPagePath, const Optional<StringA> corsOrigin )
+	void JsonRpcServer::init(const Options &opts)
 	{
 		LogObject lg(THISLOCATION);
-		logFileName = rpclogfilePath;
+		logFileName = opts.logFile;
 		openLog();
-		if (!helpdirPath.empty()) {
+		if (!opts.helpDir.empty()) {
 			try {
-				PFolderIterator iter = IFileIOServices::getIOServices().openFolder(helpdirPath);
+				PFolderIterator iter = IFileIOServices::getIOServices().openFolder(opts.helpDir);
 				while (iter->getNext()) {
 					try {
 						loadHelp(iter->getFullPath());
@@ -85,10 +85,11 @@ namespace jsonsrv {
 				lg.warning("Unable to open help folder: %1") << e.getMessage();
 			}
 		}
-		setClientPage(clientPagePath);
+		setClientPage(opts.clientPage);
 		registerServerMethods(true);
 		registerStatHandler("server",RpcCall::create(this,&JsonRpcServer::rpcHttpStatHandler));
-		if (corsOrigin != nil) setCORSOrigin((StringA)corsOrigin);
+		if (opts.corsOrigin != nil) setCORSOrigin((StringA)opts.corsOrigin);
+		if (opts.allowNullOrigin) allowNullOrigin(opts.allowNullOrigin);
 	}
 
 	void JsonRpcServer::logMethod( IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *logOutput )

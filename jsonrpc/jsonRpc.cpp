@@ -78,10 +78,19 @@ natural JsonRpc::loadHTMLClient(IHttpRequest& request) {
 
 natural JsonRpc::initJSONRPC(IHttpRequest& request) {
 	request.header(IHttpRequest::fldContentType,"application/json");
-	if (corsEnabled) {
+	bool ce = corsEnabled;
+	ConstStrA co = corsOrigin;
+	if (_nullOrigin) {
+		HeaderValue hv = request.getHeaderField(IHttpRequest::fldOrigin);
+		if (hv == ConstStrA("null")) {
+			ce = true;
+			co = "*";
+		}
+	}
+	if (ce) {
 		request.header(IHttpRequest::fldAccessControlAllowMethods, "POST, GET, OPTIONS");
 		request.header(IHttpRequest::fldAccessControlAllowHeaders, "Content-Type");
-		request.header(IHttpRequest::fldAccessControlAllowOrigin,corsOrigin);
+		request.header(IHttpRequest::fldAccessControlAllowOrigin,co);
 	}
 	return stContinue;
 }
@@ -635,7 +644,7 @@ void JsonRpc::eraseGlobalHandler(ConstStrA methodUID) {
 
 }
 
-JsonRpc::JsonRpc():maxRequestSize(4*1024*1024),corsEnabled(false),corsOrigin("*") {
+JsonRpc::JsonRpc():maxRequestSize(4*1024*1024),corsEnabled(false),corsOrigin("*"),_nullOrigin(false) {
 }
 
 void JsonRpc::setRequestMaxSize(natural bytes) {
@@ -790,6 +799,16 @@ void JsonRpc::setCORSOrigin(ConstStrA origin) {
 
 ConstStrA JsonRpc::getCORSOrigin() const {
 	return corsOrigin;
+}
+
+void JsonRpc::allowNullOrigin(bool enable)
+{
+	_nullOrigin = enable;
+}
+
+bool JsonRpc::isNullOriginAllowed() const
+{
+	return _nullOrigin;
 }
 
 }

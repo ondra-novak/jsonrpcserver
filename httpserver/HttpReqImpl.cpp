@@ -58,7 +58,8 @@ static ConstStrA hdrfields[] = {
 		/*fldUpgrade,*/ "Upgrade",
 		/*fldAccessControlAllowMethods,*/ "Access-Control-Allow-Methods",
 		/*fldAccessControlAllowHeaders,*/ "Access-Control-Allow-Headers",
-		/*fldXForwardedFor*/ "X-Forwarded-For"
+		/*fldXForwardedFor*/ "X-Forwarded-For",
+		/*fldOrigin*/ "Origin",
 };
 
 static ConstStrA statusMessages[] = {

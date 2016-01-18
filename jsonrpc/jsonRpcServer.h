@@ -19,16 +19,20 @@ namespace jsonsrv {
 		///Initialize JSONRPC interface using a section in the config
 		void init(const IniConfig::Section sect);
 
+		struct Options {
+			FilePath logFile;
+			FilePath helpDir;
+			FilePath clientPage;
+			Optional<StringA> corsOrigin;
+			bool allowNullOrigin;
+
+			Options() :allowNullOrigin(false) {}
+		};
+
 		///Initialize JSONRPC interface using values
 		/**
-		 * @param rpclogfilePath path where rpc-log will be put. Empty to disable log
-		 * @param helpdirPath path where help to methods resides. Empty - no help
-		 * @param clientPagePath path to web-based RPC client. Empty - no client
 		 */
-		void init(const FilePath &rpclogfilePath,
-						const FilePath &helpdirPath,
-						const FilePath &clientPagePath,
-						const Optional<StringA> corsOrigin);
+		void init(const Options &options);
 
 		///Perform logRotate of the rpclog
 		void logRotate() {openLog();}

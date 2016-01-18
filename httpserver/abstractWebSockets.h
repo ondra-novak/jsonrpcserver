@@ -58,7 +58,7 @@ WebSocketMaskingDisable - it disables masking without breaking the protocol rule
 class IWebSocketMasking {
 public:
 	///sets 4 bytes at address depend on implementation
-	virtual void setMaskingBytes(byte *mask);
+	virtual void setMaskingBytes(byte *mask) = 0;
 	virtual ~IWebSocketMasking() {}
 
 	///creates fake random generator which initializes masking bytes to zero
