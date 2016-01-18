@@ -26,7 +26,8 @@ QueryParser::QueryParser(ConstStrA vpath)
 	:_path(findBeginQuery(vpath)),_query(vpath.offset(_path.length()+1))
 	,_iter(_query.split('&')),_swp(0)
 {
-	preload();
+	if (_query.empty()) _hasNext = false;
+	else preload();
 }
 
 ConstStrA QueryParser::getPath() const {

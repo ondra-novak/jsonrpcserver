@@ -100,10 +100,10 @@ natural RPC2Rest::onRequest(BredyHttpSrv::IHttpRequest& request,
 			if (vpath.head(k.vpath.length()) != k.vpath) return 404;
 			ConstStrA newpath = vpath.offset(k.vpath.length());
 			const Mapping &m = iter.peek().value;
-			if (vpath.empty()) {
+			if (newpath.empty()) {
 				if (!m.argMapping.empty()) return 404;
 				newpath = "/";
-			} else if (vpath[0] != '/') {
+			} else if (newpath[0] != '/') {
 				iter.skip();
 				again = true;
 			} else {
@@ -159,7 +159,7 @@ natural RPC2Rest::onRequest(BredyHttpSrv::IHttpRequest& request,
 					case 'q':args->add(queryObj);break;
 					default: {
 						if (argpos >= pathArgs.length()) {
-							return 404;
+							continue;
 						}
 						ConstStrA a = pathArgs[argpos];
 						switch(mp) {
