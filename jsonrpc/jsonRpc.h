@@ -37,6 +37,11 @@ class JsonRpc : public IHttpHandler, public IJsonRpc
 	typedef Set<Str, CmpMethodPrototype> ObsoleteMethods;
 
 public:
+	static const natural flagDevelopMode = 1;
+	static const natural flagEnableMulticall = 2;
+	static const natural flagEnableListMethods = 4;
+	static const natural flagEnableStatHandler = 8;
+
 	JsonRpc();
 	virtual natural onRequest(IHttpRequest& request, ConstStrA vpath);
 	virtual natural onData(IHttpRequest& request);
@@ -47,7 +52,7 @@ public:
     /**
      * @param developMode true to include listmethods, help and ping. Otherwise they are excluded which causes the web-client useless
      */
-    void registerServerMethods(bool developMode);
+    void registerServerMethods(natural flags);
     void registerMethod(ConstStrA methodName, const IRpcCall & method, ConstStrA help = ConstStrA());
     void eraseMethod(ConstStrA methodName);
     void registerStatHandler(ConstStrA handlerName, const IRpcCall & method);

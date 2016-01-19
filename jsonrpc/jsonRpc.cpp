@@ -288,14 +288,20 @@ void JsonRpc::registerMethodObsolete(ConstStrA methodName) {
 }
 
 
-void JsonRpc::registerServerMethods(bool developMode) {
-	registerMethod("Server.listMethods:",RpcCall::create(this,&JsonRpc::rpcListMethods), ConstStrA("Lists all methods available for this server"));
-	registerMethod("Server.multicall",RpcCall::create(this,&JsonRpc::rpcMulticallN),
+void JsonRpc::registerServerMethods(natural flags) {
+	if (flags & flagEnableListMethods) {
+		registerMethod("Server.listMethods:", RpcCall::create(this, &JsonRpc::rpcListMethods), ConstStrA("Lists all methods available for this server"));
+	}
+	if (flags & flagEnableMulticall) {
+		registerMethod("Server.multicall", RpcCall::create(this, &JsonRpc::rpcMulticallN),
 			ConstStrA("<p><pre>[[result,error],...] Server.multicall1 [\"methodName\",[args,...],[args,...],[args,...],...]</pre></p>"
-					"<p><pre>[[result,error],...] Server.multicall [[\"methodName\",[args,...]],[\"methodName\",[args,...]],...]</pre></p>"));
-	registerMethod("Server.stats:",RpcCall::create(this,&JsonRpc::rpcStats), ConstStrA("Show statistics - arguments are passed to the handlers"));
-	registerMethod("Server.stats:c",RpcCall::create(this,&JsonRpc::rpcStats), ConstStrA("Show statistics - arguments are passed to the handlers"));
-	if (developMode) {
+			"<p><pre>[[result,error],...] Server.multicall [[\"methodName\",[args,...]],[\"methodName\",[args,...]],...]</pre></p>"));
+	}
+	if (flags & flagEnableStatHandler) {
+		registerMethod("Server.stats:", RpcCall::create(this, &JsonRpc::rpcStats), ConstStrA("Show statistics - arguments are passed to the handlers"));
+		registerMethod("Server.stats:c", RpcCall::create(this, &JsonRpc::rpcStats), ConstStrA("Show statistics - arguments are passed to the handlers"));
+	}
+	if (flags & flagDevelopMode) {
 		registerMethod("Server.crash", RpcCall::create(this,&JsonRpc::rpcCrash),ConstStrA("Crashes the server - for development and testing"));
 		registerMethod("Server.crashScheduler", RpcCall::create(this,&JsonRpc::rpcCrashScheduler),ConstStrA("Crashes the server in scheduler - for development and testing"));
 		registerMethod("Server.help:s",RpcCall::create(this,&JsonRpc::rpcHelp), ConstStrA("Shows help page about selected method (if exists)"));

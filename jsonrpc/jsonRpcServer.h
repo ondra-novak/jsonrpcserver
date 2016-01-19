@@ -25,8 +25,12 @@ namespace jsonsrv {
 			FilePath clientPage;
 			Optional<StringA> corsOrigin;
 			bool allowNullOrigin;
+			bool developMode;
+			bool enableMulticall;
+			bool enableListMethods;
+			bool enableStats;
 
-			Options() :allowNullOrigin(false) {}
+			Options() :allowNullOrigin(false), developMode(false), enableMulticall(true), enableListMethods(true),enableStats(true) {}
 		};
 
 		///Initialize JSONRPC interface using values

@@ -44,7 +44,7 @@ natural SrvMain::onStartServer(BredyHttpSrv::IHttpMapper& httpMapper) {
 
 
 	httpMapper.addSite("RPC",rpc);
-	httpMapper.addSite("wsrpc",wsrpc);
+	//httpMapper.addSite("wsrpc",wsrpc);
 
 	return 0;
 }

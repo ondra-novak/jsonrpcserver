@@ -62,6 +62,10 @@ namespace jsonsrv {
 
 		}
 		sect.get(opts.allowNullOrigin, "allowNullOrigin");
+		sect.get(opts.developMode, "developMode");
+		sect.get(opts.enableMulticall, "multicall");
+		sect.get(opts.enableListMethods, "listMethods");
+		sect.get(opts.enableStats, "enableStats");
 
 		init(opts);
 	}
@@ -86,7 +90,11 @@ namespace jsonsrv {
 			}
 		}
 		setClientPage(opts.clientPage);
-		registerServerMethods(true);
+		registerServerMethods((opts.developMode ? flagDevelopMode : 0)
+			| (opts.enableMulticall ? flagEnableMulticall : 0)
+			| (opts.enableListMethods ? flagEnableListMethods : 0)
+			| (opts.enableStats ? flagEnableStatHandler : 0));
+			
 		registerStatHandler("server",RpcCall::create(this,&JsonRpcServer::rpcHttpStatHandler));
 		if (opts.corsOrigin != nil) setCORSOrigin((StringA)opts.corsOrigin);
 		if (opts.allowNullOrigin) allowNullOrigin(opts.allowNullOrigin);
