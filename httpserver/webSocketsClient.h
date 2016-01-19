@@ -53,10 +53,10 @@ namespace BredyHttpSrv {
 
 		///connects to server
 		/** Call function to send HTTP request to initiate websocket connection.
-		Function returns Promise, which becomes resolved once connection is established
+		Function returns Future, which becomes resolved once connection is established
 		*/
 
-		Promise<void> connectToServer(ConstStrA host, ConstStrA path, ConstStrA method = ConstStrA(), ConstStringT<HeaderLine> headers = ConstStringT<HeaderLine>());
+		Future<void> connectToServer(ConstStrA host, ConstStrA path, ConstStrA method = ConstStrA(), ConstStringT<HeaderLine> headers = ConstStringT<HeaderLine>());
 
 		typedef NetworkStream<2048> Stream;
 
@@ -78,7 +78,7 @@ namespace BredyHttpSrv {
 		StringPoolA strpool;
 		Header hdrs;
 		natural status;
-		Optional<Promise<void>::Result > connectResolution;
+		Optional<Promise<void> > connectResolution;
 
 
 	private:

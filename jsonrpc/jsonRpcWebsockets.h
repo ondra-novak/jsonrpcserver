@@ -51,7 +51,7 @@ public:
 	 * result is put to the promise as resolution. If response is failure, error
 	 * is thrown through the promise as RpcError
 	 */
-	Promise<JSON::PNode> callMethod(ConstStrA name, JSON::PNode arguments);
+	Future<JSON::PNode> callMethod(ConstStrA name, JSON::PNode arguments);
 
 	///Finds connection from the http request
 	/** request reference can be picked up at RpcRequest
@@ -92,7 +92,7 @@ protected:
 	IJsonRpc &handler;
 	IJsonRpcLogObject *logobject;
 	natural nextPromiseId;
-	typedef Map<natural, Promise<JSON::PNode>::Result > WaitingPromises;
+	typedef Map<natural, Promise<JSON::PNode> > WaitingPromises;
 
 	WaitingPromises waitingPromises;
 
