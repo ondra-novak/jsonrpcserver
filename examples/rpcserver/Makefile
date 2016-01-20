@@ -4,7 +4,7 @@ all: bin/rpcserver
 
 bin/rpcserver:  SrvMain.cpp SrvMain.h ../../libjsonrpcserver.a ../../../lightspeed/liblightspeed.a
 	mkdir -p bin
-	g++ -o bin/rpcserver -lrt -L../../Debug -L ../../../lightspeed/Debug SrvMain.cpp -I../../ -I../../../lightspeed/src -ljsonrpcserver -llightspeed -lpthread
+	$(CXX) -o bin/rpcserver -lrt -L../.. -L ../../../lightspeed SrvMain.cpp -I../../ -I../../../lightspeed/src -ljsonrpcserver -llightspeed -lpthread
 
 ../../libjsonrpcserver.a: 
 	$(MAKE) -C ../.. all
@@ -13,7 +13,7 @@ bin/rpcserver:  SrvMain.cpp SrvMain.h ../../libjsonrpcserver.a ../../../lightspe
 	$(MAKE) -C ../../../lightspeed all
 
 clean:
-	rm bin/httpserver
-	rm ../../libjsonrpcserver.a
-	rm ../../../lightspeed/liblightspeed.a
+	rm -f bin/rpcserver
+	rm -f ../../libjsonrpcserver.a
+	rm -f ../../../lightspeed/liblightspeed.a
 
