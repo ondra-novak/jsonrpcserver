@@ -61,6 +61,26 @@ ConstStrA HeaderFieldDef::getHeaderFieldName(Field fld) {
 	return hdrfields[idx];
 }
 
+static ConstStrA methods[] = {
+		/*mOPTIONS,*/ "OPTIONS",
+		/*mGET,*/     "GET",
+		/*mHEAD*/     "HEAD",
+		/*mPOST*/     "POST",
+		/*mPUT*/      "PUT",
+		/*mDELETE*/   "DELETE",
+		/*mTRACE*/    "TRACE",
+		/*mCONNECT*/  "CONNECT"
+	};
+
+
+ConstStrA HeaderFieldDef::getMethodName(Method fld) {
+	natural idx = fld;
+	if (idx >= countof(methods))
+		return ConstStrA();
+
+	return methods[idx];
+}
+
 
 }
 

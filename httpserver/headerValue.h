@@ -61,7 +61,19 @@ using namespace LightSpeed;
 			fldOrigin
 		};
 
+		enum Method {
+			mOPTIONS,
+			mGET,
+			mHEAD,
+			mPOST,
+			mPUT,
+			mDELETE,
+			mTRACE,
+			mCONNECT
+		};
+
 		static ConstStrA getHeaderFieldName(Field fld);
+		static ConstStrA getMethodName(Method m);
 
 	};
 
