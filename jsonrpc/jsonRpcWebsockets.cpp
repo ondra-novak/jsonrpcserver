@@ -14,6 +14,8 @@
 #include "lightspeed/base/actions/promise.tcc"
 
 #include "lightspeed/base/debug/dbglog.h"
+
+#include "lightspeed/base/exceptions/httpStatusException.h"
 namespace jsonsrv {
 
 class JsonRpcWebsocketsConnection::HttpRequestWrapper: public BredyHttpSrv::IHttpRequest {
@@ -194,7 +196,26 @@ WebSocketConnection* JsonRpcWebsockets::onNewConnection(
 		IRuntimeAlloc& alloc, IHttpRequest& request,
 		ConstStrA ) {
 
-	return new(alloc) JsonRpcWebsocketsConnection(request,handler,openMethod);
+	IHttpRequest::HeaderValue origin =  request.getHeaderField(IHttpRequest::fldOrigin);
+	bool allow = true;
+	if (origin.defined) {
+		Optional<bool> allowed = handler.isAllowedOrigin(origin);
+		if (allowed == null) {
+			ConstStrA corig = origin;
+
+			if (corig.head(7) == ConstStrA("http://")) corig = corig.offset(7);
+			else if (corig.head(8) == ConstStrA("https://")) corig = corig.offset(8);
+
+			ConstStrA host = request.getHeaderField(IHttpRequest::fldHost);
+			if (host.tail(corig.length()) != corig) allow = false;
+		} else {
+			allow = allowed;
+		}
+	}
+	if (allow)
+		return new(alloc) JsonRpcWebsocketsConnection(request,handler,openMethod);
+	else
+		throw HttpStatusException(THISLOCATION,request.getAbsoluteUrl(),403,"Forbidden");
 }
 
 void JsonRpcWebsocketsConnection::onCloseOutput(natural ) {

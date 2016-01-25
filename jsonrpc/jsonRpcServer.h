@@ -9,14 +9,38 @@
 
 namespace jsonsrv {
 
+	/// JSON Server
+
+
 	class JsonRpcServer: public JsonRpc, public IJsonRpcLogObject {
 	public:
 		JsonRpcServer();
 
-		///Initialize JSONRPC interface using default config
+		///Initialize JSONRPC interface using default configuration
 		void init(const IniConfig &cfg);
 
-		///Initialize JSONRPC interface using a section in the config
+		///Initialize JSONRPC interface using a section in the configuration
+		/** Configuration:
+		 *
+		 *  @b clientPage  - path to web page which is returned for GET request at RPC uri. If not defined, GET returns 404
+		 *
+		 *  @b helpDir - path to directory with help files. If not defined, no help is available
+		 *
+		 *  @b rpcLog - path to file, where methods will be logged. If not defined, logging is disabled
+		 *
+		 *  @b allowCORSOrigins - list of allowed origins separated by space. Specifying this option in a configuration file
+		 *                         also enables CORS handling.
+		 *
+		 *  @b developMode - set to true to expose development methods (default : false)
+		 *
+		 *  @b multicall - set to false to disable multicall (default : true)
+		 *
+		 *  @b listMethods - set to false to disable Server.listMethods (default : true)
+		 *
+		 *  @b enableStats - set to false to disable Server.stats (default : true)
+		 *
+		 * @param sect
+		 */
 		void init(const IniConfig::Section sect);
 
 		struct Options {
@@ -24,13 +48,12 @@ namespace jsonsrv {
 			FilePath helpDir;
 			FilePath clientPage;
 			Optional<StringA> corsOrigin;
-			bool allowNullOrigin;
 			bool developMode;
 			bool enableMulticall;
 			bool enableListMethods;
 			bool enableStats;
 
-			Options() :allowNullOrigin(false), developMode(false), enableMulticall(true), enableListMethods(true),enableStats(true) {}
+			Options() :developMode(false), enableMulticall(true), enableListMethods(true),enableStats(true) {}
 		};
 
 		///Initialize JSONRPC interface using values
