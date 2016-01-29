@@ -258,6 +258,7 @@ LightSpeed::JSON::PNode jsonsrv::DBResultToJSON::getRow(const LightMySQL::Row& r
 					ConstStrA s = row[i].as<ConstStrA>();
 					nd = factory->newValue(s != "false" && s != "FALSE" && s != "False" && s != "0");
 				}
+				break;
 				default: continue;
 			}
 		}
