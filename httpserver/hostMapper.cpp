@@ -29,7 +29,7 @@ namespace BredyHttpSrv {
 			protocol = ConstStrA(parser[1].str()).map(data);
 			host = ConstStrA(parser[2].str()).map(data);
 			path = ConstStrA(parser[3].str()).map(data);
-			targetVPath = ConstStrA();
+			targetVPath = (path.empty() || path.tail(1) == ConstStrA("/"))?ConstStrA("/"):ConstStrA();
 
 		}
 		else {

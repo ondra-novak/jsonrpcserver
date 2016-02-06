@@ -21,6 +21,7 @@ public:
 	SimpleWebSite(FilePath documentRoot, natural cacheTime = 86400);
 	virtual natural onRequest(IHttpRequest &request, ConstStrA vpath);
 	virtual natural onData(IHttpRequest &) {return false;}
+	~SimpleWebSite();
 
 
 protected:

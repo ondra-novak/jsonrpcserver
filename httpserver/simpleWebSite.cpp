@@ -10,13 +10,14 @@
 #include "lightspeed/base/countof.h"
 #include "lightspeed/base/streams/fileio.h"
 #include "lightspeed/base/debug/dbglog.h"
+#include "lightspeed/utils/FilePath.tcc"
 
 
 namespace BredyHttpSrv {
 
 using namespace LightSpeed;
 
-
+SimpleWebSite::~SimpleWebSite() {}
 
 SimpleWebSite::SimpleWebSite(FilePath documentRoot, natural cacheTime) :documentRoot(documentRoot)
 	,cacheStr(cacheTime==0?StringA():StringA(ConstStrA("max-age=")+ToString<natural>(cacheTime))) {
@@ -34,13 +35,6 @@ natural SimpleWebSite::onRequest(IHttpRequest& request,ConstStrA vpath) {
 	} else {
 		uri = vpath;
 	}
-	if (uri.empty()) {
-		request.redirect("+/");
-		return 0;
-	}
-	if (uri == ConstStrA("/")) {
-		uri = ConstStrA("/index.html");
-	}
 	FilePath resPath = documentRoot;
 	for (ConstStrA::SplitIterator iter = uri.split('/'); iter.hasItems();) {
 		ConstStrA t = iter.getNext();
@@ -52,6 +46,7 @@ natural SimpleWebSite::onRequest(IHttpRequest& request,ConstStrA vpath) {
 
 		resPath = FilePath(resPath,true)/t;
 	}
+	if (resPath == documentRoot) resPath = FilePath(resPath,true) / "index.html";
 	String pathName = resPath;
 	IFileIOServices &svc = IFileIOServices::getIOServices();
 	if (svc.canOpenFile(pathName,IFileIOServices::fileOpenRead)) {

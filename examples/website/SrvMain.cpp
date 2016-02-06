@@ -6,6 +6,7 @@
  */
 
 #include "SrvMain.h"
+#include <lightspeed/base/containers/autoArray.tcc>
 
 namespace httpexample {
 

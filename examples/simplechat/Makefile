@@ -4,7 +4,7 @@ all: bin/simplechat
 
 bin/simplechat:  serverMain.cpp serverMain.h ../../libjsonrpcserver.a ../../../lightspeed/liblightspeed.a
 	mkdir -p bin
-	g++ -o bin/simplechat -L../../Debug -L ../../../lightspeed/Debug serverMain.cpp -I../../ -I../../../lightspeed/src -ljsonrpcserver -llightspeed -lpthread
+	g++ -o bin/simplechat -L../.. -L ../../../lightspeed serverMain.cpp -I../../ -I../../../lightspeed/src -ljsonrpcserver -llightspeed -lpthread
 
 ../../libjsonrpcserver.a: 
 	$(MAKE) -C ../.. all
