@@ -6,6 +6,8 @@
  */
 
 
+#include <string.h>
+#include <ctype.h>
 #include "headerValue.h"
 #include "lightspeed/base/containers/constStr.h"
 
@@ -79,6 +81,13 @@ ConstStrA HeaderFieldDef::getMethodName(Method fld) {
 		return ConstStrA();
 
 	return methods[idx];
+}
+void HeaderFieldDef::cropWhite(ConstStrA &k) {
+	while (!k.empty()) {
+		if (isspace(k[0])) k = k.crop(1,0);
+		else if (isspace(k[k.length()-1])) k = k.crop(0,1);
+		else break;
+	}
 }
 
 

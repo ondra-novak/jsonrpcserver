@@ -6,6 +6,8 @@
  */
 
 #include "httpStream.h"
+
+#include <lightspeed/base/namedEnum.tcc>
 #include <lightspeed/base/text/textstream.tcc>
 namespace BredyHttpClient {
 
@@ -170,7 +172,7 @@ void HttpRequest::setHeader(ConstStrA hdrField, ConstStrA value) {
 	StrCmpCI<char> cmp;
 	if (cmp(hdrField, getHeaderFieldName(fldContentLength)) == cmpResultEqual
 			|| cmp(hdrField, getHeaderFieldName(fldTransferEncoding)) == cmpResultEqual) {
-		bodyHandling == useDefinedByUser;
+		bodyHandling = useDefinedByUser;
 	}
 	print("%1: %2\n") << hdrField << value;
 }
@@ -190,5 +192,252 @@ void HttpRequest::beginBody() {
 	}
 }
 
+void HttpRequest::flushChunk() {
+	if (chunk.length()) return;
+	writeChunk(chunk);
+	chunk.clear();
+}
+
+void HttpRequest::writeChunk(ConstBin data) {
+	print("%1\n") << setBase(16) << data.length();
+	com.writeAll(data.data(),data.length());
+	print("\r\n");
+}
+
+
+HttpResponse::HttpResponse(IInputStream& com):com(com),rMode(rmStatus) {
+
+}
+
+HttpResponse::~HttpResponse() {
+}
+
+void HttpResponse::readHeaders() {
+	natural p = checkStream();
+	while (p == 0) {
+		com.canRead(); //block if data are not yet available
+		p = checkStream();
+	}
+}
+
+natural HttpResponse::getStatus() const {
+}
+
+ConstStrA HttpResponse::getStatusMessage() const {
+}
+
+HttpResponse::HeaderValue HttpResponse::getHeaderField(HeaderFieldDef field) const {
+}
+
+HttpResponse::HeaderValue HttpResponse::getHeaderField(ConstStrA field) const {
+}
+
+bool HttpResponse::isKeepAliveEnabled() const {
+}
+
+natural HttpResponse::getContentLength() const {
+}
+
+
+
+natural HttpResponse::checkStream() {
+	switch (rMode) {
+		case rmContinue:
+			if (com.dataReady() == 0) return 1;
+			else {readHeaderLine(tohStatusLine);return 0;}
+		case rmStatus:
+			readHeaderLine(tohStatusLine);
+			return 0;
+		case rmHeaders:
+			if (readHeaderLine(tohKeyValue)) return com.dataReady();
+			else return 0;
+		case rmChunkHeader:
+			if (readHeaderLine(tohChunkSize)) return com.dataReady();
+			else return 0;
+		case rmDirectUnlimited:
+			return com.dataReady();
+		case rmReadingChunk:
+		case rmDirectLimited: {
+			natural k = com.dataReady();
+			if (k > remainLength) k = remainLength;
+			return k;
+		}
+	}
+}
+
+bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
+	char buff[1500];
+	ConstStrA strbuff(buff);
+	natural cnt = com.peek(buff,sizeof(buff));
+	natural pos = strbuff.find('\n');
+	bool cancontinue = false;
+	if (pos != naturalNull) {
+		pos++;
+		cancontinue = cnt < pos;
+		cnt = pos;
+	}
+	buffer.append(strbuff.head(cnt));
+	if (com.read(buff, cnt) == 0) {
+		return endOfStream();
+	}
+	if (buffer.tail(2) == ConstStrA("\r\n")) {
+		buffer.resize(buffer.length()-2);
+		switch (toh) {
+		case tohKeyValue: {
+				if (buffer.empty()) {
+					processHeaders();
+					return true;
+				}
+
+				natural colon = buffer.find(':');
+				if (colon != naturalNull)
+					return invalidResponse(toh);
+				ConstStrA key = buffer.head(colon);
+				ConstStrA value = buffer.offset(colon+1);
+				cropWhite(key);
+				cropWhite(value);
+				headers.replace(pool.add(key),pool.add(value));
+				buffer.clear();
+			} break;
+		case tohStatusLine: {
+				TextParser<char, SmallAlloc<1500> > parser;
+				if (parser("HTTP/1.%u1 %u2 %3",buffer)) {
+					http11 = (natural)parser[1] == 1;
+					status = parser[2];
+					ConstStrA msg = parser[3].str();
+					statusMessage = pool.add(msg);
+					rMode = rmHeaders;
+					buffer.clear();
+					toh = tohKeyValue;
+				} else {
+					return invalidResponse(toh);
+				}
+			} break;
+		case tohChunkSize: {
+				TextParser<char, SmallAlloc<50> > parser;
+				if (parser(" %[0-9a-fA-F]1 ",buffer)) {
+
+					remainLength = parser[1].hex();
+					rMode = remainLength?rmReadingChunk:rmEof;
+					buffer.clear();
+					return true;
+
+				} else {
+					return invalidResponse(toh);
+				}
+			} break;
+		}
+	}
+	if (cancontinue)
+		return readHeaderLine(toh);
+	else
+		return false;
+
+}
+
+bool HttpResponse::endOfStream() {
+	rMode = rmEof;
+	return true;
+}
+
+bool HttpResponse::processHeaders() {
+
+	if (status == 100) {
+		rMode = rmContinue;
+		keepAlive = true;
+	}
+
+	TextParser<char, SmallAlloc<256> > parser;
+	HeaderValue length = getHeaderField(fldContentLength);
+
+	rMode = rmDirectUnlimited;
+
+	if (length.defined) {
+		if (parser("%u1",length)) {
+			remainLength = parser[1];
+			rMode = rmDirectLimited;
+		} else {
+			throw MalformedResponse(THISLOCATION, tohKeyValue);
+		}
+	}
+
+
+	HeaderValue te = getHeaderField(fldTransferEncoding);
+	if (te.defined) {
+		if (te == ConstStrA("chunked")) {
+			rMode = rmReadingChunk;
+			remainLength = 0;
+		}
+	}
+
+
+	if (rMode == rmDirectUnlimited && (status == 204 || status == 304 || status == 101)) {
+		rMode = rmEof;
+	} else if (rMode == rmDirectLimited && remainLength == 0) {
+		rMode = rmEof;
+	}
+
+	keepAlive = http11;
+	HeaderValue conn = getHeaderField(fldConnection);
+	if (conn.defined) {
+		StrCmpCI<char> cmp;
+		if (cmp(conn,"close") == cmpResultEqual) keepAlive = false;
+		else if (cmp(conn,"keep-alive") == cmpResultEqual)  keepAlive = true;
+		else if (cmp(conn,"upgrade") == cmpResultEqual) keepAlive = true;
+	}
+}
+
+natural HttpResponse::read(void* buffer, natural size) {
+	natural x;
+	switch (rMode) {
+	case rmHeaders:
+	case rmChunkHeader:
+	case rmStatus: readHeaders();return read(buffer,size);
+	case rmDirectUnlimited:
+		return com.read(buffer,size);break;
+	case rmDirectLimited:
+		if (size > remainLength) size = remainLength;
+		x = com.read(buffer,size);
+		if (x == 0) throw IncompleteStream(THISLOCATION);
+		remainLength -= x;
+		if (remainLength == 0) {
+			rMode = rmEof;
+		}
+		break;
+
+
+	}
+}
+
+natural HttpResponse::peek(void* buffer, natural size) const {
+}
+
+bool HttpResponse::canRead() const {
+}
+
+natural HttpResponse::dataReady() const {
+}
+
+bool HttpResponse::invalidResponse(TypeOfHeader toh) {
+	throw MalformedResponse(THISLOCATION, toh);
+}
+
+static NamedEnumDef<HttpResponse::TypeOfHeader> tohStrDef[] = {
+		{HttpResponse::tohChunkSize,"chunk"},
+		{HttpResponse::tohKeyValue,"header"},
+		{HttpResponse::tohStatusLine,"status"}
+};
+
+static NamedEnum<HttpResponse::TypeOfHeader> tohStr(tohStrDef);
+
+void HttpResponse::MalformedResponse::message(ExceptionMsg &msg) const {
+	msg("Malformed HTTP response in section: %1") << tohStr[section];
+}
+
+void HttpResponse::IncompleteStream::message(ExceptionMsg& msg) const {
+	msg("Incomplete stream (unexpected end of stream)");
+}
+
 
 } /* namespace BredyHttpClient */
+

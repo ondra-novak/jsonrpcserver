@@ -538,13 +538,6 @@ ITCPServerConnHandler::Command HttpReqImpl::onData(NStream& stream) {
 	}
 }
 
-static void crop(ConstStrA &k) {
-	while (!k.empty()) {
-		if (isspace(k[0])) k = k.crop(1,0);
-		else if (isspace(k[k.length()-1])) k = k.crop(0,1);
-		else break;
-	}
-}
 
 
 ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
@@ -571,7 +564,7 @@ ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
 
 				reqBeginTime = TimeStamp::now();
 
-				crop(line);
+				cropWhite(line);
 				ConstStrA::SplitIterator splt = line.split(' ');
 				method = hdrPool.add(ConstStrA(splt.getNext()));
 				path = hdrPool.add(ConstStrA(splt.getNext()));
@@ -603,8 +596,8 @@ ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
 				}
 				ConstStrA field = line.head(dblcolon);
 				ConstStrA value = line.offset(dblcolon+1);
-				crop(field);
-				crop(value);
+				cropWhite(field);
+				cropWhite(value);
 				requestHdrs.insert(hdrPool.add(field),hdrPool.add(value));
 			}
 			pos = buffer.lookup(ConstBin("\r\n"));

@@ -75,6 +75,9 @@ using namespace LightSpeed;
 		static ConstStrA getHeaderFieldName(Field fld);
 		static ConstStrA getMethodName(Method m);
 
+		static void cropWhite(ConstStrA &k);
+
+
 	};
 
 }
