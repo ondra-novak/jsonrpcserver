@@ -90,6 +90,8 @@ public:
 	 *  to close and reopen the logs.
 	 */
 	virtual void onLogRotate() {}
+
+	virtual ~AbstractServerMain();
 protected:
     virtual integer onMessage(ConstStrA command, const Args & args, SeqFileOutput output);
     virtual void onThreadException(const Exception &e) throw();

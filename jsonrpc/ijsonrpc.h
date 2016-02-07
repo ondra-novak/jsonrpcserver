@@ -7,6 +7,7 @@
 
 #ifndef JSONRPC_IJSONRPC_H_
 #define JSONRPC_IJSONRPC_H_
+#include "lightspeed/base/containers/optional.h"
 #include "rpchandler.h"
 
 
@@ -123,6 +124,18 @@ namespace jsonsrv {
 	     */
 	    virtual CallResult callMethod(IHttpRequest *httpRequest, ConstStrA methodName, JSON::INode *args, JSON::INode *context, JSON::INode *id) = 0;
 
+
+	    ///Tests whether object can accept request from specified origin
+	    /** This is intended to share configuration of CORS from JsonRPC object to other objects calling the methods
+	     * directly throigh callMethod()
+	     * @param origin origin of the request
+	     * @retval true origin is allowed
+	     * @retval false origin is not allowed
+	     * @retval null CORS options are disabled. Caller should check whether origin's domain match to server's domain.
+	     *
+	     * @note if CORS is not allowed for the JSONR
+	     */
+	    virtual Optional<bool> isAllowedOrigin(ConstStrA origin) = 0;
 
 	    virtual ~IJsonRpc() {}
 

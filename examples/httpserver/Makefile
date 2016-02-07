@@ -4,7 +4,7 @@ all: bin/httpserver
 
 bin/httpserver:  SrvMain.cpp SrvMain.h ../../libjsonrpcserver.a ../../../lightspeed/liblightspeed.a
 	mkdir -p bin
-	g++ -o bin/httpserver -lrt -L../../Debug -L ../../../lightspeed/Debug SrvMain.cpp -I../../ -I../../../lightspeed/src -ljsonrpcserver -llightspeed -lpthread
+	g++ -o bin/httpserver -lrt -L../.. -L ../../../lightspeed SrvMain.cpp -I../../ -I../../../lightspeed/src -ljsonrpcserver -llightspeed -lpthread
 
 ../../libjsonrpcserver.a: 
 	$(MAKE) -C ../.. all

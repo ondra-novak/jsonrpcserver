@@ -271,10 +271,23 @@ void HttpReqImpl::errorPage(natural code, ConstStrA msg, ConstStrA expl) {
 		SeqFileOutput f(this);
 		if (msg.empty()) msg = getStatusMessage(code);
 		PrintTextA print(f);
-		//clear headers - they can be damaged
-		responseHdrs.clear();
+		//clear some headers - they can damage output
+		//delete content length - because we will show different page
+		responseHdrs.erase(fieldToText(fldContentLength));
+		//delete transfer encoding - because we need simplest encoding
+		responseHdrs.erase(fieldToText(fldTransferEncoding));
+		//delete content type - because we will set to text/html
+		responseHdrs.erase(fieldToText(fldContentType));
+		//delete eTag - don't store eTag with an error page
+		responseHdrs.erase(fieldToText(fldETag));
+		//delete lastModified - don't store error page
+		responseHdrs.erase(fieldToText(fldLastModified));
 		status(code,msg);
-		if (code == 204 || code == 205 || code == 304) {
+		//set new content type
+		header(fldContentType,"text/html");
+
+		if (code == 204 || code == 304) {
+			//set ContentLength to zero even if it is not necesery, some clients can have issue
 			header(fldContentLength,"0");
 			sendHeaders();
 			return;

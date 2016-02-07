@@ -76,21 +76,30 @@ natural JsonRpc::loadHTMLClient(IHttpRequest& request) {
 	}
 }
 
-natural JsonRpc::initJSONRPC(IHttpRequest& request) {
-	request.header(IHttpRequest::fldContentType,"application/json");
-	bool ce = corsEnabled;
-	ConstStrA co = corsOrigin;
-	if (_nullOrigin) {
-		HeaderValue hv = request.getHeaderField(IHttpRequest::fldOrigin);
-		if (hv == ConstStrA("null")) {
-			ce = true;
-			co = "*";
+static bool matchOrigin(ConstStrA origin, ConstStrA allowed) {
+	StrCmpCI<char> cmp;
+	for (ConstStrA::SplitIterator iter = origin.split(' '); iter.hasItems();) {
+		ConstStrA originItem = iter.getNext();
+		if (originItem.empty()) continue;
+		for (ConstStrA::SplitIterator iter2 = allowed.split(' '); iter2.hasItems();) {
+			ConstStrA allowedItem = iter2.getNext();
+			if (allowedItem == "*" && originItem != "null") return true;
+			if (cmp(originItem,allowedItem) == cmpResultEqual) return true;
 		}
 	}
-	if (ce) {
-		request.header(IHttpRequest::fldAccessControlAllowMethods, "POST, GET, OPTIONS");
-		request.header(IHttpRequest::fldAccessControlAllowHeaders, "Content-Type");
-		request.header(IHttpRequest::fldAccessControlAllowOrigin,co);
+	return false;
+}
+
+natural JsonRpc::initJSONRPC(IHttpRequest& request) {
+	request.header(IHttpRequest::fldContentType,"application/json");
+	if (corsEnabled) {
+		HeaderValue hv = request.getHeaderField(IHttpRequest::fldOrigin);
+		if (hv.defined) {
+			if (!matchOrigin(hv, corsOrigin)) return stForbidden;
+			request.header(IHttpRequest::fldAccessControlAllowMethods, "POST, GET, OPTIONS");
+			request.header(IHttpRequest::fldAccessControlAllowHeaders, "Content-Type");
+			request.header(IHttpRequest::fldAccessControlAllowOrigin,"*");
+		}
 	}
 	return stContinue;
 }
@@ -473,6 +482,14 @@ RpcError JsonRpc::onException(JSON::IFactory *json, const std::exception &e) {
 
 }
 
+Optional<bool> JsonRpc::isAllowedOrigin(ConstStrA origin) {
+	if (corsEnabled) {
+		return Optional<bool>(matchOrigin(origin,corsOrigin));
+	} else {
+		return nil;
+	}
+}
+
 JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA methodName, JSON::INode *args, JSON::INode *context, JSON::INode *id) {
 	LogObject lg(THISLOCATION);
 
@@ -650,7 +667,7 @@ void JsonRpc::eraseGlobalHandler(ConstStrA methodUID) {
 
 }
 
-JsonRpc::JsonRpc():maxRequestSize(4*1024*1024),corsEnabled(false),corsOrigin("*"),_nullOrigin(false) {
+JsonRpc::JsonRpc():maxRequestSize(4*1024*1024),corsEnabled(false),corsOrigin("*") {
 }
 
 void JsonRpc::setRequestMaxSize(natural bytes) {
@@ -805,16 +822,6 @@ void JsonRpc::setCORSOrigin(ConstStrA origin) {
 
 ConstStrA JsonRpc::getCORSOrigin() const {
 	return corsOrigin;
-}
-
-void JsonRpc::allowNullOrigin(bool enable)
-{
-	_nullOrigin = enable;
-}
-
-bool JsonRpc::isNullOriginAllowed() const
-{
-	return _nullOrigin;
 }
 
 }

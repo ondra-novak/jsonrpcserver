@@ -43,8 +43,8 @@ natural SrvMain::onStartServer(BredyHttpSrv::IHttpMapper& httpMapper) {
 	rpc->registerMethod("reverse:s",RpcCall::create(this,&SrvMain::rpcReverse));
 
 
-	httpMapper.addSite("RPC",rpc);
-	//httpMapper.addSite("wsrpc",wsrpc);
+	httpMapper.addSite("/RPC",rpc);
+	//httpMapper.addSite("/wsrpc",wsrpc);
 
 	return 0;
 }

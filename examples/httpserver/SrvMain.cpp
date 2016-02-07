@@ -8,6 +8,8 @@
 #include "SrvMain.h"
 
 #include <lightspeed/base/text/textstream.tcc>
+
+using LightSpeed::PrintTextA;
 namespace httpexample {
 
 //the one and only application object
@@ -61,7 +63,7 @@ natural HelloWorldHandler::onRequest( IHttpRequest &request, ConstStrA vpath )
 		//print to output - headers are sent automatically
 		print("<!DOCTYPE html>");
 		print("<html><head><title>Hello, World!</title></head>");
-		print("<body><h1>Hello, World!</h1></body>");
+		print("<body><h1>Hello, World!</h1><p>vpath: %1<br>host: %2<br>path: %3</body>") << vpath << request.getHeaderField("Host") << request.getPath();
 		print("</html>");
 		
 		//return value - because headers was sent, status code cannot be changed

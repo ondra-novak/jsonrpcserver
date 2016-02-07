@@ -52,16 +52,10 @@ namespace jsonsrv {
 			opts.logFile = p / rpclogfile;
 		}
 
-		Optional<StringA> corsOrigin;
 
-		bool corsEnable = false;
-		sect.get(corsEnable, "cors.enable");
-		if (corsEnable) {
-			opts.corsOrigin = StringA();
-			sect.required(opts.corsOrigin,"cors.allowoAigin");
-
-		}
-		sect.get(opts.allowNullOrigin, "allowNullOrigin");
+		StringA corsOrigin;
+		bool corsEnable = sect.get(corsOrigin, "allowCORSOrigins");
+		if (corsEnable) opts.corsOrigin = corsOrigin;
 		sect.get(opts.developMode, "developMode");
 		sect.get(opts.enableMulticall, "multicall");
 		sect.get(opts.enableListMethods, "listMethods");
@@ -96,8 +90,10 @@ namespace jsonsrv {
 			| (opts.enableStats ? flagEnableStatHandler : 0));
 			
 		registerStatHandler("server",RpcCall::create(this,&JsonRpcServer::rpcHttpStatHandler));
-		if (opts.corsOrigin != nil) setCORSOrigin((StringA)opts.corsOrigin);
-		if (opts.allowNullOrigin) allowNullOrigin(opts.allowNullOrigin);
+		if (opts.corsOrigin != nil) {
+			setCORSOrigin((StringA)opts.corsOrigin);
+			enableCORS(true);
+		}
 	}
 
 	void JsonRpcServer::logMethod( IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *logOutput )

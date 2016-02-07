@@ -8,6 +8,8 @@
 #include "SrvMain.h"
 #include "lightspeed/mt/thread.h"
 #include "lightspeed/base/debug/dbglog.h"
+#include <lightspeed/base/text/textstream.tcc>
+
 
 namespace httpexample {
 

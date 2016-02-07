@@ -27,5 +27,9 @@ $(CONFIG):
 
 include building/build_lib.mk
 
+EXAMPLES += $(wildcard examples/*)
 
+examples: $(LIBFULLNAME)
+	for I in $(EXAMPLES); do $(MAKE) -C $$I; done
+	
 	
