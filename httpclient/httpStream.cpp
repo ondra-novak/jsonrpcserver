@@ -385,6 +385,7 @@ bool HttpResponse::processHeaders() {
 		else if (cmp(conn,"keep-alive") == cmpResultEqual)  keepAlive = true;
 		else if (cmp(conn,"upgrade") == cmpResultEqual) keepAlive = true;
 	}
+	return true;
 }
 
 natural HttpResponse::read(void* buffer, natural size) {
@@ -403,16 +404,49 @@ natural HttpResponse::read(void* buffer, natural size) {
 		if (remainLength == 0) {
 			rMode = rmEof;
 		}
-		break;
-
-
+		return x;
+	case rmReadingChunk:
+		if (size > remainLength) size = remainLength;
+		x = com.read(buffer,size);
+		if (x == 0) throw IncompleteStream(THISLOCATION);
+		remainLength -= x;
+		if (remainLength == 0) {
+			rMode = rmReadingChunk;
+			if (com.dataReady() > 0) checkStream();
+		}
+		return x;
+	case rmEof:
+	case rmContinue:
+		return 0;
 	}
 }
 
 natural HttpResponse::peek(void* buffer, natural size) const {
+	natural x;
+	switch (rMode) {
+	case rmHeaders:
+	case rmChunkHeader:
+	case rmStatus: readHeaders();return peek(buffer,size);
+	case rmDirectUnlimited:
+		return com.peek(buffer,size);break;
+	case rmDirectLimited:
+		if (size > remainLength) size = remainLength;
+		x = com.peek(buffer,size);
+		if (x == 0) throw IncompleteStream(THISLOCATION);
+		return x;
+	case rmReadingChunk:
+		if (size > remainLength) size = remainLength;
+		x = com.read(buffer,size);
+		if (x == 0) throw IncompleteStream(THISLOCATION);
+		return x;
+	case rmEof:
+	case rmContinue:
+		return 0;
+	}
 }
 
 bool HttpResponse::canRead() const {
+	return !(rMode == rmEof || rMode == rmContinue);
 }
 
 natural HttpResponse::dataReady() const {
