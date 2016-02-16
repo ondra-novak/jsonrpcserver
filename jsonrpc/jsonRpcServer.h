@@ -97,7 +97,7 @@ namespace jsonsrv {
 		String logFileName;		
 
 		struct LogBuffers {
-			JSON::Factory_t::Stream_t strparams,strcontext,stroutput;
+			JSON::Factory::Stream_t strparams,strcontext,stroutput;
 
 		};
 		ThreadVarInitDefault<LogBuffers> logBuffers;
