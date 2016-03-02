@@ -512,6 +512,23 @@ using namespace LightSpeed;
 		 */
 		virtual void setRequestName(ConstStrA name) = 0;
 
+
+		///reports duration of the request
+		/** By default, duration of the request is reported staring by receiving request's first line
+		 * and ending by finishing response. Using this function, handler can change default behaviour
+		 * and record real duration of the request. This could be helpful when, for example web-sockets
+		 * are used, and handler need to report duration of each request.
+		 *
+		 * Handler can call this function multipletimes during request. Each call is treat as
+		 * separate request - in case that connection is web-socket, you can use this function
+		 * to report duration of every request processed on that connection.
+		 *
+		 * When function is used, default reporting is disabled for the request.
+		 *
+		 * @param durationMs duration in milliseconds
+		 */
+		virtual void recordRequestDuration(natural durationMs) = 0;
+
 		class SectionIO {
 		public:
 			SectionIO(IHttpRequest &r):r(r) {r.beginIO();}

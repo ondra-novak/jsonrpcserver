@@ -55,13 +55,14 @@ public:
 	virtual void *proxyInterface(IInterfaceRequest &p);
 	virtual const void *proxyInterface(const IInterfaceRequest &p) const;
 
-	virtual void recordRequestDuration(natural ) {}
 
 	///wait handler
 	virtual natural wait(const INetworkResource *res, natural waitFor, natural timeout) const;
 
 	virtual natural callHandler(HttpReqImpl &rq, ConstStrA vpath, IHttpHandler **h);
 
+
+	virtual void recordRequestDuration(natural) {}
 protected:
 	StringA serverIdent;	
 	PathMapper pathMap;
@@ -112,6 +113,8 @@ public:
 
 	virtual ConstStrA getPeerRealAddr() const;
 
+
+	virtual void recordRequestDuration(natural durationMs);
 };
 
 } /* namespace jsonsvc */

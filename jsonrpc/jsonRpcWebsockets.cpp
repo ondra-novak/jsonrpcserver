@@ -75,6 +75,7 @@ protected:
 	virtual void attachThread(natural ) {}
 	virtual void closeOutput() {}
 	virtual void setRequestName(ConstStrA ) {}
+	virtual void recordRequestDuration(natural x) {r->recordRequestDuration(x);}
 
 	virtual void *proxyInterface(IInterfaceRequest &p) {
 		void *x = IInterface::proxyInterface(p);
@@ -184,8 +185,10 @@ void JsonRpcWebsocketsConnection::onTextMessage(ConstStrA msg) {
 			sendTextMessage(msg,true);
 		}
 		TimeStamp endTime = TimeStamp::now();
+		natural ms = (endTime - beginTime).getMilis();
 		lg.progress("%1 - POST %2 WSRPC/1.0 (%3 ms)") << http.getIfc<IHttpPeerInfo>().getPeerRealAddr()
-						<< method << (endTime - beginTime).getMilis();
+						<< method << ms;
+		http.recordRequestDuration(ms);
 	}
 
 }

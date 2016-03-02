@@ -168,6 +168,7 @@ protected:
 	HdrStr requestName;
 
 	TimeStamp reqBeginTime;
+	bool reportDuration;
 
 	class SectionIODirect {
 	public:
@@ -195,7 +196,7 @@ protected:
 			HttpReqImpl &impl;
 		};
 
-
+	virtual void recordRequestDuration(natural);
 
 
 private:

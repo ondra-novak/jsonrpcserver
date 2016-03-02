@@ -626,6 +626,7 @@ ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
 				if (pos == 0) return ITCPServerConnHandler::cmdWaitRead;
 
 				reqBeginTime = TimeStamp::now();
+				reportDuration = true;
 
 				crop(line);
 				ConstStrA::SplitIterator splt = line.split(' ');
@@ -672,6 +673,10 @@ ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
 	}
 }
 
+
+void HttpReqImpl::recordRequestDuration(natural) {
+	reportDuration = false;
+}
 
 ITCPServerConnHandler::Command  HttpReqImpl::finishReadHeader() {
 
@@ -837,6 +842,7 @@ void HttpReqImpl::finish() {
 		TimeStamp reqEndTime = TimeStamp::now();
 		natural reqTime = (reqEndTime - reqBeginTime).getMilis();
 		logRequest(reqTime);
+		if (reportDuration) this->recordRequestDuration(reqTime);
 
 
 	}

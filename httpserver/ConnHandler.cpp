@@ -114,23 +114,6 @@ void ConnHandler::removeSite(ConstStrA path) {
 	pathMap.removeHandler(path);
 }
 
-class DurationMeasure {
-public:
-
-	DurationMeasure(ConnHandler *target):target(target), begin(SysTime::now()) {}
-	~DurationMeasure() {
-		try {
-			SysTime end = SysTime::now();
-			target->recordRequestDuration((end - begin).msecs());
-		} catch (...) {
-
-		}
-	}
-
-protected:
-	ConnHandler *target;
-	SysTime begin;
-};
 
 natural ConnContext::callHandler(ConstStrA vpath, IHttpHandler **h) {
 	return owner.callHandler(*this, vpath, h);
@@ -138,7 +121,6 @@ natural ConnContext::callHandler(ConstStrA vpath, IHttpHandler **h) {
 natural ConnHandler::callHandler(HttpReqImpl &rq, ConstStrA vpath, IHttpHandler **h){
 	
 	Synchronized<RWLock::ReadLock> _(pathMapLock);
-	DurationMeasure __(this);
 
 	PathMapper::MappingIter iter = pathMap.findPathMapping(vpath);
 	while (iter.hasItems()) {
@@ -345,6 +327,11 @@ void ConnContext::clear()
 {
 	HttpReqImpl::clear();
 	peerRealAddrStr.clear();
+}
+
+void ConnContext::recordRequestDuration(natural durationMs) {
+	HttpReqImpl::recordRequestDuration(durationMs);
+	owner.recordRequestDuration(durationMs);
 }
 
 LightSpeed::ConstStrA ConnContext::getPeerRealAddr() const
