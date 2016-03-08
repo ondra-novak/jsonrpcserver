@@ -136,9 +136,13 @@ protected:
 
 class HttpResponse: public IInputStream, public DynObject, public BredyHttpSrv::HeaderFieldDef {
 public:
+
+	enum ReadHeaders {readHeadersNow};
+
 	typedef BredyHttpSrv::HeaderValue HeaderValue;
 
-	HttpResponse(IInputStream &com);
+	HttpResponse(IInputStream *com);
+	HttpResponse(IInputStream *com, ReadHeaders);
 	virtual ~HttpResponse();
 
 
@@ -162,7 +166,7 @@ public:
 	ConstStrA getStatusMessage() const;
 
 
-	HeaderValue getHeaderField(HeaderFieldDef field) const;
+	HeaderValue getHeaderField(HeaderFieldDef::Field field) const;
 
 	HeaderValue getHeaderField(ConstStrA field) const;
 
@@ -174,6 +178,8 @@ public:
 	virtual natural peek(void *buffer, natural size) const;
 	virtual bool canRead() const;
 	virtual natural dataReady() const;
+
+	void skipRemainBody() ;
 
 	///Checks stream, reads necessary bytes, returns number of bytes can be read by the read() function
 	/** @note function expects, that program already received notification about new data. Otherwise

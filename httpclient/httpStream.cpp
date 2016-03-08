@@ -16,6 +16,7 @@ HttpRequest::HttpRequest(IOutputStream *com, ConstStrA path,ConstStrA method, bo
 ,chunkMinSize(defaultChunkMinSize),chunkMaxSize(defaultChunkMaxSize),outputClosed(false)
 
 {
+	if (com == 0) throwNullPointerException(THISLOCATION);
 	initRequest(path,method,useHTTP11);
 }
 HttpRequest::HttpRequest(IOutputStream *com, ConstStrA path,Method method, bool useHTTP11)
@@ -23,13 +24,14 @@ HttpRequest::HttpRequest(IOutputStream *com, ConstStrA path,Method method, bool 
 ,chunkMinSize(defaultChunkMinSize),chunkMaxSize(defaultChunkMaxSize),outputClosed(false)
 
 {
+	if (com == 0) throwNullPointerException(THISLOCATION);
 	initRequest(path,getMethodName(method),useHTTP11);
 }
 
 
 void HttpRequest::initRequest(ConstStrA path,ConstStrA method, bool useHTTP11) {
 	print.setNL("\r\n");
-	print("%1 %2 HTTP/1.%3") << method << path << (useHTTP11?1:0);
+	print("%1 %2 HTTP/1.%3\n") << method << path << (useHTTP11?1:0);
 	StrCmpCI<char> cmp;
 	needBody = cmp(method,getMethodName(mPOST)) == cmpResultEqual
 				|| cmp(method,getMethodName(mPUT)) == cmpResultEqual;
@@ -148,6 +150,7 @@ void HttpRequest::closeOutput() {
 	case useDefinedByUser:
 		break;
 	}
+	com.flush();
 }
 
 void HttpRequest::setContentLength(natural length) {
@@ -205,8 +208,14 @@ void HttpRequest::writeChunk(ConstBin data) {
 }
 
 
-HttpResponse::HttpResponse(IInputStream& com):com(com),rMode(rmStatus) {
+HttpResponse::HttpResponse(IInputStream* com):com(*com),rMode(rmStatus) {
+	if (com == 0) throwNullPointerException(THISLOCATION);
 
+}
+
+HttpResponse::HttpResponse(IInputStream* com, ReadHeaders):com(*com),rMode(rmStatus) {
+	if (com == 0) throwNullPointerException(THISLOCATION);
+	readHeaders();
 }
 
 HttpResponse::~HttpResponse() {
@@ -221,21 +230,29 @@ void HttpResponse::readHeaders() {
 }
 
 natural HttpResponse::getStatus() const {
+	return status;
 }
 
 ConstStrA HttpResponse::getStatusMessage() const {
+	return statusMessage;
 }
 
-HttpResponse::HeaderValue HttpResponse::getHeaderField(HeaderFieldDef field) const {
+HttpResponse::HeaderValue HttpResponse::getHeaderField(Field field) const {
+	return getHeaderField(getHeaderFieldName(field));
 }
 
 HttpResponse::HeaderValue HttpResponse::getHeaderField(ConstStrA field) const {
+	const Str *r = headers.find(field);
+	if (r == 0) return HeaderValue();
+	else return HeaderValue(*r);
 }
 
 bool HttpResponse::isKeepAliveEnabled() const {
+	return keepAlive;
 }
 
 natural HttpResponse::getContentLength() const {
+	return remainLength;
 }
 
 
@@ -261,19 +278,20 @@ natural HttpResponse::checkStream() {
 			natural k = com.dataReady();
 			if (k > remainLength) k = remainLength;
 			return k;
+			}
+		case rmEof: return 1;
 		}
-	}
 }
 
 bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
-	char buff[1500];
-	ConstStrA strbuff(buff);
+	char buff[15];
 	natural cnt = com.peek(buff,sizeof(buff));
+	ConstStrA strbuff(buff,cnt);
 	natural pos = strbuff.find('\n');
 	bool cancontinue = false;
 	if (pos != naturalNull) {
 		pos++;
-		cancontinue = cnt < pos;
+		cancontinue = cnt > pos;
 		cnt = pos;
 	}
 	buffer.append(strbuff.head(cnt));
@@ -290,7 +308,7 @@ bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
 				}
 
 				natural colon = buffer.find(':');
-				if (colon != naturalNull)
+				if (colon == naturalNull)
 					return invalidResponse(toh);
 				ConstStrA key = buffer.head(colon);
 				ConstStrA value = buffer.offset(colon+1);
@@ -421,12 +439,13 @@ natural HttpResponse::read(void* buffer, natural size) {
 	}
 }
 
+
 natural HttpResponse::peek(void* buffer, natural size) const {
 	natural x;
 	switch (rMode) {
 	case rmHeaders:
 	case rmChunkHeader:
-	case rmStatus: readHeaders();return peek(buffer,size);
+	case rmStatus: const_cast<HttpResponse *>(this)->readHeaders();return peek(buffer,size);
 	case rmDirectUnlimited:
 		return com.peek(buffer,size);break;
 	case rmDirectLimited:
@@ -450,6 +469,7 @@ bool HttpResponse::canRead() const {
 }
 
 natural HttpResponse::dataReady() const {
+	return const_cast<HttpResponse *>(this)->checkStream();
 }
 
 bool HttpResponse::invalidResponse(TypeOfHeader toh) {
@@ -472,6 +492,10 @@ void HttpResponse::IncompleteStream::message(ExceptionMsg& msg) const {
 	msg("Incomplete stream (unexpected end of stream)");
 }
 
+void HttpResponse::skipRemainBody()  {
+	byte buff[256];
+	while (read(buff,256));
+}
 
 } /* namespace BredyHttpClient */
 

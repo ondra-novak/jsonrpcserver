@@ -275,7 +275,7 @@ protected:
 	FastLock lock;
 	String logFileName;
 
-	JSON::Factory_t::Stream_t strparams,strcontext,stroutput;
+	JSON::Factory::Stream_t strparams,strcontext,stroutput;
 
 };
 
