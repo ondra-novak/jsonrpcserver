@@ -185,9 +185,11 @@ void HttpRequest::beginBody() {
 	inBody = true;
 	switch (bodyHandling) {
 		//we don't care about length - set length to some number not equal to zero
-	case useDefinedByUser: remainLength = 100; //NOT break here is WAI
-		//terminate header block and open stream
-	case useRemainLength: print("\n");break;
+	case useDefinedByUser: remainLength = 100;
+							print("\n");
+							break;
+		//write content length, terminate header block and open stream
+	case useRemainLength: print("%1: %2\n\n") << getHeaderFieldName(fldContentLength) << remainLength;break;
 		//declare transfer encoding and finish header block
 	case useChunked: print("%1: %2\n\n") << getHeaderFieldName(fldTransferEncoding) << "chunked";
 		//do nothing, keep headers opened, it need to write Content-Length at the end
