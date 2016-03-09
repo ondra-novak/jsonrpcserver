@@ -25,7 +25,7 @@ $(CONFIG):
 	@touch $(CONFIG)
 	@echo $(LIBNAME): with_dbhelpers=$(with_dbhelpers)
 
-include building/build_lib.mk
+include $(LIBLIGHTSPEED)/building/build_lib.mk
 
 EXAMPLES += $(wildcard examples/*)
 

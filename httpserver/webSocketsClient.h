@@ -65,7 +65,7 @@ namespace BredyHttpSrv {
 		class AlreadyConnected : public Exception {
 		public:
 			LIGHTSPEED_EXCEPTIONFINAL;
-			AlreadyConnected(const ProgramLocation &loc) :Exception(THISLOCATION) {}
+			AlreadyConnected(const ProgramLocation &loc) :Exception(loc) {}
 		protected:
 			virtual void message(ExceptionMsg &msg) const;
 		};

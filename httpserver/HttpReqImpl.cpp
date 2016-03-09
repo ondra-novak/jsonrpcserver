@@ -25,43 +25,6 @@
 namespace BredyHttpSrv {
 
 
-static ConstStrA hdrfields[] = {
-		/*fldHost ,*/ "Host",
-		/*fldUserAgent,*/ "User-Agent",
-		/*fldServer,*/ "Server",
-		/*fldContentType,*/ "Content-Type",
-		/*fldContentLength,*/ "Content-Length",
-		/*fldConnection,*/ "Connection",
-		/*fldCookie,*/ "Cookie",
-		/*fldAccept, */"Accept",
-		/*fldCacheControl,*/"Cache-Control",
-		/*fldDate,*/ "Date",
-		/*fldReferer,*/ "Referer",
-		/*fldAllow,*/ "Allow",
-		/*fldContentDisposition,*/ "Content-Disposition",
-		/*fldExpires,*/ "Expires",
-		/*fldLastModified,*/ "Last-Modified",
-		/*fldLocation,*/ "Location",
-		/*fldPragma,*/ "Pragma",
-		/*fldRefresh,*/ "Referer",
-		/*fldSetCookie,*/ "Set-Cookie",
-		/*fldWWWAuthenticate,*/ "WWW-Authenticate",
-		/*fldAuthorization,*/ "Authorization",
-		/*fldWarning,*/ "Warning",
-		/*fldAccessControlAllowOrigin,*/ "Access-Control-Allow-Origin",
-		/*fldETag,*/ "ETag",
-		/*fldIfNoneMatch,*/ "If-None-Match",
-		/*fldIfModifiedSince,*/ "If-Modified-Since",
-		/*fldTransferEncoding,*/ "Transfer-Encoding",
-		/*fldExpect,*/ "Expect",
-		/*fldUnknown,*/ "Undefined",
-		/*fldUpgrade,*/ "Upgrade",
-		/*fldAccessControlAllowMethods,*/ "Access-Control-Allow-Methods",
-		/*fldAccessControlAllowHeaders,*/ "Access-Control-Allow-Headers",
-		/*fldXForwardedFor*/ "X-Forwarded-For",
-		/*fldOrigin*/ "Origin",
-};
-
 static ConstStrA statusMessages[] = {
 		"100 Continue",
 		"101 Switching Protocols",
@@ -106,13 +69,7 @@ static ConstStrA statusMessages[] = {
 		"505 HTTP Version Not Supported"
 };
 
-static ConstStrA fieldToText(IHttpRequest::HeaderField x) {
-	natural idx = x;
-	if (idx >= countof(hdrfields))
-		return ConstStrA();
 
-	return hdrfields[idx];
-}
 static ConstStrA getStatusMessage(natural status) {
 	char buff[3];
 	if (status >= 100 && status <= 999) {
@@ -199,12 +156,12 @@ void HttpReqImpl::sendHeaders() {
 	bool hasConnection = false;
 	bool hasLength = false;
 	bool hasDate = false;
-	static ConstStrA contentTypeKey = fieldToText(fldContentType);
-	static ConstStrA serverKey = fieldToText(fldServer);
-	static ConstStrA transfEnc = fieldToText(fldTransferEncoding);
-	static ConstStrA connectionStr = fieldToText(fldConnection);
-	static ConstStrA contenLenStr = fieldToText(fldContentLength);
-	static ConstStrA dateStr = fieldToText(fldDate);
+	static ConstStrA contentTypeKey = getHeaderFieldName(fldContentType);
+	static ConstStrA serverKey = getHeaderFieldName(fldServer);
+	static ConstStrA transfEnc = getHeaderFieldName(fldTransferEncoding);
+	static ConstStrA connectionStr = getHeaderFieldName(fldConnection);
+	static ConstStrA contenLenStr = getHeaderFieldName(fldContentLength);
+	static ConstStrA dateStr = getHeaderFieldName(fldDate);
 	ConstStrA statusMsgStr = this->statusMsg;
 	if (statusMsgStr.empty())
 		statusMsgStr = getStatusMessage(statusCode);
@@ -316,15 +273,15 @@ void HttpReqImpl::errorPage(natural code, ConstStrA msg, ConstStrA expl) {
 		PrintTextA print(f);
 		//clear some headers - they can damage output
 		//delete content length - because we will show different page
-		responseHdrs.erase(fieldToText(fldContentLength));
+		responseHdrs.erase(getHeaderFieldName(fldContentLength));
 		//delete transfer encoding - because we need simplest encoding
-		responseHdrs.erase(fieldToText(fldTransferEncoding));
+		responseHdrs.erase(getHeaderFieldName(fldTransferEncoding));
 		//delete content type - because we will set to text/html
-		responseHdrs.erase(fieldToText(fldContentType));
+		responseHdrs.erase(getHeaderFieldName(fldContentType));
 		//delete eTag - don't store eTag with an error page
-		responseHdrs.erase(fieldToText(fldETag));
+		responseHdrs.erase(getHeaderFieldName(fldETag));
 		//delete lastModified - don't store error page
-		responseHdrs.erase(fieldToText(fldLastModified));
+		responseHdrs.erase(getHeaderFieldName(fldLastModified));
 		status(code,msg);
 		//set new content type
 		header(fldContentType,"text/html");
@@ -501,16 +458,16 @@ void HttpReqImpl::flush() {
 }
 
 HeaderValue HttpReqImpl::getHeaderField(HeaderField field) const {
-	return getHeaderField(fieldToText(field));
+	return getHeaderField(getHeaderFieldName(field));
 }
 
 
 void HttpReqImpl::header(HeaderField field, ConstStrA value) {
-	header(fieldToText(field), value);
+	header(getHeaderFieldName(field), value);
 }
 
 bool HttpReqImpl::isField(ConstStrA text, HeaderField fld) const {
-	return text == fieldToText(fld);
+	return text == getHeaderFieldName(fld);
 }
 
 natural HttpReqImpl::dataReady() const {
@@ -594,13 +551,6 @@ ITCPServerConnHandler::Command HttpReqImpl::onData(NStream& stream) {
 	}
 }
 
-static void crop(ConstStrA &k) {
-	while (!k.empty()) {
-		if (isspace(k[0])) k = k.crop(1,0);
-		else if (isspace(k[k.length()-1])) k = k.crop(0,1);
-		else break;
-	}
-}
 
 
 ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
@@ -628,7 +578,7 @@ ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
 				reqBeginTime = TimeStamp::now();
 				reportDuration = true;
 
-				crop(line);
+				cropWhite(line);
 				ConstStrA::SplitIterator splt = line.split(' ');
 				method = hdrPool.add(ConstStrA(splt.getNext()));
 				path = hdrPool.add(ConstStrA(splt.getNext()));
@@ -660,8 +610,8 @@ ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
 				}
 				ConstStrA field = line.head(dblcolon);
 				ConstStrA value = line.offset(dblcolon+1);
-				crop(field);
-				crop(value);
+				cropWhite(field);
+				cropWhite(value);
 				requestHdrs.insert(hdrPool.add(field),hdrPool.add(value));
 			}
 			pos = buffer.lookup(ConstBin("\r\n"));

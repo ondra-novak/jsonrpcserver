@@ -37,48 +37,11 @@ using namespace LightSpeed;
      *
 
      */
-	class IHttpRequest: public IInOutStream {
+	class IHttpRequest: public IInOutStream, public HeaderFieldDef {
 
 	public:
 
-		enum HeaderField {
-			fldHost = 0,
-			fldUserAgent,
-			fldServer,
-			fldContentType,
-			fldContentLength,
-			fldConnection,
-			fldCookie,
-			fldAccept,
-			fldCacheControl,
-			fldDate,
-			fldReferer,
-			fldAllow,
-			fldContentDisposition,
-			fldExpires,
-			fldLastModified,
-			fldLocation,
-			fldPragma,
-			fldRefresh,
-			fldSetCookie,
-			fldWWWAuthenticate,
-			fldAuthorization,
-			fldWarning,
-			fldAccessControlAllowOrigin,
-			fldETag,
-			fldIfNoneMatch,
-			fldIfModifiedSince,
-			fldTransferEncoding,
-			fldExpect,
-			fldUnknown,
-			fldUpgrade,
-			fldAccessControlAllowMethods,
-			fldAccessControlAllowHeaders,
-			fldXForwardedFor,
-			fldOrigin
-
-
-		};
+    	typedef HeaderFieldDef::Field HeaderField;
 
 		typedef BredyHttpSrv::HeaderValue HeaderValue;
 
