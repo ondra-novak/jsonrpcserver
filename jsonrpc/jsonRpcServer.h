@@ -103,6 +103,7 @@ namespace jsonsrv {
 		ThreadVarInitDefault<LogBuffers> logBuffers;
 		atomic logRotateCounter;
 
+		JSON::Value nullV;
 	};
 
 
