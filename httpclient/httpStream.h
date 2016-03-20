@@ -255,6 +255,11 @@ public:
 	};
 
 
+	IInputStream& getCom() {
+		return com;
+	}
+
+
 protected:
 	IInputStream &com;
 

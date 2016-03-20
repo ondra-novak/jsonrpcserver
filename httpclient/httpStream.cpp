@@ -334,6 +334,7 @@ bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
 				}
 			} break;
 		case tohChunkSize: {
+				if (buffer.empty()) break;
 				TextParser<char, SmallAlloc<50> > parser;
 				if (parser(" %[0-9a-fA-F]1 ",buffer)) {
 
@@ -385,7 +386,7 @@ bool HttpResponse::processHeaders() {
 	HeaderValue te = getHeaderField(fldTransferEncoding);
 	if (te.defined) {
 		if (te == ConstStrA("chunked")) {
-			rMode = rmReadingChunk;
+			rMode = rmChunkHeader ;
 			remainLength = 0;
 		}
 	}
@@ -431,7 +432,7 @@ natural HttpResponse::read(void* buffer, natural size) {
 		if (x == 0) throw IncompleteStream(THISLOCATION);
 		remainLength -= x;
 		if (remainLength == 0) {
-			rMode = rmReadingChunk;
+			rMode = rmChunkHeader ;
 			if (com.dataReady() > 0) checkStream();
 		}
 		return x;
