@@ -5,9 +5,11 @@
  *      Author: ondra
  */
 
+#include <lightspeed/base/interface.tcc>
 #include "httpStream.h"
 
 #include <lightspeed/base/namedEnum.tcc>
+#include <lightspeed/base/streams/fileiobuff_ifc.h>
 #include <lightspeed/base/text/textstream.tcc>
 namespace BredyHttpClient {
 
@@ -210,12 +212,12 @@ void HttpRequest::writeChunk(ConstBin data) {
 }
 
 
-HttpResponse::HttpResponse(IInputStream* com):com(*com),rMode(rmStatus) {
+HttpResponse::HttpResponse(IInputStream* com):com(*com),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()) {
 	if (com == 0) throwNullPointerException(THISLOCATION);
 
 }
 
-HttpResponse::HttpResponse(IInputStream* com, ReadHeaders):com(*com),rMode(rmStatus) {
+HttpResponse::HttpResponse(IInputStream* com, ReadHeaders):com(*com),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()) {
 	if (com == 0) throwNullPointerException(THISLOCATION);
 	readHeaders();
 }
@@ -225,7 +227,7 @@ HttpResponse::~HttpResponse() {
 
 void HttpResponse::readHeaders() {
 	natural p = checkStream();
-	while (p == 0) {
+	while (rMode == rmStatus || rMode == rmHeaders) {
 		com.canRead(); //block if data are not yet available
 		p = checkStream();
 	}
@@ -259,50 +261,44 @@ natural HttpResponse::getContentLength() const {
 
 
 
-natural HttpResponse::checkStream() {
+bool HttpResponse::checkStream() {
 	switch (rMode) {
 		case rmContinue:
-			if (com.dataReady() == 0) return 1;
-			else {readHeaderLine(tohStatusLine);return 0;}
+			//if data not ready, we still waiting for continue, return 1 for EOF
+			if (com.dataReady() == 0) return true;
+			//otherwise read status line of new header
+			else {
+				readHeaderLine(tohStatusLine);
+				if (com.dataReady()) return checkStream();
+				return false;
+			}
 		case rmStatus:
 			readHeaderLine(tohStatusLine);
-			return 0;
+			if (com.dataReady()) return checkStream();
+			return false;
 		case rmHeaders:
-			if (readHeaderLine(tohKeyValue)) return com.dataReady();
-			else return 0;
+			if (readHeaderLine(tohKeyValue) && com.dataReady()) return checkStream();
+			return false;
 		case rmChunkHeader:
-			if (readHeaderLine(tohChunkSize)) return com.dataReady();
-			else return 0;
+			if (readHeaderLine(tohChunkSize) && com.dataReady()) return checkStream();
+			return false;
 		case rmDirectUnlimited:
-			return com.dataReady();
 		case rmReadingChunk:
-		case rmDirectLimited: {
-			natural k = com.dataReady();
-			if (k > remainLength) k = remainLength;
-			return k;
+		case rmDirectLimited:
+			if (skippingBody) {
+				runSkipBody();
+				if (rMode != rmEof) return false;
 			}
-		case rmEof: return 1;
+			return true;
+		case rmEof: return true;
 		}
 }
 
-bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
-	char buff[15];
-	natural cnt = com.peek(buff,sizeof(buff));
-	ConstStrA strbuff(buff,cnt);
-	natural pos = strbuff.find('\n');
-	bool cancontinue = false;
-	if (pos != naturalNull) {
-		pos++;
-		cancontinue = cnt > pos;
-		cnt = pos;
-	}
-	buffer.append(strbuff.head(cnt));
-	if (com.read(buff, cnt) == 0) {
-		return endOfStream();
-	}
-	if (buffer.tail(2) == ConstStrA("\r\n")) {
-		buffer.resize(buffer.length()-2);
-		switch (toh) {
+bool HttpResponse::processSingleHeader(TypeOfHeader toh, natural size) {
+	char *buff = (char *)alloca(size);
+	com.read(buff,size);
+	ConstStrA buffer(buff,size-2);
+	switch (toh) {
 		case tohKeyValue: {
 				if (buffer.empty()) {
 					processHeaders();
@@ -317,7 +313,6 @@ bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
 				cropWhite(key);
 				cropWhite(value);
 				headers.replace(pool.add(key),pool.add(value));
-				buffer.clear();
 			} break;
 		case tohStatusLine: {
 				TextParser<char, SmallAlloc<1500> > parser;
@@ -327,8 +322,6 @@ bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
 					ConstStrA msg = parser[3].str();
 					statusMessage = pool.add(msg);
 					rMode = rmHeaders;
-					buffer.clear();
-					toh = tohKeyValue;
 				} else {
 					return invalidResponse(toh);
 				}
@@ -340,19 +333,45 @@ bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
 
 					remainLength = parser[1].hex();
 					rMode = remainLength?rmReadingChunk:rmEof;
-					buffer.clear();
 					return true;
 
 				} else {
 					return invalidResponse(toh);
 				}
 			} break;
-		}
 	}
-	if (cancontinue)
-		return readHeaderLine(toh);
-	else
-		return false;
+	return false;
+
+}
+bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
+		bool rep;
+		do {
+			natural pos = ibuff.lookup(ConstBin(reinterpret_cast<const byte *>("\r\n"),2));
+			if (pos == naturalNull) {
+				natural f = ibuff.fetch();
+				if (f == 0) {
+					if (!com.canRead()) return endOfStream();
+					else return invalidResponse(toh);
+				}
+				pos = ibuff.lookup(ConstBin(reinterpret_cast<const byte *>("\r\n"),2),f);
+			}
+			if (pos == naturalNull) {
+				return false;
+			}
+			bool res = processSingleHeader(toh, pos+2);
+			if (res == false && ibuff.getInputLength() != 0) {
+				if (rMode == rmHeaders) {
+					toh = tohKeyValue;
+				}
+				rep = true;
+			} else {
+				rep = false;
+			}
+		} while (rep);
+		return true;
+
+
+
 
 }
 
@@ -399,6 +418,7 @@ bool HttpResponse::processHeaders() {
 	}
 
 	keepAlive = http11;
+	skippingBody = false;
 	HeaderValue conn = getHeaderField(fldConnection);
 	if (conn.defined) {
 		StrCmpCI<char> cmp;
@@ -416,7 +436,9 @@ natural HttpResponse::read(void* buffer, natural size) {
 	case rmChunkHeader:
 	case rmStatus: readHeaders();return read(buffer,size);
 	case rmDirectUnlimited:
-		return com.read(buffer,size);break;
+		x = com.read(buffer,size);
+		if (x == 0) rMode = rmEof;
+		return x;
 	case rmDirectLimited:
 		if (size > remainLength) size = remainLength;
 		x = com.read(buffer,size);
@@ -433,7 +455,6 @@ natural HttpResponse::read(void* buffer, natural size) {
 		remainLength -= x;
 		if (remainLength == 0) {
 			rMode = rmChunkHeader ;
-			if (com.dataReady() > 0) checkStream();
 		}
 		return x;
 	case rmEof:
@@ -472,8 +493,23 @@ bool HttpResponse::canRead() const {
 }
 
 natural HttpResponse::dataReady() const {
-	return const_cast<HttpResponse *>(this)->checkStream();
+	switch (rMode) {
+		case rmContinue:
+			return 1;
+		case rmStatus:
+		case rmHeaders:
+		case rmChunkHeader:
+			return com.dataReady()>0?1:0;
+		case rmDirectUnlimited:
+			return com.dataReady();
+		case rmReadingChunk:
+		case rmDirectLimited:
+			return std::min(com.dataReady(), remainLength);
+		case rmEof:
+			return 1;
+	}
 }
+
 
 bool HttpResponse::invalidResponse(TypeOfHeader toh) {
 	throw MalformedResponse(THISLOCATION, toh);
@@ -495,9 +531,16 @@ void HttpResponse::IncompleteStream::message(ExceptionMsg& msg) const {
 	msg("Incomplete stream (unexpected end of stream)");
 }
 
-void HttpResponse::skipRemainBody()  {
+void HttpResponse::skipRemainBody(bool async)  {
+	skippingBody = true;
+	if (!async) {
+		while (checkStream() == false);
+	}
+}
+
+void HttpResponse::runSkipBody()  {
 	byte buff[256];
-	while (read(buff,256));
+	read(buff,256);
 }
 
 } /* namespace BredyHttpClient */

@@ -17,6 +17,10 @@
 #include "lightspeed/base/containers/stringpool.h"
 
 #include "lightspeed/base/containers/map.h"
+namespace LightSpeed {
+class IInputBuffer;
+}
+
 namespace BredyHttpClient {
 
 using namespace LightSpeed;
@@ -141,7 +145,21 @@ public:
 
 	typedef BredyHttpSrv::HeaderValue HeaderValue;
 
+	///Construct response
+	/**
+	 * @param com input stream
+	 * @note Input stream must implement IInputBuffer, otherwise runtime error is reported.
+	 * You should also reserve enough buffer to store single http header line
+	 */
 	HttpResponse(IInputStream *com);
+	///Construct response
+	/**
+	 * @param com input stream
+	 * @note Input stream must implement IInputBuffer, otherwise runtime error is reported.
+	 * You should also reserve enough buffer to store single http header line
+	 *
+	 * Function also read headers
+	 */
 	HttpResponse(IInputStream *com, ReadHeaders);
 	virtual ~HttpResponse();
 
@@ -177,21 +195,34 @@ public:
     virtual natural read(void *buffer,  natural size);
 	virtual natural peek(void *buffer, natural size) const;
 	virtual bool canRead() const;
+	///Retrieves available data for reading
+	/** If zero is returned, any operation with the stream will block. If non-zero is returned, you still need to call checkStream(),
+	 * to process any required reading to keep http working.
+	 *  If the function checkStream() returned true. then value of this function represents count of bytes ready to read by the read() operation
+	 * @return
+	 */
 	virtual natural dataReady() const;
 
-	void skipRemainBody() ;
+	///Skips any unreaded body
+	/**
+	 * @param async if true, function records the request and any following checkStream will continue to skip any body until end of stream
+	 * is returned. If false, than function will block until all data are read.
+	 */
+	void skipRemainBody(bool async = false) ;
 
-	///Checks stream, reads necessary bytes, returns number of bytes can be read by the read() function
+	///Checks stream, reads any bytes need to keep stream going
 	/** @note function expects, that program already received notification about new data. Otherwise
 	 * function can block
 	 *
-	 * @return number of bytes available for reading - Function can return 0, it does mean, that
-	 * all bytes has been used to achieve correct function of the object. When stream contains EOF,
-	 * function returns 1.
+	 * @retval true stream is ready, you can read data - if you previously finished waiting, reading will not block
+	 * @retval false stream is not ready yet, continue waiting
+	 *
+	 *
 	 *
 	 *
 	 */
-	natural checkStream();
+	bool checkStream();
+
 
 	enum ReadingMode {
 		///reading status header
@@ -276,12 +307,17 @@ protected:
 	Map<Str,Str> headers;
 	bool http11;
 	bool keepAlive;
+	bool wBlock;
+	bool skippingBody;
+	IInputBuffer &ibuff;
 
 
 	bool readHeaderLine(TypeOfHeader toh);
 	bool endOfStream();
 	bool processHeaders();
 	bool invalidResponse(TypeOfHeader toh);
+	bool processSingleHeader(TypeOfHeader toh, natural size);
+	void runSkipBody();
 
 };
 
