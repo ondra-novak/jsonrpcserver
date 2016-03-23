@@ -315,6 +315,8 @@ bool HttpResponse::processSingleHeader(TypeOfHeader toh, natural size) {
 				headers.replace(pool.add(key),pool.add(value));
 			} break;
 		case tohStatusLine: {
+				//empty line in status is allowed here
+				if (buffer.empty()) return false;
 				TextParser<char, SmallAlloc<1500> > parser;
 				if (parser("HTTP/1.%u1 %u2 %3",buffer)) {
 					http11 = (natural)parser[1] == 1;
@@ -345,6 +347,7 @@ bool HttpResponse::processSingleHeader(TypeOfHeader toh, natural size) {
 }
 bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
 		bool rep;
+		bool res;
 		do {
 			natural pos = ibuff.lookup(ConstBin(reinterpret_cast<const byte *>("\r\n"),2));
 			if (pos == naturalNull) {
@@ -358,7 +361,7 @@ bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
 			if (pos == naturalNull) {
 				return false;
 			}
-			bool res = processSingleHeader(toh, pos+2);
+			res = processSingleHeader(toh, pos+2);
 			if (res == false && ibuff.getInputLength() != 0) {
 				if (rMode == rmHeaders) {
 					toh = tohKeyValue;
@@ -368,7 +371,7 @@ bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
 				rep = false;
 			}
 		} while (rep);
-		return true;
+		return res;
 
 
 
