@@ -94,6 +94,7 @@ namespace jsonsrv {
 			setCORSOrigin((StringA)opts.corsOrigin);
 			enableCORS(true);
 		}
+		nullVal = JSON::create()->newValue(null);
 	}
 
 	void JsonRpcServer::logMethod( IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *logOutput )
@@ -113,9 +114,9 @@ namespace jsonsrv {
 		buffers.strparams.clear();
 		buffers.strcontext.clear();
 		buffers.stroutput.clear();
-		if (params == 0) params = JSON::getNullNode();
-		if (context == 0) context = JSON::getNullNode();
-		if (logOutput == 0) logOutput = JSON::getNullNode();
+		if (params == 0) params = nullVal;
+		if (context == 0) context = nullVal;
+		if (logOutput == 0) logOutput = nullVal;
 		JSON::serialize(params,buffers.strparams,false);
 		JSON::serialize(context,buffers.strcontext,false);
 		JSON::serialize(logOutput,buffers.stroutput,false);;
