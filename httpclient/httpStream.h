@@ -290,6 +290,8 @@ public:
 		return com;
 	}
 
+	template<typename Fn>
+	bool enumHeaders(const Fn &fn) const;
 
 protected:
 	IInputStream &com;
@@ -321,6 +323,17 @@ protected:
 
 };
 
+template<typename Fn>
+inline bool HttpResponse::enumHeaders(const Fn& fn) const {
+	for (Map<Str,Str>::Iterator iter = headers.getFwIter(); iter.hasItems();) {
+		const Map<Str,Str>::Entity &e = iter.getNext();
+		if (!fn(ConstStrA(e.key),ConstStrA(e.value))) return false;
+	}
+	return true;
+}
+
+
 } /* namespace BredyHttpClient */
+
 
 #endif /* BREDY_HTTPCLIENT_HTTPSTREAM_H_2094e820934809ei202 */
