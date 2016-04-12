@@ -11,6 +11,7 @@
 #include <lightspeed/base/namedEnum.tcc>
 #include <lightspeed/base/streams/fileiobuff_ifc.h>
 #include <lightspeed/base/text/textstream.tcc>
+#include "lightspeed/base/containers/map.tcc"
 namespace BredyHttpClient {
 
 HttpRequest::HttpRequest(IOutputStream *com, ConstStrA path,ConstStrA method, bool useHTTP11)

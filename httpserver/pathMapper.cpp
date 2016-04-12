@@ -8,6 +8,7 @@
 #include "pathMapper.h"
 #include "lightspeed/base/containers/stringpool.tcc"
 #include "lightspeed/base/debug/dbglog.h"
+#include "lightspeed/base/containers/map.tcc"
 
 namespace BredyHttpSrv {
 

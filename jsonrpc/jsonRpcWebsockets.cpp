@@ -7,15 +7,12 @@
 
 #include "jsonRpcWebsockets.h"
 #include "../httpserver/abstractWebSockets.tcc"
-
-
 #include <lightspeed/base/interface.tcc>
-
 #include "lightspeed/base/actions/promise.tcc"
-
 #include "lightspeed/base/debug/dbglog.h"
-
 #include "lightspeed/base/exceptions/httpStatusException.h"
+#include "lightspeed/base/containers/map.tcc"
+
 namespace jsonsrv {
 
 class JsonRpcWebsocketsConnection::HttpRequestWrapper: public BredyHttpSrv::IHttpRequest {
