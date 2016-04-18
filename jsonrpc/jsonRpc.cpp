@@ -20,6 +20,8 @@
 #include "lightspeed/utils/json/jsonfast.tcc"
 #include "lightspeed/mt/exceptions/timeoutException.h"
 #include "lightspeed/base/interface.tcc"
+#include "lightspeed/base/containers/map.tcc"
+
 
 #include "lightspeed/base/exceptions/httpStatusException.h"
 #include "lightspeed/utils/md5iter.h"

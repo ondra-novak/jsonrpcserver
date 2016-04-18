@@ -16,6 +16,8 @@
 #include "lightspeed/base/debug/dbglog.h"
 
 #include "lightspeed/base/exceptions/httpStatusException.h"
+#include "lightspeed/base/containers/map.tcc"
+
 namespace jsonsrv {
 
 class JsonRpcWebsocketsConnection::HttpRequestWrapper: public BredyHttpSrv::IHttpRequest {

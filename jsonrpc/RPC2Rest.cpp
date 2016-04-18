@@ -13,6 +13,8 @@
 
 #include "../httpserver/queryParser.h"
 #include "lightspeed/base/streams/fileio.h"
+#include "lightspeed/base/containers/map.tcc"
+
 
 #include "ijsonrpc.h"
 namespace jsonsrv {

@@ -20,6 +20,8 @@
 #include "lightspeed/base/containers/carray.h"
 #include "lightspeed/base/interface.tcc"
 #include "lightspeed/base/streams/fileiobuff.tcc"
+#include "lightspeed/base/containers/map.tcc"
+
 
 
 namespace BredyHttpSrv {
