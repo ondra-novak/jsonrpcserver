@@ -2,10 +2,6 @@
 #include "lightspeed/base/text/textParser.tcc"
 #include "lightspeed/base/memory/smallAlloc.h"
 #include "lightspeed/base/containers/map.tcc"
-<<<<<<< HEAD
-
-=======
->>>>>>> refs/remotes/origin/httpclient
 
 namespace BredyHttpSrv {
 

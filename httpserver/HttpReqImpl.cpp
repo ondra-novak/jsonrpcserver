@@ -21,10 +21,6 @@
 #include "lightspeed/base/interface.tcc"
 #include "lightspeed/base/streams/fileiobuff.tcc"
 #include "lightspeed/base/containers/map.tcc"
-<<<<<<< HEAD
-
-=======
->>>>>>> refs/remotes/origin/httpclient
 
 
 namespace BredyHttpSrv {
