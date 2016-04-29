@@ -29,6 +29,7 @@
 #include "../httpserver/statBuffer.h"
 #include "jsonRpcWebsockets.h"
 #include "rpc.js.h"
+#include "lightspeed/base/containers/map.tcc"
 
 using LightSpeed::IInterface;
 using LightSpeed::StaticAlloc;

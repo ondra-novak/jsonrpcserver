@@ -94,7 +94,8 @@ namespace jsonsrv {
 	protected:
 		AllocPointer<SeqFileOutBuff<> >logfile;
 		FastLock lock;
-		String logFileName;		
+		String logFileName;
+		JSON::Value nullVal;
 
 		struct LogBuffers {
 			JSON::Factory::Stream_t strparams,strcontext,stroutput;
