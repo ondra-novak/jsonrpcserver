@@ -50,7 +50,8 @@ static ConstStrA hdrfields[] = {
 		/*fldAccessControlAllowMethods,*/ "Access-Control-Allow-Methods",
 		/*fldAccessControlAllowHeaders,*/ "Access-Control-Allow-Headers",
 		/*fldXForwardedFor*/ "X-Forwarded-For",
-		/*fldOrigin*/ "Origin"
+		/*fldOrigin*/ "Origin",
+		/*fldProxyAuthorization,*/ "Proxy-Authorization"
 
 
 };

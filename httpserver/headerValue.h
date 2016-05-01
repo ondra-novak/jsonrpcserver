@@ -58,7 +58,8 @@ using namespace LightSpeed;
 			fldAccessControlAllowMethods,
 			fldAccessControlAllowHeaders,
 			fldXForwardedFor,
-			fldOrigin
+			fldOrigin,
+			fldProxyAuthorization,
 		};
 
 		enum Method {

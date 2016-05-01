@@ -101,6 +101,7 @@ public:
 	static void setDefaultChunkMaxSize(natural defaultChunkMaxSize);
 	static natural getDefaultChunkMinSize();
 	void setDefaultChunkMinSize(natural defaultChunkMinSize);
+	bool isOutputClosed() const {return outputClosed;}
 
 protected:
 
