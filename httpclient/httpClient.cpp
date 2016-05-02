@@ -10,6 +10,9 @@
 #include "httpClient.h"
 
 #include "lightspeed/base/exceptions/httpStatusException.h"
+
+#include "lightspeed/base/exceptions/netExceptions.h"
+#include "lightspeed/base/streams/fileiobuff.tcc"
 namespace BredyHttpClient {
 
 ClientConfig::ClientConfig()
@@ -50,13 +53,39 @@ HttpClient::HdrItem::HdrItem(Field field,const StringCore<char>& value, const Hd
 HttpClient::HdrItem::HdrItem(Field field, const char* value, const HdrItem* next)
 :field(HttpClient::getHeaderFieldName(field)),value(ConstStrA(value)),next(next) {}
 
+void HttpClient::feedHeaders(HttpRequest& rq, const HdrItem* headers) {
+	while (headers) {
+		rq.setHeader(headers->field, headers->value);
+		headers = headers->next;
+	}
+}
+
 HttpResponse& HttpClient::getContent(ConstStrA url, const HdrItem* headers) {
+	HttpRequest &rq = createRequest(url,mGET);
+	feedHeaders(rq, headers);
+	rq.closeOutput();
+	return createResponse(true);
 }
 
 HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, ConstBin data, const HdrItem* headers) {
+	HttpRequest &rq = createRequest(url,method);
+	rq.setContentLength(data.length());
+	feedHeaders(rq, headers);
+	rq.writeAll(data.data(),data.length());
+	rq.closeOutput();
+	return createResponse(true);
+
 }
 
-HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, SeqFileInput data, ConstStringT<ConstStrA> headers) {
+HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, SeqFileInput data, const HdrItem* headers) {
+	HttpRequest &rq = createRequest(url,method);
+	rq.setContentLength(naturalNull);
+	feedHeaders(rq, headers);
+	CArray<byte, 1024> buffer;
+	SeqFileOutput dout(&rq);
+	dout.blockCopy(data,buffer,naturalNull);
+	rq.closeOutput();
+	return createResponse(true);
 }
 
 bool HttpClient::canReuseConnection(const ConstStrA& domain_port, bool tls) {
@@ -75,88 +104,88 @@ bool HttpClient::canReuseConnection(const ConstStrA& domain_port, bool tls) {
 
 HttpRequest& HttpClient::createRequest(ConstStrA url, Method method) {
 
-	TextParser<char, SmallAlloc<1024> > parser;
-	if (parser("http%(?)[s]1://%(*)*2%%[a-zA-Z0-9-_.:]3/%(*)4",url)) {
-		ConstStrA s = parser[1].str();
-		ConstStrA auth = parser[2].str();
-		ConstStrA domain_port = parser[3].str();
-		ConstStrA path = parser[4].str();
-		path = url.map(path);
-		path = ConstStrA(path.data()-1, path.length()+1);
-		if (!s.empty() && s != "s")
-			throw InvalidUrlException(THISLOCATION,url,"unknown protocol");
-		if (!auth.empty() && s.tail(1)[0] != '@')
-			throw InvalidUrlException(THISLOCATION,url,"auth need '@' as separator");
-		if (domain_port.tail(1)[0] == ':')
-			throw InvalidUrlException(THISLOCATION,url,"missing port number");
+	connectionReused = false;
+		TextParser<char, SmallAlloc<1024> > parser;
+		if (parser("http%(?)[s]1://%(*)*2%%[a-zA-Z0-9-_.:]3/%(*)4",url)) {
+			ConstStrA s = parser[1].str();
+			ConstStrA auth = parser[2].str();
+			ConstStrA domain_port = parser[3].str();
+			ConstStrA path = parser[4].str();
+			path = url.tail(path.length()+1);
+			if (!s.empty() && s != "s")
+				throw InvalidUrlException(THISLOCATION,url,"unknown protocol");
+			if (!auth.empty() && s.tail(1)[0] != '@')
+				throw InvalidUrlException(THISLOCATION,url,"auth need '@' as separator");
+			if (domain_port.tail(1)[0] == ':')
+				throw InvalidUrlException(THISLOCATION,url,"missing port number");
 
-		bool tls = !s.empty();
-		IHttpProxyProvider::Result proxyInfo;
-		if (proxyProvider) {
-			proxyInfo = proxyProvider->getProxy(domain_port);
-		}
-
-		if (tls) {
-			if (httpsProvider == 0) {
-				throw InvalidUrlException(THISLOCATION,url,"Https is not configured");
+			bool tls = !s.empty();
+			IHttpProxyProvider::Result proxyInfo;
+			if (proxyProvider) {
+				proxyInfo = proxyProvider->getProxy(domain_port);
 			}
-			if (!canReuseConnection(domain_port, tls)) {
-				PNetworkStream stream;
-				if (proxyInfo.defined) {
-					stream = connectSite(proxyInfo.proxyAddr,8080);
-					proxyConnect(stream, domain_port, proxyInfo.authorization);
-				} else {
-					stream = connectSite(domain_port, 443);
+
+			if (canReuseConnection(domain_port, tls)) {
+				try {
+					response->skipRemainBody();
+					connectionReused = true;
+				} catch (const NetworkException &e) {
+					response = nil;
+					nstream = nil;
 				}
-				stream = httpsProvider->connectTLS(stream,domain_port);
-				nstream = new BufferedNetworkStream(stream);
-				currentDomain = domain_port;
-				currentTls = true;
-			} else {
-				response->skipRemainBody();
 			}
+
+			if (!connectionReused) {
+				if (tls) {
+					if (httpsProvider == 0) {
+						throw InvalidUrlException(THISLOCATION,url,"Https is not configured");
+					}
+					PNetworkStream stream;
+					if (proxyInfo.defined) {
+						stream = connectSite(proxyInfo.proxyAddr,8080);
+						proxyConnect(stream, domain_port, proxyInfo.authorization);
+					} else {
+						stream = connectSite(domain_port, 443);
+					}
+					stream = httpsProvider->connectTLS(stream,domain_port);
+					nstream = new BufferedNetworkStream(stream);
+					currentDomain = domain_port;
+					currentTls = true;
+				} else {
+					if (proxyInfo.defined) {
+						PNetworkStream stream;
+						stream = connectSite(proxyInfo.proxyAddr,8080);
+						nstream = new BufferedNetworkStream(stream);
+						path = url;
+					} else {
+						PNetworkStream stream;
+						stream = connectSite(domain_port,80);
+						nstream = new BufferedNetworkStream(stream);
+					}
+				}
+			}
+			response = nil;
+			request = nil;
+			request = Constructor4<HttpRequest,IOutputStream *,ConstStrA,Method ,bool>(
+					nstream.get(), path, method, !useHTTP10);
+			if (proxyInfo.defined && !tls && !proxyInfo.authorization.empty()) {
+				request->setHeader(fldProxyAuthorization, proxyInfo.authorization);
+			}
+			request->setHeader(fldHost, domain_port);
+			request->setHeader(fldUserAgent, userAgent);
+			if (keepAlive == false) {
+				request->setHeader(fldConnection,"close");
+			} else if (useHTTP10) {
+				request->setHeader(fldConnection,"keep-alive");
+			}
+
+			request->setStaticObj();
+			return request;
+
+
 		} else {
-			if (proxyInfo.defined) {
-				if (!canReuseConnection(domain_port,tls)) {
-					PNetworkStream stream;
-					stream = connectSite(proxyInfo.proxyAddr,8080);
-					nstream = new BufferedNetworkStream(stream);
-					path = url;
-				} else {
-					if (response != nil) {
-						response->skipRemainBody();
-					}
-				}
-			} else {
-				if (!canReuseConnection(domain_port,tls)) {
-					PNetworkStream stream;
-					stream = connectSite(domain_port,80);
-					nstream = new BufferedNetworkStream(stream);
-				} else {
-					if (response != nil) {
-						response->skipRemainBody();
-					}
-				}
-			}
+			throw InvalidUrlException(THISLOCATION,url,"Parser rejected");
 		}
-		response = nil;
-		request = nil;
-		request = Constructor4<HttpRequest,IOutputStream *,ConstStrA,Method ,bool>(
-				nstream.get(), path, method, !useHTTP10);
-		if (proxyInfo.defined && !tls && !proxyInfo.authorization.empty()) {
-			request->setHeader(fldProxyAuthorization, proxyInfo.authorization);
-		}
-		request->setHeader(fldHost, domain_port);
-		request->setHeader(fldUserAgent, userAgent);
-		return request;
-
-
-	} else {
-		throw InvalidUrlException(THISLOCATION,url,"Parser rejected");
-	}
-
-
-
 }
 
 HttpResponse& HttpClient::createResponse(bool readHeaders) {
@@ -168,6 +197,7 @@ HttpResponse& HttpClient::createResponse(bool readHeaders) {
 		response = Constructor2<HttpResponse, IInputStream *, HttpResponse::ReadHeaders>(nstream.get(),HttpResponse::readHeadersNow);
 	else
 		response = Constructor1<HttpResponse, IInputStream *>(nstream.get());
+	response->setStaticObj();
 	return response;
 }
 
@@ -186,6 +216,7 @@ PNetworkStream HttpClient::connectSite(ConstStrA site, natural defaultPort) {
 	NetworkAddress addr(site, defaultPort);
 	NetworkStreamSource streamSource(addr,1,iotimeout,iotimeout);
 	PNetworkStream stream = streamSource.getNext();
+	return stream;
 }
 
 void HttpClient::proxyConnect(PNetworkStream stream, ConstStrA host, ConstStrA authorization) {

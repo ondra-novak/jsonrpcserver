@@ -17,49 +17,12 @@
 #include "lightspeed/base/streams/netio.h"
 
 #include "lightspeed/base/exceptions/errorMessageException.h"
+#include "interfaces.h"
 namespace BredyHttpClient {
 
 using namespace LightSpeed;
 
 
-///Basic HTTP/1.1 client doesn't support HTTPS. This object helps with creation of HTTPS connection
-class IHttpsProvider {
-public:
-
-	///Performs TLS handshake and returns ssl stream
-	/**
-	 * @param connection connection in state being ready to TLS handshake
-	 * @param hostname hostname including the port (because SNI)
-	 * @return function returns decryped stream.
-	 * @exception Function can throw exception when TLS handshake fails
-	 */
-	virtual PNetworkStream connectTLS(PNetworkStream connection, ConstStrA hostname) = 0;
-
-};
-
-///Allows to define proxy server for every hostname it connects
-/** If proxy defined, server will connect to the proxy and uses proxy syntaxt to connect the server.
- * For HTTPS, it will use CONNECT protocol
- *
- */
-class IHttpProxyProvider {
-public:
-
-	///Result of the operation
-	struct Result {
-		///address of the proxy in the form <domain:port>
-		StringA proxyAddr;
-		///Content of autorization header. If empty, no autorzation header is emitted
-		StringA authorization;
-		///true, if proxy is defined, otherwise false (client should connect directly)
-		bool defined;
-
-		Result(ConstStrA proxy):proxyAddr(proxy),defined(true) {}
-		Result(ConstStrA proxy, ConstStrA authorization):proxyAddr(proxy),authorization(authorization),defined(true) {}
-		Result():defined(false) {}
-	};
-	virtual Result  getProxy(ConstStrA hostname) = 0;
-};
 
 struct ClientConfig {
 	///userAgent user agent identification (string passed to every request)
@@ -96,6 +59,7 @@ public:
 
 
 	class HdrItem {
+	public:
 		const ConstStrA field;
 		const StringKey<StringCore<char> > value;
 		const HdrItem *next;
@@ -148,8 +112,22 @@ public:
 	 *
 	 * @note Http/1.1 is enforced because chunked transfer encoding will be used
 	 */
-	HttpResponse &sendRequest(ConstStrA url, Method method, SeqFileInput data, ConstStringT<ConstStrA> headers);
+	HttpResponse &sendRequest(ConstStrA url, Method method, SeqFileInput data, const HdrItem* headers);
 
+
+	///Closes connection even if keep alive is in effect
+	void closeConnection();
+
+	///Returns current connection
+	/**
+	 * @retval null connection is not currently available - this can happen between requests when keepalive is not available
+	 * @return other - pointer to current connection, you can adjust parameters or read data directly, however keep
+	 * in eye, that transfer encoding can be applied.
+	 */
+	PNetworkStream getConnection();
+
+
+protected:
 
 	///Creates request object to craft custom http request
 	HttpRequest &createRequest(ConstStrA url, Method method);
@@ -168,19 +146,17 @@ public:
 	HttpResponse &createResponse(bool receiveHeaders);
 
 
-	///Closes connection even if keep alive is in effect
-	void closeConnection();
-
-	///Returns current connection
-	/**
-	 * @retval null connection is not currently available - this can happen between requests when keepalive is not available
-	 * @return other - pointer to current connection, you can adjust parameters or read data directly, however keep
-	 * in eye, that transfer encoding can be applied.
+	///Retrieves reuse state.
+	/** The state is valid after request is created. Reuse state is state, when request has been made
+	 * on a connection which has been previously used for other request with keep alive feature. This information
+	 * is need to handle connection termination during creation the request or reading the response. If response
+	 * fails with reuseState equal true, you should closeConnection() and repeat the request.
+	 *
+	 * Text above applies on function createRequest and createResponse,
+	 *
+	 * @return
 	 */
-	PNetworkStream getConnection();
-
-
-protected:
+	bool getReuseState() const {return connectionReused;}
 
 
 	class BufferedNetworkStream: public IOBuffer<2048>, public INetworkStream {
@@ -210,6 +186,7 @@ protected:
 
 	StringA currentDomain;
 	bool currentTls;
+	bool connectionReused;
 	natural iotimeout;
 
 	PNetworkStream connectSite(ConstStrA site, natural defaultPort);
@@ -217,6 +194,7 @@ protected:
 
 private:
 	bool canReuseConnection(const ConstStrA& domain_port, bool tls);
+	void feedHeaders(HttpRequest& rq, const HdrItem* headers);
 };
 
 class InvalidUrlException: public ErrorMessageException {

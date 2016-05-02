@@ -41,13 +41,13 @@ public:
 	virtual void flush();
 	virtual void closeOutput();
 
-	///Automatically chooses best way to transfer content of unknown length
-	/** For http/1.1 this switches to chunked protocol. FOr http/1.0 this equal to
+	///Automatically chooses best way to transfer content of an unknown length
+	/** For http/1.1 this switches to chunked protocol. For http/1.0 this equal to
 	 * calculateLength. This is default
 	 */
 	static const natural unknownLength = naturalNull;
 	///Calculates length
-	/** This require to buffer content complete */
+	/** This require to buffer whole content*/
 	static const natural calculateLength = naturalNull -1;
 
 	///Turn off handling content length. Caller will handle by self
