@@ -228,7 +228,7 @@ HttpResponse::~HttpResponse() {
 
 void HttpResponse::readHeaders() {
 	natural p = checkStream();
-	while (rMode == rmStatus || rMode == rmHeaders) {
+	while (rMode == rmStatus || rMode == rmHeaders || rMode == rmChunkHeader) {
 		com.canRead(); //block if data are not yet available
 		p = checkStream();
 	}
@@ -493,6 +493,9 @@ natural HttpResponse::peek(void* buffer, natural size) const {
 }
 
 bool HttpResponse::canRead() const {
+	if (rMode == rmChunkHeader || rMode == rmHeaders || rMode == rmStatus) {
+		const_cast<HttpResponse *>(this)->readHeaders();
+	}
 	return !(rMode == rmEof || rMode == rmContinue);
 }
 

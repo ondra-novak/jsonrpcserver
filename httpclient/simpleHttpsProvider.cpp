@@ -63,6 +63,7 @@ protected:
 	SSL *ssl;
 	SSL_CTX *ctx;
 	PNetworkStream connectedStream;
+	StringA hostname;
 
 	virtual natural doWait(natural waitFor, natural timeout) const {
 		WaitHandler tmp;
@@ -94,9 +95,11 @@ protected:
 PNetworkStream BredyHttpClient::SimpleHttps::connectTLS( PNetworkStream connection, ConstStrA hostname) {
 
 	SSLSocket_t *sock = new SSLSocket_t(TLSv1_2_client_method());
+	PNetworkStream stream = sock;
 	sock->setHostName(hostname);
 	sock->loadDefaultCertLocations();
 	sock->connect(connection);
+	return stream;
 
 	//SSL_set_tlsext_host_name()
 }
@@ -178,16 +181,18 @@ void SSLSocket_t::connect(LightSpeed::PNetworkStream connectedStream) {
 	ssl = SSL_new(ctx);
 	if (ssl == 0) throw ErrNoWithDescException(THISLOCATION,errno,"Unable to create SSL descriptor");
 
-//	INetworkSocket &sockIfc = connectedStream->getIfc<INetworkSocket>();
-	bool done = false;
-/*	int socket = sockIfc.getSocket(0);
-	bool done = false;
+	if (!hostname.empty())
+		SSL_set_tlsext_host_name(ssl,hostname.cStr());
 
-	u_long nonblk =1;
-	ioctl(socket,FIONBIO, &nonblk);
+	INetworkSocket &sockIfc = connectedStream->getIfc<INetworkSocket>();
+	bool done = false;
+	int socket = sockIfc.getSocket(0);
+
+//	u_long nonblk =1;
+//	ioctl(socket,FIONBIO, &nonblk);
 
 	SSL_set_fd(ssl,socket);
-*/
+
 	this->connectedStream = connectedStream;
 	while (!done) {
 		int err = SSL_connect(ssl);
@@ -318,8 +323,7 @@ inline void SSLSocket_t::loadDefaultCertLocations() {
 
 
 inline void SSLSocket_t::setHostName(ConstStrA hostname) {
-	StringA tmp;
-	SSL_set_tlsext_host_name(ssl,cStr(hostname,tmp));
+	this->hostname = hostname;
 }
 
 void SSLSocket_t::waitSSLSocket(int err) {
