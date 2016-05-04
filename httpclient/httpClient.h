@@ -127,6 +127,9 @@ public:
 	PNetworkStream getConnection();
 
 
+
+
+
 protected:
 
 	///Creates request object to craft custom http request
