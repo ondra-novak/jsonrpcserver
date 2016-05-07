@@ -510,10 +510,10 @@ JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA met
 	rq.jsonFactory = f;
 	rq.serverStub = this;
 
-	if (rq.args == 0) {
+	if (rq.args == null) {
 		throw RpcCallError(THISLOCATION,400,"Missing 'args' field in the RPC request header");
 	}
-	if (rq.idnode == 0) {
+	if (rq.idnode == null) {
 		throw RpcCallError(THISLOCATION, 400,"Missing 'id' field in the RPC request header");
 	}
 
@@ -698,11 +698,11 @@ JSON::PNode JsonRpc::rpcPingNotify( RpcRequest *rq) {
 	JsonRpcWebsocketsConnection *conn = JsonRpcWebsocketsConnection::getConnection(*rq->httpRequest);
 	if (conn == NULL) throw RpcError(THISLOCATION,rq,405,"Method requires wsRPC");
 	JSON::Iterator iter = rq->args->getFwIter();
-	if (iter.hasItems() && iter.peek().node->isString()) {
-		ntfName = iter.getNext().node->getStringUtf8();
+	if (iter.hasItems() && iter.peek()->isString()) {
+		ntfName = iter.getNext()->getStringUtf8();
 	}
 	JSON::PNode args = rq->array();
-	while (iter.hasItems()) args->add(iter.getNext().node);
+	while (iter.hasItems()) args->add(iter.getNext());
 
 	conn->sendNotification(ntfName,args);
 	return rq->ok();

@@ -32,15 +32,15 @@ struct RpcRequest {
 	///Message ID, when ID is string
 	ConstStrA id;
 	///Message ID node. If request is notify, this field is null
-	Pointer<JSON::INode> idnode;
+	JSON::Value idnode;
 	///pointer to arguments. Always defined, even if arguments are empty
 	/**
 	 * @note Arguments should be stored in Array as defined in specification. Old implementation
 	 * of Pry4 server allows pass argumemts as class. Handler should expect both forms
 	 */
-	Pointer<JSON::INode> args;
+	JSON::Value args;
 	///pointer to factory recomended to allocate new JSON nodes
-	Pointer<JSON::IFactory> jsonFactory;
+	JSON::PFactory jsonFactory;
 	///pointer to HTTP request, which contains this call
 	/** This pointer can be sometimes nil, especially, when methos has not be invoked by HTTP request.
 	 */
@@ -49,7 +49,7 @@ struct RpcRequest {
 	Pointer<IJsonRpc> serverStub;
 	///method context (JSONRPC extension)
 	/** If context is not included to the request, pointer is null */
-	Pointer<JSON::INode> context;
+	JSON::Value context;
 	///Context sent with reply
 	/** This pointer is null by default. When method wants to send context as reply,
 	 * it must create class node here using jsonFactory
@@ -106,30 +106,6 @@ struct RpcRequest {
 		return args->getEntry(n)->getFwIter();
 	}
 
-	 ConstStrA argStrA(ArgIter &iter, ConstStrA name);
-	ConstStrW argStrW(ArgIter &iter, ConstStrA name);
-	integer argInt(ArgIter &iter, ConstStrA name);
-	natural argUInt(ArgIter &iter, ConstStrA name);
-	double argFloat(ArgIter &iter, ConstStrA name);
-	bool argBool(ArgIter &iter, ConstStrA name);
-	JSON::PNode argObject(ArgIter &iter, ConstStrA name);
-	///Tests, whethe next argument is specified name and is NULL
-	/** In contrast to other functions, this doesn't advance to next argument when
-	 * argument is not NULL.
-	 * @param iter iterator
-	 * @param name name of argument
-	 * @retval true argument is NULL, advanced to next argument
-	 * @retval false argument is not NULL, not advanced - you have to read value
-	 */
-	bool isNull(ArgIter &iter, ConstStrA name);
-	ConstStrA argStrA(ArgIter &iter, ConstStrA name, ConstStrA defval);
-	ConstStrW argStrW(ArgIter &iter, ConstStrA name, ConstStrW defval);
-	integer argInt(ArgIter &iter, ConstStrA name, integer defval);
-	natural argUInt(ArgIter &iter, ConstStrA name, natural defval);
-	double argFloat(ArgIter &iter, ConstStrA name, double defval);
-	bool argBool(ArgIter &iter, ConstStrA name, bool defval);
-	JSON::PNode argObject(ArgIter &iter, ConstStrA name, JSON::PNode defval);
-	bool hasValue(ArgIter &iter, ConstStrA name);
 
 	JSON::Builder::Object object() const {return JSON::Builder(jsonFactory.get()).object();}
 	JSON::Builder::Array array() const {return JSON::Builder(jsonFactory.get()).array();}
