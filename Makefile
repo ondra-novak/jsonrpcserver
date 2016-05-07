@@ -14,18 +14,19 @@ ifeq "$(with_dbhelpers)" "1"
 
 LIBLIGHTMYSQL=$(call selectpath,$(SEARCHPATHS),lightmysql)
 NEEDLIBS+=$(LIBLIGHTMYSQL)
-CONFIG=tmp/with_dbhelpers
-else
-CONFIG=tmp/without_dbhelpers
 endif 
 
-$(CONFIG):
-	@rm -f tmp/with_dbhelpers tmp/without_dbhelpers
-	mkdir -p tmp
-	@touch $(CONFIG)
-	@echo $(LIBNAME): with_dbhelpers=$(with_dbhelpers)
+CONFIG=config.h
 
 include $(LIBLIGHTSPEED)/building/build_lib.mk
+include $(LIBLIGHTSPEED)/building/testfns.mk
+
+
+$(CONFIG): testheader Makefile 
+	@echo Detecting features...
+	@./testheader openssl/ssl.h HAVE_OPENSSL > $@
+	
+
 
 EXAMPLES += $(wildcard examples/*)
 

@@ -6,18 +6,20 @@
  */
 
 #include <lightspeed/base/exceptions/systemException.h>
-#include <openssl/err.h>
-#include <openssl/ssl.h>
+#include <lightspeed/base/exceptions/throws.tcc>
+#include <lightspeed/base/exceptions/unsupportedFeature.h>
 #include "interfaces.h"
-
 #include "lightspeed/mt/fastlock.h"
 #include "simpleHttpsProvider.h"
-
 #include "lightspeed/base/containers/autoArray.tcc"
-
 #include "lightspeed/base/exceptions/errorMessageException.h"
-
 #include "lightspeed/mt/exceptions/timeoutException.h"
+
+#include "../config.h"
+#if HAVE_OPENSSL
+#include <openssl/err.h>
+#include <openssl/ssl.h>
+
 namespace BredyHttpClient {
 
 using namespace LightSpeed;
@@ -346,3 +348,20 @@ FastLock SSLSocket_t::globalGuard;
 
 
 }
+#else
+
+namespace BredyHttpClient {
+
+using namespace LightSpeed;
+
+PNetworkStream BredyHttpClient::SimpleHttps::connectTLS( PNetworkStream connection, ConstStrA hostname) {
+	throw UnsupportedFeatureOnClass<SimpleHttps>("This library wasn't compiled with openssl",THISLOCATION);
+}
+
+SimpleHttps* BredyHttpClient::SimpleHttps::getInstance() {
+	throw UnsupportedFeatureOnClass<SimpleHttps>("This library wasn't compiled with openssl",THISLOCATION);
+}
+
+
+}
+#endif
