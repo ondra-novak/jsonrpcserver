@@ -168,6 +168,13 @@ public:
 	///Reads all headers. Function blocks until all headers are read.
 	void readHeaders();
 
+	///waits for data after canContinue() is true. Also updates stream state. After return, you
+	/// should read headers
+	void waitAfterContinue();
+
+	///wait for data after canContinue(). Function also fetches new headers
+	void waitAfterContinue(ReadHeaders);
+
 	///Returns status code
 	/**
 	 * @return status code. If status is unavailable, returns naturalNull

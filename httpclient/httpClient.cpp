@@ -53,6 +53,14 @@ HttpClient::HdrItem::HdrItem(Field field,const StringCore<char>& value, const Hd
 HttpClient::HdrItem::HdrItem(Field field, const char* value, const HdrItem* next)
 :field(HttpClient::getHeaderFieldName(field)),value(ConstStrA(value)),next(next) {}
 
+void HttpClient::closeConnection() {
+	nstream = nil;
+	connectionReused = false;
+	request = nil;
+	response = nil;
+}
+
+
 void HttpClient::feedHeaders(HttpRequest& rq, const HdrItem* headers) {
 	while (headers) {
 		rq.setHeader(headers->field, headers->value);
@@ -61,31 +69,152 @@ void HttpClient::feedHeaders(HttpRequest& rq, const HdrItem* headers) {
 }
 
 HttpResponse& HttpClient::getContent(ConstStrA url, const HdrItem* headers) {
-	HttpRequest &rq = createRequest(url,mGET);
-	feedHeaders(rq, headers);
-	rq.closeOutput();
-	return createResponse(true);
+	//simple GET
+	try {
+		//create request
+		HttpRequest &rq = createRequest(url,mGET);
+		//load headers
+		feedHeaders(rq, headers);
+		//close request
+		rq.closeOutput();
+		//read response
+		return createResponse(true);
+	} catch (const NetworkException &e) {
+		//if network error happened and connection has been reused
+		if (connectionReused) {
+			//close the connection (connectionReuse is set to false)
+			closeConnection();
+			//repeate the request
+			return getContent(url, headers);
+		} else {
+			//throw other errors
+			throw;
+		}
+	}
 }
 
 HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, ConstBin data, const HdrItem* headers) {
-	HttpRequest &rq = createRequest(url,method);
-	rq.setContentLength(data.length());
-	feedHeaders(rq, headers);
-	rq.writeAll(data.data(),data.length());
-	rq.closeOutput();
-	return createResponse(true);
+	//sending request with string body is quite easy
+	try {
+		//create request
+		HttpRequest &rq = createRequest(url,method);
+		//set content length
+		rq.setContentLength(data.length());
+		//put headers
+		feedHeaders(rq, headers);
+		//write body
+		rq.writeAll(data.data(),data.length());
+		//close output
+		rq.closeOutput();
+		//and receive response
+		return createResponse(true);
+	} catch (const NetworkException &e) {
+		//if network error happened and connection has been reused
+		if (connectionReused) {
+			//close the connection (connectionReuse is set to false)
+			closeConnection();
+			//repeate the request
+			return sendRequest(url, method, data, headers);
+		} else {
+			//throw other errors
+			throw;
+		}
+	}
 
 }
 
 HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, SeqFileInput data, const HdrItem* headers) {
-	HttpRequest &rq = createRequest(url,method);
-	rq.setContentLength(naturalNull);
-	feedHeaders(rq, headers);
-	CArray<byte, 1024> buffer;
-	SeqFileOutput dout(&rq);
-	dout.blockCopy(data,buffer,naturalNull);
-	rq.closeOutput();
-	return createResponse(true);
+
+	//for HTTP/1.0 we need to buffer request (sad)
+	if (useHTTP10) {
+		//create buffer
+		AutoArray<byte> buffer;
+		if (data.hasItems()) {
+			do {
+				natural pos = buffer.length();
+				//reserve buffer
+				buffer.resize(pos+4096);
+				//read buffer
+				natural sz = data.blockRead(buffer.data()+pos,4096,true);
+				//adjust buffer size
+				buffer.resize(pos+sz);
+				//continue until end
+			} while (data.hasItems());
+		}
+		//send request
+		return sendRequest(url,method,buffer,headers);
+	} else {
+		//while reading from the stream, we need to ensure, that server is ready to accept our data
+		//so in this case, we will use Expect: 100-continue precondition
+		try {
+			//create request for url
+			HttpRequest *rq = createRequest(url,method);
+			//set content length to infinity - this should switch to chunked
+			rq->setContentLength(naturalNull);
+			//load headers
+			feedHeaders(*rq, headers);
+			//set Expect: 100-continue
+			rq->setHeader(fldExpect,"100-continue");
+			//close headers and start body, but we must wait for response now
+			rq->beginBody();
+			//so create response (do not read headers)
+			HttpResponse& resp = createResponse(false);
+			//now wait some time to server's response.
+			//because it could ignore our header, we must not wait for infinity time
+			if (nstream->wait(INetworkResource::waitForInput,10000) != INetworkResource::waitTimeout) {
+				//data arrived in time - read headers
+				resp.readHeaders();
+				//there can other response, so if we cannot continue, return response to the caller
+				if (!resp.canContinue()) {
+
+					if (resp.getStatus() == 417) //we got precondition failed - no worries, we can repeat request
+					{
+						rq = *createRequest(url,method);
+						rq->setContentLength(naturalNull);
+						feedHeaders(*rq, headers);
+						rq->setHeader(fldExpect,"100-continue");
+						rq->beginBody();
+					}
+
+					return resp;
+				}
+			}
+
+			//until now, request could be repeated anytime for network errors
+			//- because keep-alive can be closed by the server anytime during request
+
+			//now we should prevent repeating request when network error happened
+			//because we starting reading the stream
+			connectionReused = false;
+
+			//create a buffer for data
+			CArray<byte, 1024> buffer;
+			//open request as stream
+			SeqFileOutput dout(&rq);
+			//use blockcopy to copy data to the request
+			dout.blockCopy(data,buffer,naturalNull);
+			//close the output
+			rq.closeOutput();
+			//now wait for response.
+			resp.waitAfterContinue(HttpResponse::readHeadersNow);
+
+			//because we could skip waiting on 100 continue above, we need to receive it now
+			//and any other such responses
+			while (resp.canContinue()) {
+				resp.waitAfterContinue(HttpResponse::readHeadersNow);
+			}
+
+			//return other response to the caller
+			return resp;
+		} catch (const NetworkException &e) {
+			if (connectionReused) {
+				closeConnection();
+				return sendRequest(url, method, data, headers);
+			} else {
+				throw;
+			}
+		}
+	}
 }
 
 bool HttpClient::canReuseConnection(const ConstStrA& domain_port, bool tls) {

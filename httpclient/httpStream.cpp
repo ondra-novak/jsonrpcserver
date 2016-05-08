@@ -234,6 +234,17 @@ void HttpResponse::readHeaders() {
 	}
 }
 
+void HttpResponse::waitAfterContinue() {
+	com.canRead(); //block if data are not yet available;
+	checkStream();
+}
+
+void HttpResponse::waitAfterContinue(ReadHeaders) {
+	com.canRead(); //block if data are not yet available;
+	readHeaders();
+}
+
+
 natural HttpResponse::getStatus() const {
 	return status;
 }
