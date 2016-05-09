@@ -125,6 +125,10 @@ HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, ConstBin dat
 
 HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, SeqFileInput data, const HdrItem* headers) {
 
+	return sendRequestInternal(url, method,data,headers,false);
+}
+HttpResponse& HttpClient::sendRequestInternal(ConstStrA url, Method method, SeqFileInput data, const HdrItem* headers, bool wo100) {
+
 	//for HTTP/1.0 we need to buffer request (sad)
 	if (useHTTP10) {
 		//create buffer
@@ -148,35 +152,34 @@ HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, SeqFileInput
 		//so in this case, we will use Expect: 100-continue precondition
 		try {
 			//create request for url
-			HttpRequest *rq = createRequest(url,method);
+			HttpRequest &rq = createRequest(url,method);
+			//we don't need to use 100-continue if connection was recently opened
+			if (!connectionReused) wo100 = true;
 			//set content length to infinity - this should switch to chunked
-			rq->setContentLength(naturalNull);
+			rq.setContentLength(naturalNull);
 			//load headers
-			feedHeaders(*rq, headers);
+			feedHeaders(rq, headers);
 			//set Expect: 100-continue
-			rq->setHeader(fldExpect,"100-continue");
+			if (!wo100) rq.setHeader(fldExpect,"100-continue");
 			//close headers and start body, but we must wait for response now
-			rq->beginBody();
+			rq.beginBody();
 			//so create response (do not read headers)
 			HttpResponse& resp = createResponse(false);
 			//now wait some time to server's response.
 			//because it could ignore our header, we must not wait for infinity time
-			if (nstream->wait(INetworkResource::waitForInput,10000) != INetworkResource::waitTimeout) {
+			if (wo100 || nstream->wait(INetworkResource::waitForInput,10000) != INetworkResource::waitTimeout) {
 				//data arrived in time - read headers
 				resp.readHeaders();
 				//there can other response, so if we cannot continue, return response to the caller
 				if (!resp.canContinue()) {
-
-					if (resp.getStatus() == 417) //we got precondition failed - no worries, we can repeat request
-					{
-						rq = *createRequest(url,method);
-						rq->setContentLength(naturalNull);
-						feedHeaders(*rq, headers);
-						rq->setHeader(fldExpect,"100-continue");
-						rq->beginBody();
+					//check status
+					if (resp.getStatus() == 417) //we got precondition failed - no worries, we can repeat the request
+						//at least we know, that connection is alive
+						return sendRequestInternal(url,method,data,headers,true);
+					else {
+						//other status is send to the caller
+						return resp;
 					}
-
-					return resp;
 				}
 			}
 
@@ -198,7 +201,7 @@ HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, SeqFileInput
 			//now wait for response.
 			resp.waitAfterContinue(HttpResponse::readHeadersNow);
 
-			//because we could skip waiting on 100 continue above, we need to receive it now
+			//because we could skip waiting on 100-continue above, we need to receive it now
 			//and any other such responses
 			while (resp.canContinue()) {
 				resp.waitAfterContinue(HttpResponse::readHeadersNow);

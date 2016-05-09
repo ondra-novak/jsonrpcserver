@@ -80,6 +80,40 @@ public:
 
 	};
 
+	///Options how to POST a stream
+	enum PostStreamOption {
+		///Default behaviour
+		/** For HTTP/1.0 will defaults to psoBuffer,
+		 *  For HTTP/1.1 will defaults to psoAllow100
+		 */
+		psoDefault,
+		///Use buffering for the stream, this is only option available for HTTP/1.0
+		/** Whole request is buffered and send once the stream reaches its end. Option
+		 * cannot be used for infinite stream (http/1.0) doesn't support such streaming
+		 */
+		psoBuffer,
+		///Allow of usage 100-continue, but not neceserly everytime.
+		/** Function will use 100-continue to ensure, that keep-alive connection is still alive */
+		psoAllow100,
+		///Use 100-continue even if it is not necesery
+		/** Will set 100-continue, but will switch temporaryly to psoAvoid100 when 417 is returned */
+		psoFavour100,
+		///Force 100-continue, report 417 error back to caller
+		psoForce100,
+		///Never request 100-continue.
+		/** This can cause network errors for "keep-alive" connections if connection was terminated
+		 * from server side during the request. If this event is detected during or after stream is posted,
+		 * the request cannot be repeated because stream is lost. Then the appropriate network error will be throw out
+		 * of the function
+		 */
+		psoAvoid100,
+		///Never request 100-continue and do not reuse connection
+		/**Similar to psoAvoid100, but it also closes current connection regadless on wherther
+		 * can be or cannot be reused. This can solve disadvantage of keep-alive connection for psoAvoid100
+		 */
+		psoAvoid100NoReuseConn,
+	};
+
 	///Retrieve response to single GET request
 	/**
 	 * @param url URL to retrieve
@@ -198,6 +232,10 @@ protected:
 private:
 	bool canReuseConnection(const ConstStrA& domain_port, bool tls);
 	void feedHeaders(HttpRequest& rq, const HdrItem* headers);
+
+	HttpResponse &sendRequestInternal(ConstStrA url, Method method, SeqFileInput data, const HdrItem* headers, bool wo100 = false);
+
+
 };
 
 class InvalidUrlException: public ErrorMessageException {
