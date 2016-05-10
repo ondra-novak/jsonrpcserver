@@ -47,38 +47,7 @@ struct ClientConfig {
 
 class HttpClient: public BredyHttpSrv::HeaderFieldDef {
 public:
-	typedef NetworkStream<> NStream;
-
-	///Constructs http client
-	/**
-	 * @param userAgent user agent identification (string passed to every request)
-	 * @param httpsProvider Pointer to a provider which provides TLS. Set NULL to disable https protocol
-	 * @param proxyProvider Pointer to a provider which provides proxy redirection. Set NULL to disable proxies
-	 */
-	HttpClient(const ClientConfig &cfg);
-
-
-	class HdrItem {
-	public:
-		const ConstStrA field;
-		const StringKey<StringCore<char> > value;
-		const HdrItem *next;
-
-		HdrItem(ConstStrA field, ConstStrA value, const HdrItem *next = 0);
-		HdrItem(ConstStrA field, const StringCore<char> &value, const HdrItem *next = 0);
-		HdrItem(ConstStrA field, const char *value, const HdrItem *next = 0);
-		HdrItem(Field field, ConstStrA value, const HdrItem *next = 0);
-		HdrItem(Field field, const StringCore<char> &value, const HdrItem *next = 0);
-		HdrItem(Field field, const char *value, const HdrItem *next = 0);
-
-		HdrItem operator()(ConstStrA field, ConstStrA value)  const {return HdrItem(field,value,this);}
-		HdrItem operator()(ConstStrA field, const StringCore<char> &value) const {return HdrItem(field,value,this);}
-		HdrItem operator()(ConstStrA field, const char *value) const {return HdrItem(field,value,this);}
-		HdrItem operator()(Field field, ConstStrA value) const {return HdrItem(field,value,this);}
-		HdrItem operator()(Field field, const StringCore<char> &value) const {return HdrItem(field,value,this);}
-		HdrItem operator()(Field field, const char *value) const {return HdrItem(field,value,this);}
-
-	};
+	typedef BredyHttpSrv::HeaderValue HeaderValue;
 
 	///Options how to POST a stream
 	enum PostStreamOption {
@@ -113,6 +82,118 @@ public:
 		 */
 		psoAvoid100NoReuseConn,
 	};
+
+
+	///Constructs http client
+	/**
+	 * @param userAgent user agent identification (string passed to every request)
+	 * @param httpsProvider Pointer to a provider which provides TLS. Set NULL to disable https protocol
+	 * @param proxyProvider Pointer to a provider which provides proxy redirection. Set NULL to disable proxies
+	 */
+	HttpClient(const ClientConfig &cfg);
+
+	///Opens request to given url
+	/**
+	 * @param method HTTP method
+	 * @param url full url
+	 */
+	void open(Method method, ConstStrA url);
+
+	///Sets request's header value
+	/**
+	 * @param field field name
+	 * @param value content of the field
+	 */
+	void setHeader(Field field, ConstStrA value);
+
+	///Sets request's header value
+	/**
+	 * @param field field name
+	 * @param value content of the field
+	 */
+	void setHeader(ConstStrA field, ConstStrA value);
+
+	///Starts body of POST request
+	/**
+	 *
+	 * @param pso prefered way how to send the body. It controls usage of Expect: 100-continue. For
+	 * http/1.0, only psoBuffer is allowed because http/1.0 doesn't support streaming for POST request
+	 * @return stream where caller should put body
+	 *
+	 * @note after body is started, the header is sent to the stream and you can no longer modify it. Also
+	 * note, that in this stage, connection is online. Server on other side can anytime close connection
+	 * without any response (exception is thrown)
+	 *
+	 * @exception HttpStatusException function throws this exception when server rejects the body. This
+	 * can
+	 *
+	 */
+	SeqFileOutput beginBody(PostStreamOption pso = psoDefault);
+
+
+	///Sends request with or without body
+	/** If you wish to send request with body, you should first call beginBody() to open body. If body
+	 * is present, function just finishes the request and starts processing the response.
+	 * @return input stream, contains response.
+	 */
+	SeqFileInput send();
+
+	///Sends request with body passed as argument
+	/**
+	 *
+	 * @param body content of body
+	 * @return input stream, contains response.
+	 *
+	 * @note if you previously opened the body, function ignores the argument
+	 */
+	SeqFileInput send(ConstStrA body);
+
+
+	///Sends request without waiting on response. You need to call receiveResponse to receive the response
+	void sendNoWait();
+
+	///Receives response after the request has been send using sendAsync()
+	/** @return input stream, contains response.*/
+	SeqFileInput receiveResponse();
+
+	///Retrieves status message of the response. You need to first send the request to receive response
+	natural getStatus() const;
+
+	///Retrieves status message
+	ConstStrA getStatusMessage() const;
+
+	///Retrieves header field
+	HeaderValue getHeader(Field field) const;
+
+
+	///Retrieves header field
+	HeaderValue getHeader(ConstStrA field) const;
+
+
+
+
+	class HdrItem {
+	public:
+		const ConstStrA field;
+		const StringKey<StringCore<char> > value;
+		const HdrItem *next;
+
+		HdrItem(ConstStrA field, ConstStrA value, const HdrItem *next = 0);
+		HdrItem(ConstStrA field, const StringCore<char> &value, const HdrItem *next = 0);
+		HdrItem(ConstStrA field, const char *value, const HdrItem *next = 0);
+		HdrItem(Field field, ConstStrA value, const HdrItem *next = 0);
+		HdrItem(Field field, const StringCore<char> &value, const HdrItem *next = 0);
+		HdrItem(Field field, const char *value, const HdrItem *next = 0);
+
+		HdrItem operator()(ConstStrA field, ConstStrA value)  const {return HdrItem(field,value,this);}
+		HdrItem operator()(ConstStrA field, const StringCore<char> &value) const {return HdrItem(field,value,this);}
+		HdrItem operator()(ConstStrA field, const char *value) const {return HdrItem(field,value,this);}
+		HdrItem operator()(Field field, ConstStrA value) const {return HdrItem(field,value,this);}
+		HdrItem operator()(Field field, const StringCore<char> &value) const {return HdrItem(field,value,this);}
+		HdrItem operator()(Field field, const char *value) const {return HdrItem(field,value,this);}
+
+	};
+
 
 	///Retrieve response to single GET request
 	/**
@@ -183,6 +264,10 @@ protected:
 	HttpResponse &createResponse(bool receiveHeaders);
 
 
+	void sendRequest(natural contentLength, PostStreamOption pso);
+
+	void loadResponse();
+
 	///Retrieves reuse state.
 	/** The state is valid after request is created. Reuse state is state, when request has been made
 	 * on a connection which has been previously used for other request with keep alive feature. This information
@@ -234,6 +319,19 @@ private:
 	void feedHeaders(HttpRequest& rq, const HdrItem* headers);
 
 	HttpResponse &sendRequestInternal(ConstStrA url, Method method, SeqFileInput data, const HdrItem* headers, bool wo100 = false);
+
+
+	StringPool<char> strpool;
+	typedef StringPoolStrRef<char> StrRef;
+	typedef Map<StrRef, StrRef> HdrMap;
+
+	StrRef urlToOpen;
+	Method methodToOpen;
+	HdrMap hdrMap;
+	natural status;
+	StrRef statusMessage;
+
+
 
 
 };

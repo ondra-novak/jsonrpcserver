@@ -127,6 +127,177 @@ HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, SeqFileInput
 
 	return sendRequestInternal(url, method,data,headers,false);
 }
+
+void HttpClient::open(Method method, ConstStrA url) {
+
+	strpool.clear();
+	hdrMap.clear();
+	urlToOpen = strpool.add(url);
+	methodToOpen = method;
+}
+
+void HttpClient::setHeader(Field field, ConstStrA value) {
+	hdrMap.replace(strpool.add(getHeaderFieldName(field)),strpool.add(value));
+}
+
+void HttpClient::setHeader(ConstStrA field, ConstStrA value) {
+	hdrMap.replace(strpool.add(field),strpool.add(value));
+}
+
+SeqFileOutput HttpClient::beginBody(PostStreamOption pso) {
+	sendRequest(naturalNull, pso);
+	HttpRequest &rq = request;
+	return SeqFileOutput(&rq);
+}
+
+SeqFileInput HttpClient::send() {
+	if (request == null) {
+		try {
+			sendRequest(naturalNull, psoAvoid100);
+			request->closeOutput();
+			loadResponse();
+		} catch (NetworkException &) {
+			if (connectionReused) {
+				closeConnection();
+				return send();
+			}
+		}
+	} else {
+		request->closeOutput();
+		loadResponse();
+	}
+	HttpResponse &rs = response;
+	return SeqFileInput(&rs);
+}
+
+SeqFileInput HttpClient::send(ConstStrA body) {
+	if (request == null) {
+		try {
+			sendRequest(body.length(), psoAvoid100);
+			request->writeAll(body.data(), body.length());
+			request->closeOutput();
+			loadResponse();
+			HttpResponse &rs = response;
+			return SeqFileInput(&rs);
+		} catch (NetworkException &) {
+			if (connectionReused) {
+				closeConnection();
+				return send(body);
+			}
+		}
+	} else {
+		return send();
+	}
+}
+
+void HttpClient::sendNoWait() {
+	if (request == null) {
+		try {
+			sendRequest(naturalNull, psoAvoid100);
+			request->closeOutput();
+		} catch (NetworkException &) {
+			if (connectionReused) {
+				closeConnection();
+				return sendNoWait();
+			}
+		}
+	} else {
+		request->closeOutput();
+	}
+}
+
+SeqFileInput HttpClient::receiveResponse() {
+	loadResponse();
+	HttpResponse &rs = response;
+	return SeqFileInput(&rs);
+}
+
+natural HttpClient::getStatus() const {
+	return status;
+}
+
+ConstStrA HttpClient::getStatusMessage() const {
+	return statusMessage;
+}
+
+HttpClient::HeaderValue HttpClient::getHeader(Field field) const {
+	return getHeader(getHeaderFieldName(field));
+}
+
+HttpClient::HeaderValue HttpClient::getHeader(ConstStrA field) const {
+	const StrRef *x = hdrMap.find(StrRef(field));
+	if (x) return HeaderValue(*x);
+	else return HeaderValue();
+}
+
+static ConstStrA continue100("100-continue");
+
+void HttpClient::sendRequest(natural contentLength, PostStreamOption pso) {
+	try {
+		createRequest(urlToOpen,methodToOpen);
+		request->setContentLength(contentLength);
+		bool use100 = false;
+		if (!useHTTP10) {
+
+
+			switch(pso) {
+			case psoDefault:
+			case psoAllow100: use100 = connectionReused; break;
+			case psoFavour100:
+			case psoForce100: use100 = true;break;
+			case psoBuffer: request->setContentLength(HttpRequest::calculateLength);break;
+			case psoAvoid100NoReuseConn: if (connectionReused) {
+											closeConnection();
+											createRequest(urlToOpen,methodToOpen);
+										};break;
+			case psoAvoid100: break;
+			}
+
+			if (use100) {
+				setHeader(fldExpect,continue100);
+			}
+		}
+
+		request->beginBody();
+		HttpResponse& resp = createResponse(false);
+
+		if (use100) {
+			if (nstream->wait(INetworkResource::waitForInput,10000) != INetworkResource::waitTimeout) {
+				//there can other response, so if we cannot continue, return response to the caller
+				if (!response->canContinue()) {
+					//check status
+					if (response->getStatus() == 417) {//we got precondition failed - no worries, we can repeat the request
+
+						response->skipRemainBody(false);
+
+						return sendRequest(contentLength, psoAvoid100);
+
+					} else {
+
+						return;
+
+					}
+				}
+			}
+		}
+
+
+	}catch (NetworkException &) {
+		if (connectionReused) {
+			closeConnection();
+			sendRequest(contentLength,pso);
+		} else {
+			throw;
+		}
+	}
+}
+
+void HttpClient::loadResponse() {
+
+//	if (response != null) {
+
+}
+
 HttpResponse& HttpClient::sendRequestInternal(ConstStrA url, Method method, SeqFileInput data, const HdrItem* headers, bool wo100) {
 
 	//for HTTP/1.0 we need to buffer request (sad)
