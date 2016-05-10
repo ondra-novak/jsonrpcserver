@@ -139,8 +139,18 @@ protected:
 };
 
 
+class IHttpResponseCB {
+public:
+	virtual ~IHttpResponseCB() {}
+
+	virtual void storeStatus(natural statusCode, ConstStrA statusMessage) = 0;
+	virtual void storeHeaderLine(ConstStrA field, ConstStrA value) = 0;
+};
+
 class HttpResponse: public IInputStream, public DynObject, public BredyHttpSrv::HeaderFieldDef {
 public:
+
+
 
 	enum ReadHeaders {readHeadersNow};
 
@@ -152,7 +162,7 @@ public:
 	 * @note Input stream must implement IInputBuffer, otherwise runtime error is reported.
 	 * You should also reserve enough buffer to store single http header line
 	 */
-	HttpResponse(IInputStream *com);
+	HttpResponse(IInputStream *com, IHttpResponseCB &hdrCallback);
 	///Construct response
 	/**
 	 * @param com input stream
@@ -161,7 +171,7 @@ public:
 	 *
 	 * Function also read headers
 	 */
-	HttpResponse(IInputStream *com, ReadHeaders);
+	HttpResponse(IInputStream *com, IHttpResponseCB &hdrCallback, ReadHeaders);
 	virtual ~HttpResponse();
 
 
@@ -174,22 +184,6 @@ public:
 
 	///wait for data after canContinue(). Function also fetches new headers
 	void waitAfterContinue(ReadHeaders);
-
-	///Returns status code
-	/**
-	 * @return status code. If status is unavailable, returns naturalNull
-	 *
-	 * @note status code is available after all headers has been read
-	 */
-	natural getStatus() const;
-
-	///Returns status message
-	/**
-	 * @return status message. If status message is unavailable, returns empty string
-	 *
-	 * @note status message is available after all headers has been read
-	 */
-	ConstStrA getStatusMessage() const;
 
 
 	HeaderValue getHeaderField(HeaderFieldDef::Field field) const;
@@ -298,23 +292,16 @@ public:
 		return com;
 	}
 
-	template<typename Fn>
-	bool enumHeaders(const Fn &fn) const;
 
 protected:
 	IInputStream &com;
+	IHttpResponseCB &hdrCallback;
 
 
-	typedef StringPool<char> StrPool;
-	typedef StrPool::Str Str;
-
-	StrPool pool;
-	Str statusMessage;
 	natural status;
 	natural remainLength;
 	ReadingMode rMode;
 	AutoArray<char> buffer;
-	Map<Str,Str> headers;
 	bool http11;
 	bool keepAlive;
 	bool wBlock;
@@ -331,14 +318,6 @@ protected:
 
 };
 
-template<typename Fn>
-inline bool HttpResponse::enumHeaders(const Fn& fn) const {
-	for (Map<Str,Str>::Iterator iter = headers.getFwIter(); iter.hasItems();) {
-		const Map<Str,Str>::Entity &e = iter.getNext();
-		if (!fn(ConstStrA(e.key),ConstStrA(e.value))) return false;
-	}
-	return true;
-}
 
 
 } /* namespace BredyHttpClient */

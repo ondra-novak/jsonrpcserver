@@ -12,6 +12,7 @@
 #include "lightspeed/base/exceptions/httpStatusException.h"
 
 #include "lightspeed/base/exceptions/netExceptions.h"
+#include <lightspeed/base/exceptions/fileExceptions.h>
 #include "lightspeed/base/streams/fileiobuff.tcc"
 namespace BredyHttpClient {
 
@@ -35,64 +36,7 @@ HttpClient::HttpClient(const ClientConfig& cfg)
 {
 }
 
-HttpClient::HdrItem::HdrItem(ConstStrA field, ConstStrA value, const HdrItem* next)
-	:field(field),value(value),next(next) {}
-
-HttpClient::HdrItem::HdrItem(ConstStrA field, const StringCore<char>& value, const HdrItem* next)
-	:field(field),value(value),next(next) {}
-
-HttpClient::HdrItem::HdrItem(ConstStrA field,const char* value, const HdrItem* next)
-	:field(field),value(ConstStrA(value)),next(next) {}
-
-HttpClient::HdrItem::HdrItem(Field field, ConstStrA value, const HdrItem* next)
-	:field(HttpClient::getHeaderFieldName(field)),value(value),next(next) {}
-
-HttpClient::HdrItem::HdrItem(Field field,const StringCore<char>& value, const HdrItem* next)
-	:field(HttpClient::getHeaderFieldName(field)),value(value),next(next) {}
-
-HttpClient::HdrItem::HdrItem(Field field, const char* value, const HdrItem* next)
-:field(HttpClient::getHeaderFieldName(field)),value(ConstStrA(value)),next(next) {}
-
-void HttpClient::closeConnection() {
-	nstream = nil;
-	connectionReused = false;
-	request = nil;
-	response = nil;
-}
-
-
-void HttpClient::feedHeaders(HttpRequest& rq, const HdrItem* headers) {
-	while (headers) {
-		rq.setHeader(headers->field, headers->value);
-		headers = headers->next;
-	}
-}
-
-HttpResponse& HttpClient::getContent(ConstStrA url, const HdrItem* headers) {
-	//simple GET
-	try {
-		//create request
-		HttpRequest &rq = createRequest(url,mGET);
-		//load headers
-		feedHeaders(rq, headers);
-		//close request
-		rq.closeOutput();
-		//read response
-		return createResponse(true);
-	} catch (const NetworkException &e) {
-		//if network error happened and connection has been reused
-		if (connectionReused) {
-			//close the connection (connectionReuse is set to false)
-			closeConnection();
-			//repeate the request
-			return getContent(url, headers);
-		} else {
-			//throw other errors
-			throw;
-		}
-	}
-}
-
+#if 0
 HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, ConstBin data, const HdrItem* headers) {
 	//sending request with string body is quite easy
 	try {
@@ -128,6 +72,8 @@ HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, SeqFileInput
 	return sendRequestInternal(url, method,data,headers,false);
 }
 
+#endif
+
 void HttpClient::open(Method method, ConstStrA url) {
 
 	strpool.clear();
@@ -146,8 +92,7 @@ void HttpClient::setHeader(ConstStrA field, ConstStrA value) {
 
 SeqFileOutput HttpClient::beginBody(PostStreamOption pso) {
 	sendRequest(naturalNull, pso);
-	HttpRequest &rq = request;
-	return SeqFileOutput(&rq);
+	return SeqFileOutput(request.get());
 }
 
 SeqFileInput HttpClient::send() {
@@ -166,8 +111,7 @@ SeqFileInput HttpClient::send() {
 		request->closeOutput();
 		loadResponse();
 	}
-	HttpResponse &rs = response;
-	return SeqFileInput(&rs);
+	return SeqFileInput(response.get());
 }
 
 SeqFileInput HttpClient::send(ConstStrA body) {
@@ -177,8 +121,7 @@ SeqFileInput HttpClient::send(ConstStrA body) {
 			request->writeAll(body.data(), body.length());
 			request->closeOutput();
 			loadResponse();
-			HttpResponse &rs = response;
-			return SeqFileInput(&rs);
+			return SeqFileInput(response.get());
 		} catch (NetworkException &) {
 			if (connectionReused) {
 				closeConnection();
@@ -208,8 +151,7 @@ void HttpClient::sendNoWait() {
 
 SeqFileInput HttpClient::receiveResponse() {
 	loadResponse();
-	HttpResponse &rs = response;
-	return SeqFileInput(&rs);
+	return SeqFileInput(response.get());
 }
 
 natural HttpClient::getStatus() const {
@@ -221,13 +163,13 @@ ConstStrA HttpClient::getStatusMessage() const {
 }
 
 HttpClient::HeaderValue HttpClient::getHeader(Field field) const {
-	return getHeader(getHeaderFieldName(field));
+	if (response == nil) return HeaderValue();
+	return response->getHeaderField(field);
 }
 
 HttpClient::HeaderValue HttpClient::getHeader(ConstStrA field) const {
-	const StrRef *x = hdrMap.find(StrRef(field));
-	if (x) return HeaderValue(*x);
-	else return HeaderValue();
+	if (response == nil) return HeaderValue();
+	return response->getHeaderField(field);
 }
 
 static ConstStrA continue100("100-continue");
@@ -259,14 +201,14 @@ void HttpClient::sendRequest(natural contentLength, PostStreamOption pso) {
 		}
 
 		request->beginBody();
-		HttpResponse& resp = createResponse(false);
+		createResponse(false);
 
 		if (use100) {
 			if (nstream->wait(INetworkResource::waitForInput,10000) != INetworkResource::waitTimeout) {
 				//there can other response, so if we cannot continue, return response to the caller
 				if (!response->canContinue()) {
 					//check status
-					if (response->getStatus() == 417) {//we got precondition failed - no worries, we can repeat the request
+					if (status == 417) {//we got precondition failed - no worries, we can repeat the request
 
 						response->skipRemainBody(false);
 
@@ -274,7 +216,8 @@ void HttpClient::sendRequest(natural contentLength, PostStreamOption pso) {
 
 					} else {
 
-						return;
+						loadResponse();
+						throw HttpStatusException(THISLOCATION,urlToOpen,status, statusMessage);
 
 					}
 				}
@@ -294,9 +237,20 @@ void HttpClient::sendRequest(natural contentLength, PostStreamOption pso) {
 
 void HttpClient::loadResponse() {
 
-//	if (response != null) {
+	if (request == null) {
+		throw FileIOError(THISLOCATION, 1, "Can't read response without request");
+	}
+	if (response == null) {
+		createResponse(true);
+	}
+
+	while (response->canContinue()) {
+		response->waitAfterContinue(HttpResponse::readHeadersNow);
+	}
 
 }
+
+#if 0
 
 HttpResponse& HttpClient::sendRequestInternal(ConstStrA url, Method method, SeqFileInput data, const HdrItem* headers, bool wo100) {
 
@@ -391,6 +345,15 @@ HttpResponse& HttpClient::sendRequestInternal(ConstStrA url, Method method, SeqF
 	}
 }
 
+#endif
+
+void HttpClient::closeConnection() {
+	nstream = nil;
+	request = nil;
+	response = nil;
+}
+
+
 bool HttpClient::canReuseConnection(const ConstStrA& domain_port, bool tls) {
 	//we can reuse connection when
 	//host doesn't changes
@@ -405,7 +368,7 @@ bool HttpClient::canReuseConnection(const ConstStrA& domain_port, bool tls) {
 			&& response->isKeepAliveEnabled();
 }
 
-HttpRequest& HttpClient::createRequest(ConstStrA url, Method method) {
+void HttpClient::createRequest(ConstStrA url, Method method) {
 
 	connectionReused = false;
 		TextParser<char, SmallAlloc<1024> > parser;
@@ -468,9 +431,7 @@ HttpRequest& HttpClient::createRequest(ConstStrA url, Method method) {
 				}
 			}
 			response = nil;
-			request = nil;
-			request = Constructor4<HttpRequest,IOutputStream *,ConstStrA,Method ,bool>(
-					nstream.get(), path, method, !useHTTP10);
+			request = new(pool) HttpRequest(nstream.get(),path,method,!useHTTP10);
 			if (proxyInfo.defined && !tls && !proxyInfo.authorization.empty()) {
 				request->setHeader(fldProxyAuthorization, proxyInfo.authorization);
 			}
@@ -482,26 +443,19 @@ HttpRequest& HttpClient::createRequest(ConstStrA url, Method method) {
 				request->setHeader(fldConnection,"keep-alive");
 			}
 
-			request->setStaticObj();
-			return request;
-
-
 		} else {
 			throw InvalidUrlException(THISLOCATION,url,"Parser rejected");
 		}
 }
 
-HttpResponse& HttpClient::createResponse(bool readHeaders) {
+void HttpClient::createResponse(bool readHeaders) {
 	if (request == null) throw ErrorMessageException(THISLOCATION,"No active request");
 	if (!request->isOutputClosed()) request->closeOutput();
-	request = nil;
 
 	if (readHeaders)
-		response = Constructor2<HttpResponse, IInputStream *, HttpResponse::ReadHeaders>(nstream.get(),HttpResponse::readHeadersNow);
+		response = new(pool) HttpResponse(nstream.get(),*this,HttpResponse::readHeadersNow);
 	else
-		response = Constructor1<HttpResponse, IInputStream *>(nstream.get());
-	response->setStaticObj();
-	return response;
+		response = new(pool) HttpResponse(nstream.get(),*this);
 }
 
 InvalidUrlException::~InvalidUrlException() throw () {
@@ -533,9 +487,26 @@ void HttpClient::proxyConnect(PNetworkStream stream, ConstStrA host, ConstStrA a
 		req.setHeader(fldProxyAuthorization,authorization);
 	}
 	req.closeOutput();
-	HttpResponse resp(stream.get(),HttpResponse::readHeadersNow);
-	if (resp.getStatus() != 200)
-		throw HttpStatusException(THISLOCATION,host,resp.getStatus(), resp.getStatusMessage());
+
+	class ResponseResult: public IHttpResponseCB {
+	public:
+		virtual void storeStatus(natural statusCode, ConstStrA statusMessage) {
+			status = statusCode;
+			statusMsg.append(statusMessage);
+		}
+		virtual void storeHeaderLine(ConstStrA, ConstStrA) {
+
+		}
+
+		natural status;
+		AutoArray<char, SmallAlloc<32> > statusMsg;
+	};
+
+	ResponseResult res;
+
+	HttpResponse resp(stream.get(),res,HttpResponse::readHeadersNow);
+	if (status != 200)
+		throw HttpStatusException(THISLOCATION,host,res.status, res.statusMsg);
 }
 
 
@@ -581,5 +552,13 @@ natural HttpClient::BufferedNetworkStream::doWait(natural waitFor, natural timeo
 	return originStream->wait(waitFor, timeout);
 }
 
+void HttpClient::storeStatus(natural statusCode, ConstStrA statusMessage) {
+	this->status = statusCode;
+	this->statusMessage = strpool.add(statusMessage);
+}
+
+void HttpClient::storeHeaderLine(ConstStrA field, ConstStrA value) {
+	setHeader(field,value);
+}
 
 } /* namespace BredyHttpClient */

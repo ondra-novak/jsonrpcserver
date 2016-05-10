@@ -6,12 +6,13 @@
  */
 
 #include <lightspeed/base/interface.tcc>
-#include "httpStream.h"
 
 #include <lightspeed/base/namedEnum.tcc>
 #include <lightspeed/base/streams/fileiobuff_ifc.h>
 #include <lightspeed/base/text/textstream.tcc>
 #include "lightspeed/base/containers/map.tcc"
+#include "httpStream.h"
+
 namespace BredyHttpClient {
 
 HttpRequest::HttpRequest(IOutputStream *com, ConstStrA path,ConstStrA method, bool useHTTP11)
@@ -213,12 +214,14 @@ void HttpRequest::writeChunk(ConstBin data) {
 }
 
 
-HttpResponse::HttpResponse(IInputStream* com):com(*com),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()) {
+HttpResponse::HttpResponse(IInputStream* com, IHttpResponseCB &cb)
+:com(*com),hdrCallback(cb),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()) {
 	if (com == 0) throwNullPointerException(THISLOCATION);
 
 }
 
-HttpResponse::HttpResponse(IInputStream* com, ReadHeaders):com(*com),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()) {
+HttpResponse::HttpResponse(IInputStream* com, IHttpResponseCB &cb, ReadHeaders)
+:com(*com),hdrCallback(cb),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()) {
 	if (com == 0) throwNullPointerException(THISLOCATION);
 	readHeaders();
 }
@@ -244,24 +247,6 @@ void HttpResponse::waitAfterContinue(ReadHeaders) {
 	readHeaders();
 }
 
-
-natural HttpResponse::getStatus() const {
-	return status;
-}
-
-ConstStrA HttpResponse::getStatusMessage() const {
-	return statusMessage;
-}
-
-HttpResponse::HeaderValue HttpResponse::getHeaderField(Field field) const {
-	return getHeaderField(getHeaderFieldName(field));
-}
-
-HttpResponse::HeaderValue HttpResponse::getHeaderField(ConstStrA field) const {
-	const Str *r = headers.find(field);
-	if (r == 0) return HeaderValue();
-	else return HeaderValue(*r);
-}
 
 bool HttpResponse::isKeepAliveEnabled() const {
 	return keepAlive;
@@ -324,7 +309,7 @@ bool HttpResponse::processSingleHeader(TypeOfHeader toh, natural size) {
 				ConstStrA value = buffer.offset(colon+1);
 				cropWhite(key);
 				cropWhite(value);
-				headers.replace(pool.add(key),pool.add(value));
+				hdrCallback.storeHeaderLine(key,value);
 			} break;
 		case tohStatusLine: {
 				//empty line in status is allowed here
@@ -334,7 +319,7 @@ bool HttpResponse::processSingleHeader(TypeOfHeader toh, natural size) {
 					http11 = (natural)parser[1] == 1;
 					status = parser[2];
 					ConstStrA msg = parser[3].str();
-					statusMessage = pool.add(msg);
+					hdrCallback.storeStatus(status,msg);
 					rMode = rmHeaders;
 				} else {
 					return invalidResponse(toh);

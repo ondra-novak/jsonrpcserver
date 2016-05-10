@@ -8,15 +8,12 @@
 #ifndef JSONRPCSERVER_HTTPCLIENT_HTTPCLIENT_H_23dkaei2k3409uqnsqe12
 #define JSONRPCSERVER_HTTPCLIENT_HTTPCLIENT_H_23dkaei2k3409uqnsqe12
 #include "lightspeed/base/streams/netio_ifc.h"
-
-#include "httpStream.h"
-#include "lightspeed/base/containers/optional.h"
-
 #include "lightspeed/base/containers/stringKey.h"
-
 #include "lightspeed/base/streams/netio.h"
-
 #include "lightspeed/base/exceptions/errorMessageException.h"
+#include "lightspeed/base/memory/autoPtr.h"
+#include "lightspeed/base/memory/poolalloc.h"
+#include "httpStream.h"
 #include "interfaces.h"
 namespace BredyHttpClient {
 
@@ -45,7 +42,7 @@ struct ClientConfig {
 	ClientConfig();
 };
 
-class HttpClient: public BredyHttpSrv::HeaderFieldDef {
+class HttpClient: public BredyHttpSrv::HeaderFieldDef, private IHttpResponseCB	 {
 public:
 	typedef BredyHttpSrv::HeaderValue HeaderValue;
 
@@ -170,66 +167,6 @@ public:
 	HeaderValue getHeader(ConstStrA field) const;
 
 
-
-
-	class HdrItem {
-	public:
-		const ConstStrA field;
-		const StringKey<StringCore<char> > value;
-		const HdrItem *next;
-
-		HdrItem(ConstStrA field, ConstStrA value, const HdrItem *next = 0);
-		HdrItem(ConstStrA field, const StringCore<char> &value, const HdrItem *next = 0);
-		HdrItem(ConstStrA field, const char *value, const HdrItem *next = 0);
-		HdrItem(Field field, ConstStrA value, const HdrItem *next = 0);
-		HdrItem(Field field, const StringCore<char> &value, const HdrItem *next = 0);
-		HdrItem(Field field, const char *value, const HdrItem *next = 0);
-
-		HdrItem operator()(ConstStrA field, ConstStrA value)  const {return HdrItem(field,value,this);}
-		HdrItem operator()(ConstStrA field, const StringCore<char> &value) const {return HdrItem(field,value,this);}
-		HdrItem operator()(ConstStrA field, const char *value) const {return HdrItem(field,value,this);}
-		HdrItem operator()(Field field, ConstStrA value) const {return HdrItem(field,value,this);}
-		HdrItem operator()(Field field, const StringCore<char> &value) const {return HdrItem(field,value,this);}
-		HdrItem operator()(Field field, const char *value) const {return HdrItem(field,value,this);}
-
-	};
-
-
-	///Retrieve response to single GET request
-	/**
-	 * @param url URL to retrieve
-	 * @param linked list of headers. It can be defined using HdrItem by concatenating headers. If NULL, none extra headers posted
-	 *     &HdrItem("Content-Type","text/plain")("Accept","application/json")("Accept-Language","cs").
-	 *
-	 * @return Function returns reference to response. It already contains parsed headers and only data can be read.
-	 *
-	 * @note Object handles only one response at time. Calling another getContent() discards any unread data of previous
-	 * request.
-	 */
-
-	HttpResponse &getContent(ConstStrA url, const HdrItem *headers = 0);
-	///Sends HTTP/S request to specified URL. You can specify method and data
-	/**
-	 * @param url full url to request
-	 * @param method method of the request
-	 * @param data data of the request. For methods without body the data can be empty
-	 * @param headers
-	 * @return Function returns reference to response. It already contains parsed headers and only data can be read.
-	 */
-	HttpResponse &sendRequest(ConstStrA url, Method method, ConstBin data = ConstBin(), const HdrItem *headers = 0);
-	///Sends HTTP/S request to specified URL. You can specify method and data
-	/**
-	 * @param url full url to request
-	 * @param method method of the request
-	 * @param Stream that contains data. You can use IInputStream to write own data source
-	 * @param headers
-	 * @return Function returns reference to response. It already contains parsed headers and only data can be read.
-	 *
-	 * @note Http/1.1 is enforced because chunked transfer encoding will be used
-	 */
-	HttpResponse &sendRequest(ConstStrA url, Method method, SeqFileInput data, const HdrItem* headers);
-
-
 	///Closes connection even if keep alive is in effect
 	void closeConnection();
 
@@ -248,7 +185,7 @@ public:
 protected:
 
 	///Creates request object to craft custom http request
-	HttpRequest &createRequest(ConstStrA url, Method method);
+	void createRequest(ConstStrA url, Method method);
 	///Creates response. You have to close request first before response is created
 	/**
 	 * Creates response object on the connection
@@ -261,7 +198,7 @@ protected:
 	 * @note you should read whole response before new call of createRequest() is made.
 	 * Otherwise, function createRequest can block until the rest of response is read
 	 */
-	HttpResponse &createResponse(bool receiveHeaders);
+	void createResponse(bool receiveHeaders);
 
 
 	void sendRequest(natural contentLength, PostStreamOption pso);
@@ -296,8 +233,8 @@ protected:
 		virtual natural doWait(natural waitFor, natural timeout) const;
 	};
 
-	Optional<HttpRequest> request;
-	Optional<HttpResponse> response;
+	RefCntPtr<HttpRequest> request;
+	RefCntPtr<HttpResponse> response;
 	PNetworkStream nstream;
 
 	StringA userAgent;
@@ -316,9 +253,6 @@ protected:
 
 private:
 	bool canReuseConnection(const ConstStrA& domain_port, bool tls);
-	void feedHeaders(HttpRequest& rq, const HdrItem* headers);
-
-	HttpResponse &sendRequestInternal(ConstStrA url, Method method, SeqFileInput data, const HdrItem* headers, bool wo100 = false);
 
 
 	StringPool<char> strpool;
@@ -329,9 +263,13 @@ private:
 	Method methodToOpen;
 	HdrMap hdrMap;
 	natural status;
-	StrRef statusMessage;
+	ConstStrA statusMessage;
+
+	PoolAlloc pool;
 
 
+	virtual void storeStatus(natural statusCode, ConstStrA statusMessage) ;
+	virtual void storeHeaderLine(ConstStrA field, ConstStrA value) ;
 
 
 };
