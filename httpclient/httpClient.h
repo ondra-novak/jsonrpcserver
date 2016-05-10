@@ -11,7 +11,6 @@
 #include "lightspeed/base/containers/stringKey.h"
 #include "lightspeed/base/streams/netio.h"
 #include "lightspeed/base/exceptions/errorMessageException.h"
-#include "lightspeed/base/memory/autoPtr.h"
 #include "lightspeed/base/memory/poolalloc.h"
 #include "httpStream.h"
 #include "interfaces.h"
@@ -179,6 +178,19 @@ public:
 	PNetworkStream getConnection();
 
 
+	///close request
+	/** if request has been returned, function skips any remaining unread body
+	 * and prepares object to open new request. Function is not necesery in case
+	 * that one request follows other, because open() automatically performs
+	 * necesery cleanup regadless on, whether close() has been called or not.
+	 *
+	 * However, it is not good practice to left unread data in the stream, it can
+	 * block server's connection. You should cleanup connection once you no longer
+	 * need to read more data.
+	 *
+	 * Function calls closeConnection() if object is in any other state
+	 */
+	void close();
 
 
 

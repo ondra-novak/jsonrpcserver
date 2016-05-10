@@ -99,34 +99,31 @@ void Client::runBatch() {
 			if (preparedList.empty()) return;
 			//move prepared list to processing
 			processing.swap(preparedList);
-			//build request to memory
-			for (PreparedList::Iterator iter = processing.getFwIter(); iter.hasItems();) {
-				SeqFileOutput out(&serialized);
 
-				jsonFactory->toStream(*iter.getNext().request, out);
-			}
+		}
+		http.open(HttpClient::mPOST,url);
+		http.setHeader(HttpClient::fldContentType,"application/json");
+		http.setHeader(HttpClient::fldAccept,"application/json");
+		SeqFileOutput body = http.beginBody();
+
+
+		//build request to memory
+		for (PreparedList::Iterator iter = processing.getFwIter(); iter.hasItems();) {
+			jsonFactory->toStream(*iter.getNext().request, body);
 		}
 
-		//prepare some headers
-		HttpClient::HdrItem hdr_contentType(HttpClient::fldContentType, "application/json");
-		HttpClient::HdrItem hdr_accept(HttpClient::fldAccept, "application/json", &hdr_contentType);
-		const HttpClient::HdrItem *headers = &hdr_accept;
+		SeqFileInput response = http.send();
 
-		//send request
-		HttpResponse &resp = http.sendRequest(url, HttpClient::mPOST, ConstBin(serialized.getBuffer()), headers);
-		//clear request data
-		serialized.clear();
 		//check status (should be 200)
-		if (resp.getStatus() == 200) {
+		if (http.getStatus() == 200) {
 
 			//process all requests
 			for (natural i = 0; i < processing.length(); i++) {
 				JSON::Value r;
-				SeqFileInput in(&resp);
 				//parse response
 				{
 					Synchronized<FastLock> _(batchAccess);
-					r = jsonFactory->fromStream(in);
+					r = jsonFactory->fromStream(response);
 				}
 				//pick "id"
 				JSON::ConstValue vid = r["id"];
@@ -173,14 +170,15 @@ void Client::runBatch() {
 
 		} else {
 			//if other status then 200 reject all promises with HttpStatusException
-			PException exp = new HttpStatusException(THISLOCATION,url,resp.getStatus(),resp.getStatusMessage());
+			PException exp = new HttpStatusException(THISLOCATION,url,http.getStatus(),http.getStatusMessage());
 			for (PreparedList::Iterator iter = processing.getFwIter(); iter.hasItems();) {
 				iter.getNext().result.reject(exp);
 			}
 		}
 		//also skip remain body
-		resp.skipRemainBody(false);
+		http.close();
 	} catch (const Exception &e) {
+		http.close();
 		//in case of exception, reject all promises with exception
 		for (PreparedList::Iterator iter = processing.getFwIter(); iter.hasItems();) {
 			const PreparedItem &itm = iter.getNext();

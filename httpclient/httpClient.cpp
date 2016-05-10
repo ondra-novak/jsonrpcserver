@@ -200,6 +200,13 @@ void HttpClient::sendRequest(natural contentLength, PostStreamOption pso) {
 			}
 		}
 
+		for (HdrMap::Iterator iter = hdrMap.getFwIter(); iter.hasItems();) {
+			const HdrMap::KeyValue &kv = iter.getNext();
+			request->setHeader(kv.key, kv.value);
+		}
+
+		hdrMap.clear();
+
 		request->beginBody();
 		createResponse(false);
 
@@ -555,6 +562,19 @@ natural HttpClient::BufferedNetworkStream::doWait(natural waitFor, natural timeo
 void HttpClient::storeStatus(natural statusCode, ConstStrA statusMessage) {
 	this->status = statusCode;
 	this->statusMessage = strpool.add(statusMessage);
+}
+
+void HttpClient::close() {
+	try {
+		if (response != null) {
+			response->skipRemainBody(false);
+		}
+		if (request != null) {
+			closeConnection();
+		}
+	} catch (...) {
+		closeConnection();
+	}
 }
 
 void HttpClient::storeHeaderLine(ConstStrA field, ConstStrA value) {
