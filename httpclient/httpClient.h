@@ -192,6 +192,20 @@ public:
 	 */
 	void close();
 
+	///Enumerates all headers
+	/**
+	 * @param fn function to be called for every header line
+	 * @retval true enumetion function returned true and enumeration has been stopped
+	 * @retval false enumeration function returned false for every processed line
+	 */
+	template<typename Fn>
+	bool enumHeaders(const Fn &fn) {
+		for (HdrMap::Iterator iter = hdrMap.getFwIter(); iter.hasItems();) {
+			const HdrMap::KeyValue &kv = iter.getNext();
+			if (fn(kv.key, kv.value)) return true;
+		}
+		return false;
+	}
 
 
 protected:
