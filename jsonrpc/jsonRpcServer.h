@@ -87,7 +87,7 @@ namespace jsonsrv {
 		 * @param context context of the call
 		 * @param logOutput output of the call
 		 */
-		void logMethod(IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *logOutput);
+		virtual void logMethod(IHttpRequest &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput);
 		///Opens, reopens the log
 		void openLog();
 		JSON::PNode rpcHttpStatHandler(RpcRequest *rq);
@@ -104,7 +104,7 @@ namespace jsonsrv {
 		ThreadVarInitDefault<LogBuffers> logBuffers;
 		atomic logRotateCounter;
 
-		JSON::Value nullV;
+		JSON::ConstValue nullV;
 	};
 
 

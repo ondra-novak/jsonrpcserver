@@ -21,7 +21,7 @@ namespace jsonsrv {
  */
 	class IJsonRpcLogObject: public IInterface {
 	public:
-		virtual void logMethod(IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *output) = 0;
+		virtual void logMethod(IHttpRequest &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput) = 0;
 	};
 
 
@@ -89,15 +89,15 @@ namespace jsonsrv {
 
 	    struct CallResult {
 	    	///Result of the call
-	    	JSON::PNode result;
+	    	JSON::ConstValue result;
 	    	///Error of the call (result is "null")
-	    	JSON::PNode error;
+	    	JSON::ConstValue error;
 	    	///Id returned to the caller
-	    	JSON::PNode id;
+	    	JSON::ConstValue id;
 	    	///New context, if changed, or NULL (no change)
-	    	JSON::PNode newContext;
+	    	JSON::ConstValue newContext;
 	    	///output that should be logged out - can be different than result (default is "null")
-	    	JSON::PNode logOutput;
+	    	JSON::ConstValue logOutput;
 	    };
 
 	    ///Calls method on JsonRpc interface
@@ -122,7 +122,7 @@ namespace jsonsrv {
 	     *  is thrown. Also unknown exceptions (such a ... or exceptions not inherited from
 	     *  std::exception are thrown outside of this call
 	     */
-	    virtual CallResult callMethod(IHttpRequest *httpRequest, ConstStrA methodName, JSON::INode *args, JSON::INode *context, JSON::INode *id) = 0;
+	    virtual  CallResult callMethod(IHttpRequest *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Container &context, const JSON::ConstValue &id) = 0;
 
 
 	    ///Tests whether object can accept request from specified origin

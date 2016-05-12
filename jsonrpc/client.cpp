@@ -24,7 +24,7 @@ Future<Client::Result> Client::callAsync(ConstStrA method, JSON::ConstValue para
 	JSON::Builder json(jsonFactory);
 
 	//build request
-	JSON::Builder::Object obj = json("id", preparedList.length())
+	JSON::Builder::CObject obj = json("id", preparedList.length())
 			("method",method)
 			("params",params);
 	//if context is set, add to request
@@ -149,7 +149,7 @@ void Client::runBatch() {
 							//if error
 							if (error != nil && !error->isNull()) {
 								//reject promise
-								itm.result.reject(RpcError(THISLOCATION,error));
+								itm.result.reject(RpcError(THISLOCATION,error->copy(jsonFactory)));
 							} else {
 								//otherwise resolve promise
 								itm.result.resolve(Result(result,context));

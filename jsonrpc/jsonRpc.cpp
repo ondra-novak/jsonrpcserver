@@ -137,9 +137,9 @@ natural JsonRpc::onData(IHttpRequest& request) {
 	JSON::PFactory f = getFactory();
 	JSON::IFactoryToStringProperty &prop = f->getIfc<JSON::IFactoryToStringProperty>();
 	try {
-		AutoArray<JSON::PNode, SmallAlloc<32> > replies;
+		AutoArray<JSON::ConstValue, SmallAlloc<32> > replies;
 		while (request.canRead()) {
-			JSON::PNode reply = parseRequest(request,f);
+			JSON::ConstValue reply = parseRequest(request,f);
 			if (reply != nil) replies.add(reply);
 		}
 		lg.debug("Sending JSONRPC response");
@@ -202,7 +202,7 @@ protected:
 	}
 };
 
-JSON::PNode JsonRpc::parseRequest(IHttpRequest& request, JSON::IFactory *f) {
+JSON::ConstValue JsonRpc::parseRequest(IHttpRequest& request, JSON::IFactory *f) {
 
 	LogObject lg(THISLOCATION);
 	SeqFileInput indata(&request);
@@ -269,15 +269,26 @@ JSON::PNode JsonRpc::parseRequest(IHttpRequest& request, JSON::IFactory *f) {
 	if (res.result == nil) res.error = f->newNullNode();
 	if (res.error == nil) res.error = f->newNullNode();
 
+	JSON::Builder builder(f);
+	JSON::Builder::CObject fullReply = builder("id",res.id)
+			("result",res.result)
+			("error",res.error)
+			("id",res.id);
+	if (res.newContext != nil) fullReply
+			("context",res.newContext);
+	lg.debug("Request finished");
+	return fullReply;
+
+
+	/*
+
 	JSON::PNode fullReply = f->newClass();
 	fullReply->add("id",res.id);
 	fullReply->add("result",res.result);
 	fullReply->add("error",res.error);
 	if (res.newContext != nil) fullReply->add("context",res.newContext);
 	fullReply->add("id",res.id);
-	lg.debug("Request finished");
-	return fullReply;
-
+*/
 }
 
 void JsonRpc::registerMethod(ConstStrA methodName, const IRpcCall & method,
@@ -493,7 +504,7 @@ Optional<bool> JsonRpc::isAllowedOrigin(ConstStrA origin) {
 	}
 }
 
-JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA methodName, JSON::INode *args, JSON::INode *context, JSON::INode *id) {
+JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Container &context, const JSON::ConstValue &id) {
 	LogObject lg(THISLOCATION);
 
 	typedef StringPool<char, SmallAlloc<256> > StrP;
@@ -539,9 +550,9 @@ JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA met
 				RpcError err(THISLOCATION,f,426,"Upgrade Required");
 				result.result = f->newNullNode();
 				result.error = err.getError();
-				result.id = const_cast<JSON::INode *>(id);
+				result.id = id;
 				lg.error("RPC: %1 Error %2") << methodName << f->toString(*err.getError());
-				if (rq.logOutput == nil) rq.logOutput = err.getError();
+				if (rq.logOutput == nil) rq.logOutput = static_cast<const JSON::Value &>(err.getError());
 				return result;
 
 			}
@@ -553,7 +564,7 @@ JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA met
 	IRpcCall &call = *(m->get());
 
 	CallResult result;
-	result.id = const_cast<JSON::INode *>(id);
+	result.id = id;
 
 	if (result.id->getType() == JSON::ndNull) {
 		call(&rq); //ignore result, because this is notify
@@ -581,7 +592,7 @@ JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA met
 			result.result = f->newNullNode();
 			result.error = err.getError();
 			lg.error("RPC: %1 Error %2") << methodName << f->toString(*err.getError());
-			if (rq.logOutput == nil) rq.logOutput = err.getError();
+			if (rq.logOutput == nil) rq.logOutput = static_cast<const JSON::Value &>(err.getError());
 		}
 		result.logOutput = rq.logOutput;
 	}
@@ -591,19 +602,19 @@ JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA met
 
 static void mergeContext(JSON::IFactory *f, RpcRequest *rq, JsonRpc::CallResult &callRes, JSON::PNode &saveInContext, JSON::PNode &saveOutContext) {
 	if (callRes.newContext != nil) {
-		if (rq->contextOut == nil) rq->contextOut = callRes.newContext;
+		if (rq->contextOut == nil) rq->contextOut = callRes.newContext->copy(f,0);
 		else rq->contextOut = saveOutContext = f->merge(*rq->contextOut,*callRes.newContext);
-		if (rq->context == nil) rq->context = callRes.newContext;
+		if (rq->context == nil) rq->context = callRes.newContext->copy(f,0);
 		else rq->context = saveInContext = f->merge(*rq->context,*callRes.newContext);
 	}
 }
 
-JSON::PNode JsonRpc::rpcMulticall1(  RpcRequest *rq) {
+JSON::Value JsonRpc::rpcMulticall1(  RpcRequest *rq) {
 	const JSON::INode &args = *rq->args;
 	ConstStrA methodName = args[0].getStringUtf8();
-	JSON::PNode result = rq->jsonFactory->newClass();
-	JSON::PNode resarr = rq->jsonFactory->newArray();
-	JSON::PNode errarr = rq->jsonFactory->newArray();
+	JSON::Container result = rq->jsonFactory->newClass();
+	JSON::Container resarr = rq->jsonFactory->newArray();
+	JSON::Container errarr = rq->jsonFactory->newArray();
 	JSON::PNode saveIn, saveOut;
 
 	for (natural i = 1; i < args.getEntryCount();i++) {
@@ -611,13 +622,14 @@ JSON::PNode JsonRpc::rpcMulticall1(  RpcRequest *rq) {
 		CallResult res = callMethod(rq->httpRequest,methodName,a,rq->context,rq->idnode);
 		if (res.result == nil) res.result = rq->jsonFactory->newNullNode();
 		mergeContext(rq->jsonFactory,rq,res,saveIn, saveOut);
-		resarr->add(res.result);
-		if (res.result->isNull()) errarr->add(res.error);
+		resarr.add(res.result);
+		if (!res.error->isNull()) errarr.add(res.error);
+//		else if (!res.logOutput->isNull()) errarr.add(res.logOutput);
 	}
-	result->add("results",resarr);
-	result->add("errors",errarr);
+	result.set("results",resarr);
+	result.set("errors",errarr);
 	rq->logOutput = errarr;
-	return result;
+	return static_cast<const JSON::Value &>(result);
 }
 
 void JsonRpc::registerStatHandler(ConstStrA handlerName, const IRpcCall & method) {
@@ -631,9 +643,9 @@ void JsonRpc::eraseStatHandler(ConstStrA handlerName) {
 
 JSON::PNode JsonRpc::rpcMulticallN(RpcRequest *rq) {
 	const JSON::INode &args = *rq->args;
-	JSON::PNode result = rq->jsonFactory->newClass();
-	JSON::PNode resarr = rq->jsonFactory->newArray();
-	JSON::PNode errarr = rq->jsonFactory->newArray();
+	JSON::Container result = rq->jsonFactory->newClass();
+	JSON::Container resarr = rq->jsonFactory->newArray();
+	JSON::Container errarr = rq->jsonFactory->newArray();
 
 	if (args.empty()) throw RpcError(THISLOCATION,rq->jsonFactory,400,"Requires arguments");
 	if (args[0].getType() == JSON::ndString) return rpcMulticall1(rq);
@@ -650,14 +662,14 @@ JSON::PNode JsonRpc::rpcMulticallN(RpcRequest *rq) {
 		CallResult res = callMethod(rq->httpRequest,methodName,fnargs,rq->context,rq->idnode);
 		if (res.result == nil) res.result = rq->jsonFactory->newNullNode();
 		mergeContext(rq->jsonFactory,rq,res,saveIn, saveOut);
-		resarr->add(res.result);
-		if (res.result->isNull()) errarr->add(res.error);
+		resarr.add(res.result);
+		if (!res.error->isNull()) errarr.add(res.error);
+	//	else if (!res.logOutput->isNull()) errarr.add(res.logOutput);
 	}
-	result->add("results",resarr);
-	result->add("errors",errarr);
+	result.set("results",resarr);
+	result.set("errors",errarr);
 	rq->logOutput = errarr;
-
-	return result;
+	return static_cast<const JSON::Value &>(result);
 
 }
 
@@ -685,7 +697,7 @@ JSON::PNode JsonRpc::rpcStats(RpcRequest* rq) {
 	for (HandlerMap::Iterator iter = statHandlerMap.getFwIter();iter.hasItems();) {
 		const HandlerMap::Entity &e = iter.getNext();
 		JSON::PNode r = e.value->operator ()(rq);
-		out->add(e.key,r);
+		out(e.key,r);
 	}
 
 

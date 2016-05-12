@@ -172,7 +172,7 @@ void JsonRpcWebsocketsConnection::onTextMessage(ConstStrA msg) {
 			callRes.logOutput = callRes.error;
 		}
 		if (!id->isNull()) {
-			JSON::Builder::Object response = json("result",callRes.result)
+			JSON::Builder::CObject response = json("result",callRes.result)
 					("error",callRes.error)
 					("id", callRes.id);
 			if (callRes.newContext != nil) {

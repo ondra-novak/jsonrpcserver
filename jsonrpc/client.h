@@ -102,8 +102,8 @@ protected:
 	JSON::PFactory jsonFactory;
 
 	struct PreparedItem {
-		PreparedItem(JSON::Value request,Promise<Result> result):request(request),result(result),done(false) {}
-		JSON::Value request;
+		PreparedItem(const JSON::ConstValue &request,Promise<Result> result):request(request),result(result),done(false) {}
+		JSON::ConstValue request;
 		mutable Promise<Result> result;
 		mutable bool done;
 	};
