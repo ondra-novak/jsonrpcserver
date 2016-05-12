@@ -215,13 +215,13 @@ void HttpRequest::writeChunk(ConstBin data) {
 
 
 HttpResponse::HttpResponse(IInputStream* com, IHttpResponseCB &cb)
-:com(*com),hdrCallback(cb),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()) {
+:com(*com),hdrCallback(cb),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()),hdrContentLength(naturalNull),hdrTEChunked(false) {
 	if (com == 0) throwNullPointerException(THISLOCATION);
 
 }
 
 HttpResponse::HttpResponse(IInputStream* com, IHttpResponseCB &cb, ReadHeaders)
-:com(*com),hdrCallback(cb),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()) {
+:com(*com),hdrCallback(cb),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()),hdrContentLength(naturalNull),hdrTEChunked(false) {
 	if (com == 0) throwNullPointerException(THISLOCATION);
 	readHeaders();
 }
@@ -309,6 +309,21 @@ bool HttpResponse::processSingleHeader(TypeOfHeader toh, natural size) {
 				ConstStrA value = buffer.offset(colon+1);
 				cropWhite(key);
 				cropWhite(value);
+				if (key == getHeaderFieldName(fldContentLength)) {
+					TextParser<char, SmallAlloc<256> > parser;
+					if (parser("%u1",value)) {
+						hdrContentLength = parser[1];
+					}
+				}
+				if (key == getHeaderFieldName(fldTransferEncoding)) {
+					hdrTEChunked = value == "chunked";
+				}
+				if (key == getHeaderFieldName(fldConnection)) {
+					StrCmpCI<char> cmp;
+					if (cmp(value,"close") == cmpResultEqual) hdrConnection = hdrConnClose;
+					else if (cmp(value,"keep-alive") == cmpResultEqual) hdrConnection = hdrConnKeepAlive;
+					else if (cmp(value,"upgrade") == cmpResultEqual) hdrConnection = hdrConnUpgrade;
+				}
 				hdrCallback.storeHeaderLine(key,value);
 			} break;
 		case tohStatusLine: {
@@ -388,26 +403,18 @@ bool HttpResponse::processHeaders() {
 	}
 
 	TextParser<char, SmallAlloc<256> > parser;
-	HeaderValue length = getHeaderField(fldContentLength);
 
 	rMode = rmDirectUnlimited;
 
-	if (length.defined) {
-		if (parser("%u1",length)) {
-			remainLength = parser[1];
-			rMode = rmDirectLimited;
-		} else {
-			throw MalformedResponse(THISLOCATION, tohKeyValue);
-		}
+	if (hdrContentLength != naturalNull) {
+			remainLength = hdrContentLength;
 	}
 
 
-	HeaderValue te = getHeaderField(fldTransferEncoding);
-	if (te.defined) {
-		if (te == ConstStrA("chunked")) {
-			rMode = rmChunkHeader ;
-			remainLength = 0;
-		}
+	if (hdrTEChunked) {
+		rMode = rmChunkHeader ;
+		remainLength = 0;
+
 	}
 
 
@@ -417,15 +424,15 @@ bool HttpResponse::processHeaders() {
 		rMode = rmEof;
 	}
 
-	keepAlive = http11;
 	skippingBody = false;
-	HeaderValue conn = getHeaderField(fldConnection);
-	if (conn.defined) {
-		StrCmpCI<char> cmp;
-		if (cmp(conn,"close") == cmpResultEqual) keepAlive = false;
-		else if (cmp(conn,"keep-alive") == cmpResultEqual)  keepAlive = true;
-		else if (cmp(conn,"upgrade") == cmpResultEqual) keepAlive = true;
+
+	switch (hdrConnection) {
+		case hdrConnClose: keepAlive = false;break;
+		case hdrConnKeepAlive: keepAlive = true;break;
+		case hdrConnUpgrade: keepAlive = true;break;
+		default: keepAlive = http11;
 	}
+
 	return true;
 }
 

@@ -14,6 +14,8 @@
 #include "lightspeed/base/memory/poolalloc.h"
 #include "httpStream.h"
 #include "interfaces.h"
+
+#include "lightspeed/base/containers/map.h"
 namespace BredyHttpClient {
 
 using namespace LightSpeed;

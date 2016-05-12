@@ -14,6 +14,8 @@
 #include "lightspeed/base/exceptions/netExceptions.h"
 #include <lightspeed/base/exceptions/fileExceptions.h>
 #include "lightspeed/base/streams/fileiobuff.tcc"
+#include "lightspeed/base/containers/map.tcc"
+
 namespace BredyHttpClient {
 
 ClientConfig::ClientConfig()
@@ -127,6 +129,7 @@ SeqFileInput HttpClient::send(ConstStrA body) {
 				closeConnection();
 				return send(body);
 			}
+			throw;
 		}
 	} else {
 		return send();
@@ -163,13 +166,13 @@ ConstStrA HttpClient::getStatusMessage() const {
 }
 
 HttpClient::HeaderValue HttpClient::getHeader(Field field) const {
-	if (response == nil) return HeaderValue();
-	return response->getHeaderField(field);
+	return getHeader(getHeaderFieldName(field));
 }
 
 HttpClient::HeaderValue HttpClient::getHeader(ConstStrA field) const {
-	if (response == nil) return HeaderValue();
-	return response->getHeaderField(field);
+	const StrRef *strr = hdrMap.find(field);
+	if (strr == 0) return HeaderValue();
+	return HeaderValue(*strr);
 }
 
 static ConstStrA continue100("100-continue");

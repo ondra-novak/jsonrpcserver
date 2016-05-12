@@ -308,6 +308,19 @@ protected:
 	bool skippingBody;
 	IInputBuffer &ibuff;
 
+	enum HDRConnection {
+		hdrConnUnknown,
+		hdrConnClose,
+		hdrConnKeepAlive,
+		hdrConnUpgrade,
+	};
+
+	natural hdrContentLength;
+	bool hdrTEChunked;
+	HDRConnection hdrConnection;
+
+
+
 
 	bool readHeaderLine(TypeOfHeader toh);
 	bool endOfStream();
