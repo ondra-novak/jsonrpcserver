@@ -141,15 +141,15 @@ void Client::runBatch() {
 							//mark it done
 							itm.done = true;
 							//pick result
-							JSON::ConstValue result = r["result"];
+							JSON::Value result = r["result"];
 							//pick error
-							JSON::ConstValue error = r["error"];
+							JSON::Value error = r["error"];
 							//pick context
-							JSON::ConstValue context = r["context"];
+							JSON::Value context = r["context"];
 							//if error
 							if (error != nil && !error->isNull()) {
 								//reject promise
-								itm.result.reject(RpcError(THISLOCATION,error->copy(jsonFactory)));
+								itm.result.reject(RpcError(THISLOCATION,error));
 							} else {
 								//otherwise resolve promise
 								itm.result.resolve(Result(result,context));
