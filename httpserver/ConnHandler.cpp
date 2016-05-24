@@ -43,6 +43,9 @@ ConnHandler::Command ConnHandler::onDataReady(const PNetworkStream &stream, ITCP
 			LogObject(THISLOCATION).debug("Request uses detach feature");
 		}
 		if (cmd == cmdRemove) ctx->nstream = nil;
+		if (cmd == cmdWaitRead) {
+			ctx->nstream->flush();
+		}
 		return cmd;
 	} catch (std::exception &e) {
 		LogObject(THISLOCATION).note("Uncaught exception: %1") << e.what();

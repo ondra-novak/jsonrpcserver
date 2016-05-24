@@ -33,7 +33,7 @@ using jsonsrv::RpcError;
 
 class Client {
 public:
-	Client(ClientConfig &cfg);
+	Client(const ClientConfig &cfg);
 
 	class Result: public JSON::ConstValue {
 	public:
@@ -102,10 +102,11 @@ protected:
 	JSON::PFactory jsonFactory;
 
 	struct PreparedItem {
-		PreparedItem(JSON::Value request,Promise<Result> result):request(request),result(result),done(false) {}
+		PreparedItem(JSON::Value request,Promise<Result> result);
 		JSON::Value request;
 		mutable Promise<Result> result;
 		mutable bool done;
+		~PreparedItem();
 	};
 
 

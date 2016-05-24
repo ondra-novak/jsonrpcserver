@@ -17,7 +17,7 @@ namespace jsonsrv {
 /**
  * Interface can be retrieve from IJsonRpc using getIfcPtr if target object supports logging
  * For example JsonRpcServer object supports standard loging into rpclogfile. Using
- * this interface is way how to log methods there
+ * this interface is way how to log methods there;
  */
 	class IJsonRpcLogObject: public IInterface {
 	public:

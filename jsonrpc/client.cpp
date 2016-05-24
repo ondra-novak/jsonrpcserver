@@ -8,9 +8,10 @@
 #include "client.h"
 
 #include "lightspeed/base/exceptions/httpStatusException.h"
+#include "lightspeed/base/actions/promise.tcc"
 namespace jsonrpc {
 
-Client::Client(ClientConfig& cfg)
+Client::Client(const ClientConfig& cfg)
 	:http(cfg),jsonFactory(cfg.jsonFactory),batchCounter(0),url(cfg.url)
 {
 	serialized.setStaticObj();
@@ -138,14 +139,14 @@ void Client::runBatch() {
 						const PreparedItem &itm = processing[id];
 						//it should not be done
 						if (!itm.done) {
-							//mark it done
-							itm.done = true;
 							//pick result
 							JSON::ConstValue result = r["result"];
 							//pick error
 							JSON::ConstValue error = r["error"];
 							//pick context
-							JSON::ConstValue context = r["context"];
+							JSON::ConstValue context = r->getPtr("context");
+							//mark it done
+							itm.done = true;
 							//if error
 							if (error != nil && !error->isNull()) {
 								//reject promise
@@ -191,6 +192,11 @@ Future<Client::Result> Client::Batch::call(ConstStrA method, JSON::ConstValue pa
 	return client.callAsync(method,params,context);
 }
 
+Client::PreparedItem::PreparedItem(JSON::Value request,Promise<Result> result):request(request),result(result),done(false) {}
+Client::PreparedItem::~PreparedItem() {}
+
 
 } /* namespace jsonrpc */
+
+template LightSpeed::Promise<jsonrpc::Client::Result>::Promise(LightSpeed::Promise<jsonrpc::Client::Result> const&);
 

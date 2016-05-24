@@ -60,6 +60,7 @@ natural HttpRequest::write(const void* buffer, natural size) {
 		if (size == 0) return 0;
 		out = com.write(buffer,size);
 		remainLength -= out;
+		if (remainLength == 0) outputClosed = true;
 		return out;
 	case useChunked:
 		if (size >= chunkMinSize && (chunk.empty() || chunk.length() >= chunkMinSize)) {
@@ -119,11 +120,11 @@ void HttpRequest::setDefaultChunkMinSize(natural defaultChunkMinSize) {
 
 
 bool HttpRequest::canWrite() const {
-	return !outputClosed && remainLength > 0;
+	return !outputClosed;
 }
 
 void HttpRequest::flush() {
-	if (!inBody) return;
+	if (!inBody || !canWrite()) return;
 	if (bodyHandling == useChunked) flushChunk();
 	if (bodyHandling != useBuffered) com.flush();
 
@@ -202,7 +203,7 @@ void HttpRequest::beginBody() {
 }
 
 void HttpRequest::flushChunk() {
-	if (chunk.length()) return;
+	if (chunk.empty()) return;
 	writeChunk(chunk);
 	chunk.clear();
 }
@@ -210,7 +211,7 @@ void HttpRequest::flushChunk() {
 void HttpRequest::writeChunk(ConstBin data) {
 	print("%1\n") << setBase(16) << data.length();
 	com.writeAll(data.data(),data.length());
-	print("\r\n");
+	print("\n");
 }
 
 
@@ -400,6 +401,7 @@ bool HttpResponse::processHeaders() {
 	if (status == 100) {
 		rMode = rmContinue;
 		keepAlive = true;
+		return true;
 	}
 
 	TextParser<char, SmallAlloc<256> > parser;
