@@ -167,6 +167,7 @@ void JsonRpcWebsocketsConnection::onTextMessage(ConstStrA msg) {
 			if (logobject)
 				logobject->logMethod(http,method,params,context,callRes.logOutput);
 		} catch (std::exception &e) {
+			callRes.result= json.factory->newValue(null);
 			callRes.error = json.factory->newValue(e.what());
 			callRes.id = id;
 			callRes.logOutput = callRes.error;
