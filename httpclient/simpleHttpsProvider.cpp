@@ -11,6 +11,8 @@
 #include "interfaces.h"
 #include "lightspeed/mt/fastlock.h"
 #include "simpleHttpsProvider.h"
+
+#include "lightspeed/base/interface.tcc"
 #include "lightspeed/base/containers/autoArray.tcc"
 #include "lightspeed/base/exceptions/errorMessageException.h"
 #include "lightspeed/mt/exceptions/timeoutException.h"
