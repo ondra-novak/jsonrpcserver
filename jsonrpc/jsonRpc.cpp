@@ -600,13 +600,35 @@ JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA met
 }
 
 
-static void mergeContext(JSON::IFactory *f, RpcRequest *rq, JsonRpc::CallResult &callRes, JSON::PNode &saveInContext, JSON::PNode &saveOutContext) {
-	if (callRes.newContext != nil) {
-		if (rq->contextOut == nil) rq->contextOut = callRes.newContext->copy(f,0);
-		else rq->contextOut = saveOutContext = f->merge(*rq->contextOut,*callRes.newContext);
-		if (rq->context == nil) rq->context = callRes.newContext->copy(f,0);
-		else rq->context = saveInContext = f->merge(*rq->context,*callRes.newContext);
+static void mergeContext2( JSON::Container context, const JSON::ConstValue &newContext) {
+	JSON::ConstIterator iter = newContext->getFwIter();
+	while (iter.hasItems()) {
+		const JSON::ConstKeyValue &kv = iter.getNext();
+		if (kv->isNull()) context.unset(kv.getStringKey());
+		else context.set(kv.getStringKey(), kv);
 	}
+}
+
+static void mergeContext3(JSON::Container context, const JSON::ConstValue &newContext) {
+	JSON::ConstIterator iter = newContext->getFwIter();
+	while (iter.hasItems()) {
+		const JSON::ConstKeyValue &kv = iter.getNext();
+		context.set(kv.getStringKey(), kv);
+	}
+}
+
+static void mergeContext(JSON::IFactory *f, RpcRequest *rq, JsonRpc::CallResult &callRes) {
+	if (callRes.newContext == null || callRes.newContext->empty()) return;
+	if (rq->context == null) {
+		rq->context = f->object();
+	}
+	mergeContext2(rq->context, callRes.newContext);
+
+	if (rq->contextOut == null)  {
+		rq->contextOut = f->object();
+	}
+
+	mergeContext3(rq->contextOut, callRes.newContext);
 }
 
 JSON::Value JsonRpc::rpcMulticall1(  RpcRequest *rq) {
@@ -615,13 +637,12 @@ JSON::Value JsonRpc::rpcMulticall1(  RpcRequest *rq) {
 	JSON::Container result = rq->jsonFactory->newClass();
 	JSON::Container resarr = rq->jsonFactory->newArray();
 	JSON::Container errarr = rq->jsonFactory->newArray();
-	JSON::PNode saveIn, saveOut;
 
 	for (natural i = 1; i < args.getEntryCount();i++) {
 		JSON::INode *a = args.getEntry(i);
 		CallResult res = callMethod(rq->httpRequest,methodName,a,rq->context,rq->idnode);
 		if (res.result == nil) res.result = rq->jsonFactory->newNullNode();
-		mergeContext(rq->jsonFactory,rq,res,saveIn, saveOut);
+		mergeContext(rq->jsonFactory,rq,res);
 		resarr.add(res.result);
 		if (!res.error->isNull()) errarr.add(res.error);
 //		else if (!res.logOutput->isNull()) errarr.add(res.logOutput);
@@ -650,8 +671,6 @@ JSON::PNode JsonRpc::rpcMulticallN(RpcRequest *rq) {
 	if (args.empty()) throw RpcError(THISLOCATION,rq->jsonFactory,400,"Requires arguments");
 	if (args[0].getType() == JSON::ndString) return rpcMulticall1(rq);
 
-	JSON::PNode saveIn, saveOut;
-
 
 	for (natural i = 0; i < args.getEntryCount();i++) {
 		const JSON::INode &fndef = args[i];
@@ -661,7 +680,7 @@ JSON::PNode JsonRpc::rpcMulticallN(RpcRequest *rq) {
 			throw RpcError(THISLOCATION,rq->jsonFactory,400,"Server.multicall function requires arguments in following form: array of arrays of pair [\"methoName\",[args...]]");
 		CallResult res = callMethod(rq->httpRequest,methodName,fnargs,rq->context,rq->idnode);
 		if (res.result == nil) res.result = rq->jsonFactory->newNullNode();
-		mergeContext(rq->jsonFactory,rq,res,saveIn, saveOut);
+		mergeContext(rq->jsonFactory,rq,res);
 		resarr.add(res.result);
 		if (!res.error->isNull()) errarr.add(res.error);
 	//	else if (!res.logOutput->isNull()) errarr.add(res.logOutput);
