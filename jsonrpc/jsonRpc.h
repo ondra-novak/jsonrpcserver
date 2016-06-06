@@ -93,7 +93,7 @@ public:
     void loadHelp(SeqFileInput &input);
     void loadHelp(ConstStrW filename);
 
-    CallResult callMethod(IHttpRequest *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Container &context, const JSON::ConstValue &id);
+    CallResult callMethod(IHttpRequest *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Value &context, const JSON::Value &id);
     virtual void setLogObject(IJsonRpcLogObject *logObject) {this->logObject = logObject;}
     virtual void setRequestMaxSize(natural bytes);
     virtual RpcError onException(JSON::IFactory *json, const std::exception &e);

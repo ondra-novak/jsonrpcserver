@@ -270,7 +270,7 @@ JSON::ConstValue JsonRpc::parseRequest(IHttpRequest& request, JSON::IFactory *f)
 	if (res.error == nil) res.error = f->newNullNode();
 
 	JSON::Builder builder(f);
-	JSON::Builder::CObject fullReply = builder("id",res.id)
+	JSON::Builder::Object fullReply = builder("id",res.id)
 			("result",res.result)
 			("error",res.error)
 			("id",res.id);
@@ -504,7 +504,7 @@ Optional<bool> JsonRpc::isAllowedOrigin(ConstStrA origin) {
 	}
 }
 
-JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Container &context, const JSON::ConstValue &id) {
+JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Value &context, const JSON::Value &id) {
 	LogObject lg(THISLOCATION);
 
 	typedef StringPool<char, SmallAlloc<256> > StrP;

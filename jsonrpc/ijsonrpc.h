@@ -89,13 +89,13 @@ namespace jsonsrv {
 
 	    struct CallResult {
 	    	///Result of the call
-	    	JSON::ConstValue result;
+	    	JSON::Value result;
 	    	///Error of the call (result is "null")
-	    	JSON::ConstValue error;
+	    	JSON::Value error;
 	    	///Id returned to the caller
-	    	JSON::ConstValue id;
+	    	JSON::Value id;
 	    	///New context, if changed, or NULL (no change)
-	    	JSON::ConstValue newContext;
+	    	JSON::Value newContext;
 	    	///output that should be logged out - can be different than result (default is "null")
 	    	JSON::ConstValue logOutput;
 	    };
@@ -122,7 +122,7 @@ namespace jsonsrv {
 	     *  is thrown. Also unknown exceptions (such a ... or exceptions not inherited from
 	     *  std::exception are thrown outside of this call
 	     */
-	    virtual  CallResult callMethod(IHttpRequest *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Container &context, const JSON::ConstValue &id) = 0;
+	    virtual  CallResult callMethod(IHttpRequest *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Value &context, const JSON::Value &id) = 0;
 
 
 	    ///Tests whether object can accept request from specified origin

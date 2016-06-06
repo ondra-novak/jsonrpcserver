@@ -32,7 +32,7 @@ struct RpcRequest {
 	///Message ID, when ID is string
 	ConstStrA id;
 	///Message ID node. If request is notify, this field is null
-	JSON::ConstValue idnode;
+	JSON::Value idnode;
 	///pointer to arguments. Always defined, even if arguments are empty
 	/**
 	 * @note Arguments should be stored in Array as defined in specification. Old implementation
@@ -49,12 +49,12 @@ struct RpcRequest {
 	Pointer<IJsonRpc> serverStub;
 	///method context (JSONRPC extension)
 	/** If context is not included to the request, pointer is null */
-	JSON::Container context;
+	JSON::Value context;
 	///Context sent with reply
 	/** This pointer is null by default. When method wants to send context as reply,
 	 * it must create class node here using jsonFactory
 	 */
-	JSON::Container contextOut;
+	JSON::Value contextOut;
 	///Data reported as output to logfile
 	/** to report whole output, set this member same as return value.
 	 * Default value NULL will disable output reporting
@@ -65,7 +65,7 @@ struct RpcRequest {
 	JSON::Value localData;
 
 
-	void setContext(const char *name, const JSON::ConstValue &value) {
+	void setContext(const char *name, const JSON::Value &value) {
 		if (contextOut == nil) contextOut = jsonFactory->newClass();
 		contextOut.set(name,value);
 	}
