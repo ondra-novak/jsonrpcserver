@@ -108,6 +108,13 @@ SeqFileInput HttpClient::send() {
 				closeConnection();
 				return send();
 			}
+			throw;
+		} catch (IteratorNoMoreItems &) {
+			if (connectionReused) {
+				closeConnection();
+				return send();
+			}
+			throw;
 		}
 	} else {
 		request->closeOutput();
@@ -215,6 +222,7 @@ void HttpClient::sendRequest(natural contentLength, PostStreamOption pso) {
 
 		if (use100) {
 			if (nstream->wait(INetworkResource::waitForInput,10000) != INetworkResource::waitTimeout) {
+				response->readHeaders();
 				//there can other response, so if we cannot continue, return response to the caller
 				if (!response->canContinue()) {
 					//check status
@@ -250,14 +258,21 @@ void HttpClient::loadResponse() {
 	if (request == null) {
 		throw FileIOError(THISLOCATION, 1, "Can't read response without request");
 	}
+
+	if (!request->isOutputClosed()) request->closeOutput();
+
 	if (response == null) {
 		createResponse(true);
+	} else {
+		response->readHeaders();
 	}
+
 
 	while (response->canContinue()) {
 		response->waitAfterContinue(HttpResponse::readHeadersNow);
 	}
 
+	request = null;
 }
 
 #if 0
@@ -433,10 +448,12 @@ void HttpClient::createRequest(ConstStrA url, Method method) {
 						stream = connectSite(proxyInfo.proxyAddr,8080);
 						nstream = new BufferedNetworkStream(stream);
 						path = url;
+						currentDomain = proxyInfo.proxyAddr;
 					} else {
 						PNetworkStream stream;
 						stream = connectSite(domain_port,80);
 						nstream = new BufferedNetworkStream(stream);
+						currentDomain = domain_port;
 					}
 				}
 			}
@@ -460,7 +477,6 @@ void HttpClient::createRequest(ConstStrA url, Method method) {
 
 void HttpClient::createResponse(bool readHeaders) {
 	if (request == null) throw ErrorMessageException(THISLOCATION,"No active request");
-	if (!request->isOutputClosed()) request->closeOutput();
 
 	if (readHeaders)
 		response = new(pool) HttpResponse(nstream.get(),*this,HttpResponse::readHeadersNow);
