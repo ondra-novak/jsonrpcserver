@@ -222,7 +222,7 @@ HttpResponse::HttpResponse(IInputStream* com, IHttpResponseCB &cb)
 }
 
 HttpResponse::HttpResponse(IInputStream* com, IHttpResponseCB &cb, ReadHeaders)
-:com(*com),hdrCallback(cb),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()),hdrContentLength(naturalNull),hdrTEChunked(false) {
+:com(*com),hdrCallback(cb),status(0),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()),hdrContentLength(naturalNull),hdrTEChunked(false) {
 	if (com == 0) throwNullPointerException(THISLOCATION);
 	readHeaders();
 }
@@ -236,7 +236,6 @@ void HttpResponse::readHeaders() {
 		com.canRead(); //block if data are not yet available
 		p = checkStream();
 	}
-	if (rMode == rmEof) throw IteratorNoMoreItems(THISLOCATION, typeid(com));
 }
 
 void HttpResponse::waitAfterContinue() {
@@ -393,8 +392,7 @@ bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
 }
 
 bool HttpResponse::endOfStream() {
-	rMode = rmEof;
-	return true;
+	throw IncompleteStream(THISLOCATION);
 }
 
 bool HttpResponse::processHeaders() {

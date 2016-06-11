@@ -109,7 +109,7 @@ SeqFileInput HttpClient::send() {
 				return send();
 			}
 			throw;
-		} catch (IteratorNoMoreItems &) {
+		} catch (LightSpeed::IOException &) {
 			if (connectionReused) {
 				closeConnection();
 				return send();
