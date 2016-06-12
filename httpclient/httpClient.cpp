@@ -79,17 +79,18 @@ HttpResponse& HttpClient::sendRequest(ConstStrA url, Method method, SeqFileInput
 void HttpClient::open(Method method, ConstStrA url) {
 
 	strpool.clear();
-	hdrMap.clear();
+	respHdrMap.clear();
+	reqHdrMap.clear();
 	urlToOpen = strpool.add(url);
 	methodToOpen = method;
 }
 
 void HttpClient::setHeader(Field field, ConstStrA value) {
-	hdrMap.replace(strpool.add(getHeaderFieldName(field)),strpool.add(value));
+	reqHdrMap.replace(strpool.add(getHeaderFieldName(field)),strpool.add(value));
 }
 
 void HttpClient::setHeader(ConstStrA field, ConstStrA value) {
-	hdrMap.replace(strpool.add(field),strpool.add(value));
+	reqHdrMap.replace(strpool.add(field),strpool.add(value));
 }
 
 SeqFileOutput HttpClient::beginBody(PostStreamOption pso) {
@@ -177,7 +178,7 @@ HttpClient::HeaderValue HttpClient::getHeader(Field field) const {
 }
 
 HttpClient::HeaderValue HttpClient::getHeader(ConstStrA field) const {
-	const StrRef *strr = hdrMap.find(field);
+	const StrRef *strr = respHdrMap.find(field);
 	if (strr == 0) return HeaderValue();
 	return HeaderValue(*strr);
 }
@@ -210,17 +211,18 @@ void HttpClient::sendRequest(natural contentLength, PostStreamOption pso) {
 			}
 		}
 
-		for (HdrMap::Iterator iter = hdrMap.getFwIter(); iter.hasItems();) {
+		for (HdrMap::Iterator iter = reqHdrMap.getFwIter(); iter.hasItems();) {
 			const HdrMap::KeyValue &kv = iter.getNext();
 			request->setHeader(kv.key, kv.value);
 		}
 
-		hdrMap.clear();
 
 		request->beginBody();
 		createResponse(false);
 
 		if (use100) {
+			//flush buffers now
+			nstream->flush();
 			if (nstream->wait(INetworkResource::waitForInput,10000) != INetworkResource::waitTimeout) {
 				response->readHeaders();
 				//there can other response, so if we cannot continue, return response to the caller
@@ -244,6 +246,13 @@ void HttpClient::sendRequest(natural contentLength, PostStreamOption pso) {
 
 
 	}catch (NetworkException &) {
+		if (connectionReused) {
+			closeConnection();
+			sendRequest(contentLength,pso);
+		} else {
+			throw;
+		}
+	}catch (IOException &) {
 		if (connectionReused) {
 			closeConnection();
 			sendRequest(contentLength,pso);
@@ -597,7 +606,7 @@ void HttpClient::close() {
 }
 
 void HttpClient::storeHeaderLine(ConstStrA field, ConstStrA value) {
-	setHeader(field,value);
+	respHdrMap.replace(strpool.add(field),strpool.add(value));
 }
 
 } /* namespace BredyHttpClient */

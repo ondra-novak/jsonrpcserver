@@ -202,7 +202,7 @@ public:
 	 */
 	template<typename Fn>
 	bool enumHeaders(const Fn &fn) {
-		for (HdrMap::Iterator iter = hdrMap.getFwIter(); iter.hasItems();) {
+		for (HdrMap::Iterator iter = respHdrMap.getFwIter(); iter.hasItems();) {
 			const HdrMap::KeyValue &kv = iter.getNext();
 			if (fn(kv.key, kv.value)) return true;
 		}
@@ -289,7 +289,7 @@ private:
 
 	StrRef urlToOpen;
 	Method methodToOpen;
-	HdrMap hdrMap;
+	HdrMap reqHdrMap, respHdrMap;
 	natural status;
 	ConstStrA statusMessage;
 
