@@ -22,7 +22,7 @@ namespace BredyHttpSrv {
  * as factory of instance of this class.
  *
  * @note MT-safety: Object is not MT safe. Before sending any frame, you should
- * acqure lock protecting this object agains reentering. This also includes
+ * acqiure lock protecting this object against reentering. This also includes
  * Writing from event function
  */
 class WebSocketConnection: public IHttpHandlerContext, public AbstractWebSocketConnection<WebSocketConnection, true> {

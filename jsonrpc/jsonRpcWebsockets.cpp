@@ -221,11 +221,13 @@ WebSocketConnection* JsonRpcWebsockets::onNewConnection(
 void JsonRpcWebsocketsConnection::onCloseOutput(natural ) {
 	Synchronized<FastLock> _(lock);
 	context = nil;
+	onCloseFuture.getPromise().resolve();
 }
 
 JsonRpcWebsocketsConnection::~JsonRpcWebsocketsConnection() {
 	Synchronized<FastLock> _(lock);
 	context = nil;
+	onCloseFuture.getPromise().resolve();
 }
 
 void JsonRpcWebsocketsConnection::onConnect() {
@@ -246,17 +248,21 @@ void JsonRpcWebsocketsConnection::onConnect() {
 	}
 }
 
-void JsonRpcWebsocketsConnection::sendNotification(const PreparedNtf& ntf) {
-	this->sendTextMessage(ntf,true);
+
+void JsonRpcWebsocketsConnection::sendPrepared(const PreparedNotify* ntf) {
+	this->sendTextMessage(ntf->content,true);
 }
 
-JsonRpcWebsocketsConnection::PreparedNtf JsonRpcWebsocketsConnection::prepareNotification(
+PreparedNotify *JsonRpcWebsocketsConnection::prepare(
 		LightSpeed::ConstStrA name, LightSpeed::JSON::PNode arguments) {
-	Synchronized<FastLock> _(lock);
+	lock.lock();
 	JSON::PNode req = json("method",name)
 			("params",arguments)
 			("id",nil);
-	return  IRpcNotify::prepare(json.factory->toString(*req));
+
+	prepared = PreparedNotify(this,json.factory->toString(*req));
+	PreparedNotify &x = prepared;
+	return &x;
 }
 
 IRpcNotify *IRpcNotify::fromRequest(RpcRequest *r) {
@@ -264,5 +270,12 @@ IRpcNotify *IRpcNotify::fromRequest(RpcRequest *r) {
 	return conn;
 }
 
+void JsonRpcWebsocketsConnection::unprepare(PreparedNotify* ntf) throw () {
+	if (ntf->owner != this) return ntf->owner->unprepare(ntf);
+	else {
+		lock.unlock();
+		prepared = null;
+	}
+}
 } /* namespace jsonsrv */
 
