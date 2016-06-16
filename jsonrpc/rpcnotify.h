@@ -41,7 +41,7 @@ namespace jsonsrv {
 		 * handle this situation.
 		 *
 		 */
-		virtual PreparedNotify *prepare(LightSpeed::ConstStrA name, LightSpeed::JSON::PNode arguments) = 0;
+		virtual PreparedNotify *prepare(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments) = 0;
 
 
 		///Send prepared notification
@@ -66,7 +66,7 @@ namespace jsonsrv {
 		 *
 		 * notification is prepared and send.
 		 */
-		virtual void sendNotification(LightSpeed::ConstStrA name, LightSpeed::JSON::PNode arguments) = 0;
+		virtual void sendNotification(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments) = 0;
 
 		virtual void setContext(IHttpHandlerContext *context) = 0;
 		virtual IHttpHandlerContext *getContext() const = 0;
@@ -90,7 +90,7 @@ namespace jsonsrv {
 	public:
 		PreparedNotifyScope(PreparedNotify *ntf, IRpcNotify *obj)
 			:ntf(ntf),obj(obj) {}
-		PreparedNotifyScope(IRpcNotify *firstSubscriber, ConstStrA name, LightSpeed::JSON::Value arguments)
+		PreparedNotifyScope(IRpcNotify *firstSubscriber, ConstStrA name, LightSpeed::JSON::ConstValue arguments)
 			:ntf(firstSubscriber->prepare(name, arguments)), obj(firstSubscriber) {}
 		~PreparedNotifyScope() throw() {
 			obj->unprepare(ntf);

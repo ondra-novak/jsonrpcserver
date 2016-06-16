@@ -44,9 +44,9 @@ public:
 	 *
 	 * @note notification is send with id=null as specification says.
 	 */
-	void sendNotification(ConstStrA name, JSON::PNode arguments);
+	void sendNotification(ConstStrA name, JSON::ConstValue arguments);
 
-	PreparedNotify *prepare(LightSpeed::ConstStrA name, LightSpeed::JSON::PNode arguments);
+	PreparedNotify *prepare(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments);
 
 	void sendPrepared(const PreparedNotify *ntf);
 

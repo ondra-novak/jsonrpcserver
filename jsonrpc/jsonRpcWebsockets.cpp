@@ -99,11 +99,12 @@ JsonRpcWebsocketsConnection::JsonRpcWebsocketsConnection(IHttpRequest &request, 
 	:WebSocketConnection(request),handler(handler),nextPromiseId(0),http(request),openMethod(openMethod.getMT()) {
 
 	logobject = handler.getIfcPtr<IJsonRpcLogObject>();
+	onCloseFuture.clear(StdAlloc::getInstance());
 }
 
-void JsonRpcWebsocketsConnection::sendNotification(ConstStrA name, JSON::PNode arguments) {
+void JsonRpcWebsocketsConnection::sendNotification(ConstStrA name, JSON::ConstValue arguments) {
 	Synchronized<FastLock> _(lock);
-	JSON::PNode req = json("method",name)
+	JSON::ConstValue req = json("method",name)
 			("params",arguments)
 			("id",nil);
 	ConstStrA msg = json.factory->toString(*req);
@@ -254,15 +255,20 @@ void JsonRpcWebsocketsConnection::sendPrepared(const PreparedNotify* ntf) {
 }
 
 PreparedNotify *JsonRpcWebsocketsConnection::prepare(
-		LightSpeed::ConstStrA name, LightSpeed::JSON::PNode arguments) {
+		LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments) {
 	lock.lock();
-	JSON::PNode req = json("method",name)
-			("params",arguments)
-			("id",nil);
+	try {
+		JSON::ConstValue req = json("method",name)
+				("params",arguments)
+				("id",json(nil));
 
-	prepared = PreparedNotify(this,json.factory->toString(*req));
-	PreparedNotify &x = prepared;
-	return &x;
+		prepared = PreparedNotify(this,json.factory->toString(*req));
+		PreparedNotify &x = prepared;
+		return &x;
+	} catch (...) {
+		lock.unlock();
+		throw;
+	}
 }
 
 IRpcNotify *IRpcNotify::fromRequest(RpcRequest *r) {
@@ -277,5 +283,9 @@ void JsonRpcWebsocketsConnection::unprepare(PreparedNotify* ntf) throw () {
 		prepared = null;
 	}
 }
+Future<void> JsonRpcWebsocketsConnection::onClose() {
+	return onCloseFuture;
+}
+
 } /* namespace jsonsrv */
 
