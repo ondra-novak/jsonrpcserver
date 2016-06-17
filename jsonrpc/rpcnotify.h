@@ -75,6 +75,24 @@ namespace jsonsrv {
 		/** Sends "close" notificiation. It closes the websocket stream */
 		virtual void closeConnection(natural code=1000) = 0;
 
+
+		///Converts request to pointer IRpcNotify
+		/**
+		 * @param r pointer to RpcRequest
+		 * @return returns the null, if request is not from wsrpc. Otherwise a valid pointer is returned.
+		 * The pointer persists with the websocket's connection and doesn't change for the client,
+		 * so you can use it as identification of the connection. However, connection can
+		 * be closed any time between the requests making the pointer invalid. During
+		 * the request, pointer remains valid, so it is safe to send notification only during
+		 * the request. If you need to send notification between the request, you have to
+		 * store the pointer along with a future variable available through the onClose() function.
+		 * The future variable is resolved once the connection is closed. You should install a handler
+		 * to the future to make the pointer invalid. A proper synchronization (lock) is required there
+		 *
+		 * To create collections of websockes connections, you can use WSCollector. This will
+		 * handle everything for you
+		 *
+		 */
 		static IRpcNotify *fromRequest(RpcRequest *r);
 
 		///Return future which is resolved when connection is closed
@@ -101,6 +119,7 @@ namespace jsonsrv {
 		PreparedNotify *ntf;
 		IRpcNotify *obj;
 	};
+
 }
 
 
