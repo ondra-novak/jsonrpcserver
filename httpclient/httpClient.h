@@ -291,7 +291,7 @@ private:
 	Method methodToOpen;
 	HdrMap reqHdrMap, respHdrMap;
 	natural status;
-	ConstStrA statusMessage;
+	StringA statusMessage;
 
 	PoolAlloc pool;
 
