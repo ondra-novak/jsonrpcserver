@@ -726,7 +726,7 @@ JSON::PNode JsonRpc::rpcStats(RpcRequest* rq) {
 
 JSON::PNode JsonRpc::rpcPingNotify( RpcRequest *rq) {
 	ConstStrA ntfName = "notify";
-	JsonRpcWebsocketsConnection *conn = JsonRpcWebsocketsConnection::getConnection(*rq->httpRequest);
+	IRpcNotify *conn = IRpcNotify::fromRequest(rq);
 	if (conn == NULL) throw RpcError(THISLOCATION,rq,405,"Method requires wsRPC");
 	JSON::Iterator iter = rq->args->getFwIter();
 	if (iter.hasItems() && iter.peek()->isString()) {

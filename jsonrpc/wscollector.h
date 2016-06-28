@@ -15,6 +15,12 @@
 #include "rpchandler.h"
 #include "rpcnotify.h"
 
+namespace LightSpeed {
+
+	class IExecutor;
+
+}
+
 
 namespace jsonsrv {
 using namespace LightSpeed;
@@ -105,7 +111,7 @@ public:
 	 *
 	 */
 	template<typename Fn>
-	void forEach(const Fn &fn) const;
+	void forEach(const Fn &fn) ;
 
 	///Prepares a notification and broadcast the message to all or some connections
 	/**
@@ -124,11 +130,26 @@ public:
 	 *  inside of the function otherwise a deadlock happen.
 	 *
 	 *  @note Sending a notification through sendNotification() may cause an exception, because
-	 *  connection can be shut down. You should handle this exception otherwise it will
-	 *  be thrown out.
+	 *  connection can be shut down. Throwing exception out ouf the function causes that
+	 *  connection will be removed and closed.
 	 */
 	template<typename Fn>
-	void forEach(const Fn &fn, ConstStrA method, JSON::ConstValue params) const;
+	void forEach(const Fn &fn, ConstStrA method, JSON::ConstValue params) ;
+
+	///Prepares a notification and broadcast the message to all or some connections using executor
+	/**
+	 *
+	 * @param fn Function which is called for every live connection.
+	 * The function have to accept three arguments (IRpcNotify *, UserData, const PreparedNotify *).
+	 * The function should filter connection and send the prepared notification to all connections
+     *
+	 * @param method method (name of notification)
+	 * @param params (arguments)
+	 * @param executor pointer to executor
+	 */
+	template<typename Fn>
+	void forEach(const Fn &fn, ConstStrA method, JSON::ConstValue params, IExecutor *executor) ;
+
 
 	///Picks one connections, locks the collector and calls the function
 	/**

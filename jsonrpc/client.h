@@ -17,29 +17,15 @@
 #include "lightspeed/base/containers/autoArray.h"
 
 #include "rpchandler.h"
+#include "iclient.h"
 using jsonsrv::RpcError;
 using LightSpeed::MemFile;
 namespace jsonrpc {
 
-using namespace LightSpeed;
-
-struct ClientConfig: public BredyHttpClient::ClientConfig {
-	StringA url;
-	JSON::PFactory jsonFactory;
-};
-
-using jsonsrv::RpcError;
-
-
-class Client {
+class Client : public IClient{
 public:
 	Client(const ClientConfig &cfg);
 
-	class Result: public JSON::ConstValue {
-	public:
-		Result(JSON::ConstValue result, JSON::ConstValue context): JSON::ConstValue(result),context(context) {}
-		JSON::ConstValue context;
-	};
 
 	///Perform RPC call asynchronously
 	/**

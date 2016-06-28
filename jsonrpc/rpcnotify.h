@@ -15,6 +15,24 @@ namespace jsonsrv {
 	class IRpcNotify: public LightSpeed::IInterface {
 	public:
 
+		enum TimeoutControl {
+
+			///Use standard timeout
+			/** Notification is sent during standard processing for this client only.
+			 *
+			 * Not useful for broadcast because connection may block for a significant time
+			 *  when clients loosing the connection.
+			 */
+			standardTimeout,
+			///Use short timeout
+			/** Notification is broadcasted through various clients.Use shortest possible
+			 * timeout. You need to send short messages otherwise clients can be dropped often
+			 * by mistake
+			 */
+			shortTimeout,
+
+		};
+
 		///contains prepared notification
 		/** Object has just prepared notification ready to send. Using
 		 * prepared notification increases performance while notification
@@ -47,8 +65,9 @@ namespace jsonsrv {
 		///Send prepared notification
 		/**
 		 * @param prepared pointer to prepared notification
+		 * @param tmControl controls timeout
 		 */
-		virtual void sendPrepared(const PreparedNotify *prepared) = 0;
+		virtual void sendPrepared(const PreparedNotify *prepared, TimeoutControl tmControl = shortTimeout) = 0;
 
 
 		///Destroyes prepared notification
@@ -63,19 +82,31 @@ namespace jsonsrv {
 		/**
 		 * @param name name of notification
 		 * @param arguments arguments
+		 * @param tmControl controls timeout
 		 *
 		 * notification is prepared and send.
 		 */
-		virtual void sendNotification(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments) = 0;
+		virtual void sendNotification(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments, TimeoutControl tmControl = standardTimeout) = 0;
 
 		virtual void setContext(IHttpHandlerContext *context) = 0;
 		virtual IHttpHandlerContext *getContext() const = 0;
+
 
 		///Closes the websocket connection
 		/** Sends "close" notificiation. It closes the websocket stream */
 		virtual void closeConnection(natural code=1000) = 0;
 
 
+		///Drops connection unconditionally
+		/** Use function to close connection with some issue, for example if you
+		 * experiencing network issues or network timeouts. Function simply closes output
+		 * which should force the other side to close connection to. It also
+		 * calls onClose() to notify all collectors. The connection can live for some time, however, no
+		 * monitors should able to see it anymore.
+		 *
+		 * To close connection by standard way, use closeConnection();
+		 */
+		virtual void dropConnection() = 0;
 		///Converts request to pointer IRpcNotify
 		/**
 		 * @param r pointer to RpcRequest

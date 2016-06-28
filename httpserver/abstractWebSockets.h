@@ -176,6 +176,10 @@ public:
 
 
 	///Call this function repeatedly while there are data to read
+	/**
+	 * @retval true processed
+	 * @retval false connection has been closed by remote site
+	 */
 
 	bool onRawDataIncome();
 

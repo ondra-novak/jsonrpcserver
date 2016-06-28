@@ -23,11 +23,9 @@ class JsonRpcWebsocketsConnection;
 
 class PreparedNotify {
 public:
-	JsonRpcWebsocketsConnection *owner;
-	ConstStrA content;
+	StringA content;
 
-	PreparedNotify(JsonRpcWebsocketsConnection *owner,ConstStrA content)
-	:owner(owner),content(content) {}
+	PreparedNotify(StringA content):content(content) {}
 };
 
 
@@ -44,11 +42,11 @@ public:
 	 *
 	 * @note notification is send with id=null as specification says.
 	 */
-	void sendNotification(ConstStrA name, JSON::ConstValue arguments);
+	void sendNotification(ConstStrA name, JSON::ConstValue arguments, TimeoutControl tmControl);
 
 	PreparedNotify *prepare(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments);
 
-	void sendPrepared(const PreparedNotify *ntf);
+	void sendPrepared(const PreparedNotify *ntf, TimeoutControl tmControl);
 
 	void unprepare(PreparedNotify *ntf) throw();
 ;
@@ -96,6 +94,8 @@ public:
 
 	virtual void closeConnection(natural code=1000) {WebSocketConnection::closeConnection(code);}
 
+	virtual void dropConnection();
+
 	~JsonRpcWebsocketsConnection();
 
 
@@ -114,7 +114,7 @@ protected:
 
 	WaitingPromises waitingPromises;
 
-	FastLock lock;
+	FastLockR lock;
 	JSON::Builder json;
 	IHttpRequest &http;
 
