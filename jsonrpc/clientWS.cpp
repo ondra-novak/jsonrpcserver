@@ -69,13 +69,13 @@ void ClientWS::connectInternal() {
 	onConnect();
 }
 
-void ClientWS::connect(INetworkEventListener* listener) {
+void ClientWS::connect(PNetworkEventListener listener) {
 	Synchronized<FastLockR> _(controlLock);
 	if (this->listener != null) {
 		disconnect();
 	}
 
-	this->listener = listener;
+	this->listener = listener.getMT();
 
 
 	connectInternal();
@@ -234,10 +234,8 @@ void ClientWS::onTextMessage(ConstStrA msg) {
 }
 
 void ClientWS::onCloseOutput(natural code) {
-	Synchronized<FastLockR> _(controlLock);
-	disconnectInternal();
+	disconnect();
 	onLostConnection(code);
-	failWait.start(ThreadFunction::create(this,&ClientWS::waitToReconnect));
 }
 
 natural ClientWS::WsConn::stream_read(byte* buffer, natural length) {
@@ -266,11 +264,5 @@ void ClientWS::WsConn::wakeUp(natural) throw () {
 	}
 }
 
-void ClientWS::waitToReconnect() {
-	if (Thread::sleep(1000)) {
-		Synchronized<FastLockR> _(controlLock);
-		connectInternal();
-	}
-}
 
 }

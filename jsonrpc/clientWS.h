@@ -33,7 +33,7 @@ public:
 	 *
 	 * @param cfg
 	 */
-	ClientWS(ClientConfig &cfg);
+	ClientWS(const ClientConfig &cfg);
 	~ClientWS();
 
 	///Connects the websockets interface
@@ -44,11 +44,12 @@ public:
 	 *
 	 * You can anytime to switch to different listener.
 	 *
-	 * If connection is closed by remote site, object tries to reconnect automatically. This
-	 * feature is transparent for calls. Only onConnect is called after each successfully attempt
+	 * If connection is closed by remote site, function onLostConnection is called. Object doesn't
+	 * perform automatic reconnect. You have to implement it in the handler. Note that you should
+	 * avoid to call connect() diectly. It is recomended to schedule the action.
 	 *
 	 */
-	void connect(INetworkEventListener *listener);
+	void connect(PNetworkEventListener listener);
 
 	///Disconnects websocket. While it is d
 	void disconnect();
@@ -76,6 +77,14 @@ public:
 	virtual void onConnect();
 
 	///called when connection lost
+	/**
+	 * You can use this callback to create autoreconnect function
+	 *
+	 * Because function is called in context of network-listener's thread, you should
+	 * not call connect() directly. Instead you should create thread which will reconnect after
+	 * a short delay. The delay should raise with unsuccesful requests to reconnect
+	 * @param code reason for reconnect. If naturalNull - no reason given
+	 */
 	virtual void onLostConnection(natural code);
 
 
@@ -134,7 +143,7 @@ protected:
 	PNetworkStream stream;
 	PWsConn conn;
 	ClientConfig cfg;
-	Pointer<INetworkEventListener> listener;
+	PNetworkEventListener listener;
 	Thread failWait;
 
 	FastLockR controlLock;
@@ -161,8 +170,8 @@ protected:
 
 private:
 	void disconnectInternal();
-	void waitToReconnect();
 	void connectInternal();
+	void callOnLostConnectionOnExit(natural code);
 };
 } /* namespace snapytap */
 
