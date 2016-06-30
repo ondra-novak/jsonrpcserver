@@ -48,11 +48,29 @@ public:
 	 * perform automatic reconnect. You have to implement it in the handler. Note that you should
 	 * avoid to call connect() diectly. It is recomended to schedule the action.
 	 *
+	 * @note If exception is thrown because connection failed, you can call reconnect() to repeate
+	 * the attempt.
 	 */
 	void connect(PNetworkEventListener listener);
 
-	///Disconnects websocket. While it is d
+	///Disconnects websocket
+	/** closes connection and disables reconnect() feature */
 	void disconnect();
+
+	///Reconnects the disconnected websocket client
+	/** Works only if called after onLostConnection() is issued.
+	 *
+	 * @retval true reconnected or client has been already connected
+	 * @retval false disconnected, cannot be reconnected
+	 */
+	bool reconnect();
+
+	///determines whether WS client is disconnected
+	/**
+	 * @retval true client is disconnected (reconnect will fail)
+	 * @retval false client is connected or in reconnecting state. reconnect might success
+	 */
+	bool isDisconnected() const;
 
 	///Perform RPC call asynchronously
 	/**
@@ -81,8 +99,10 @@ public:
 	 * You can use this callback to create autoreconnect function
 	 *
 	 * Because function is called in context of network-listener's thread, you should
-	 * not call connect() directly. Instead you should create thread which will reconnect after
+	 * not call reconnect() directly. Instead you should create a thread which will reconnect after
 	 * a short delay. The delay should raise with unsuccesful requests to reconnect
+	 *
+	 *
 	 * @param code reason for reconnect. If naturalNull - no reason given
 	 */
 	virtual void onLostConnection(natural code);
@@ -117,6 +137,8 @@ protected:
 
 		void onTextMessage(ConstStrA msg);
 		void onCloseOutput(natural code);
+		void onPong(ConstBin msg);
+		void onBinaryMessage(ConstBin msg);
 
 		virtual void wakeUp(natural reason = 0) throw();
 
@@ -167,6 +189,7 @@ protected:
 	void onCloseOutput(natural code);
 
 	void sendResponse(JSON::ConstValue id, JSON::ConstValue result, JSON::ConstValue error);
+	void rearmStream();
 
 private:
 	void disconnectInternal();

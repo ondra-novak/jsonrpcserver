@@ -609,4 +609,17 @@ void HttpClient::storeHeaderLine(ConstStrA field, ConstStrA value) {
 	respHdrMap.replace(strpool.add(field),strpool.add(value));
 }
 
+void* HttpClient::BufferedNetworkStream::proxyInterface(IInterfaceRequest& p) {
+	void *x = originStream->proxyInterface(p);
+	if (x) return x;
+	else return IInterface::proxyInterface(p);
+}
+
+const void* HttpClient::BufferedNetworkStream::proxyInterface(const IInterfaceRequest& p) const {
+	const void *x = originStream->proxyInterface(p);
+	if (x) return x;
+	else return IInterface::proxyInterface(p);
+}
+
 } /* namespace BredyHttpClient */
+

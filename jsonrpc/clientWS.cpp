@@ -13,9 +13,11 @@
 #include "lightspeed/base/containers/map.tcc"
 
 #include "lightspeed/base/exceptions/netExceptions.h"
+
+#include "lightspeed/base/actions/promise.tcc"
 namespace jsonrpc {
 
-ClientWS::ClientWS(ClientConfig& cfg):cfg(cfg),idcounter(1) {
+ClientWS::ClientWS(const ClientConfig& cfg):cfg(cfg),idcounter(1) {
 	if (this->cfg.jsonFactory == null) {
 		this->cfg.jsonFactory = JSON::create();
 	}
@@ -53,6 +55,7 @@ void ClientWS::sendResponse(JSON::ConstValue id, JSON::ConstValue result,
 	ConstStrA msg = cfg.jsonFactory->toString(*req);
 
 	conn->sendTextMessage(msg,true);
+	stream->flush();
 
 }
 
@@ -84,7 +87,7 @@ void ClientWS::connect(PNetworkEventListener listener) {
 PNetworkStream ClientWS::onInitConnection(BredyHttpClient::HttpClient &http) {
 
 	http.send();
-	if (http.getStatus() != 200) {
+	if (http.getStatus() != 101) {
 		throw HttpStatusException(THISLOCATION,cfg.url,http.getStatus(), http.getStatusMessage());
 
 	}
@@ -140,6 +143,7 @@ Future<IClient::Result> ClientWS::callAsync(ConstStrA method, JSON::ConstValue p
 		try {
 			conn->sendTextMessage(msg,true);
 			waitingResults.insert(thisid,f.getPromise());
+			stream->flush();
 		} catch (NetworkException &e) {
 			waitingRequests.push(Request(thisid,msg,f.getPromise()));
 			SyncReleased<FastLockR> _(callLock);
@@ -157,12 +161,13 @@ IClient::Result ClientWS::call(ConstStrA method, JSON::ConstValue params, JSON::
 
 void ClientWS::onConnect() {
 	Synchronized<FastLockR> _(controlLock);
-	while (waitingRequests.empty()) {
+	while (!waitingRequests.empty()) {
 		Request r = waitingRequests.top();
 		waitingRequests.pop();
 		try {
 			conn->sendTextMessage(r.request,true);
 			waitingResults.insert(r.id,r.result);
+			stream->flush();
 		} catch (NetworkException &e) {
 			waitingRequests.push(r);
 			SyncReleased<FastLockR> _(callLock);
@@ -234,7 +239,7 @@ void ClientWS::onTextMessage(ConstStrA msg) {
 }
 
 void ClientWS::onCloseOutput(natural code) {
-	disconnect();
+	disconnectInternal();
 	onLostConnection(code);
 }
 
@@ -261,8 +266,51 @@ void ClientWS::WsConn::onCloseOutput(natural code) {
 void ClientWS::WsConn::wakeUp(natural) throw () {
 	if (!onRawDataIncome()) {
 		onCloseOutput(naturalNull);
+	} else {
+		owner.rearmStream();
+	}
+}
+
+ClientWS::Request::Request(natural id, StringA request,Promise<Result> result)
+	:id(id)
+	,request(request)
+	,result(result)
+{
+
+
+}
+
+bool ClientWS::reconnect() {
+	Synchronized<FastLockR> _(controlLock);
+	if (listener == null)
+		return false;
+	connectInternal();
+	return true;
+}
+
+bool ClientWS::isDisconnected() const {
+	return listener == null;
+}
+
+void ClientWS::WsConn::onPong(ConstBin ) {
+}
+
+void ClientWS::WsConn::onBinaryMessage(ConstBin ) {
+}
+
+void ClientWS::onNotify(ConstStrA , JSON::ConstValue ) {
+
+
+}
+
+void ClientWS::rearmStream() {
+	if (stream->dataReady()) conn->wakeUp(INetworkResource::waitForInput);
+	else {
+		this->listener->add(stream, conn, INetworkResource::waitForInput,
+				naturalNull, 0);
 	}
 }
 
 
 }
+

@@ -259,6 +259,8 @@ protected:
 		virtual natural getTimeout() const;
 		virtual natural wait(natural waitFor, natural timeout) const;
 		virtual natural doWait(natural waitFor, natural timeout) const;
+		virtual void *proxyInterface(IInterfaceRequest &p);
+		virtual const void *proxyInterface(const IInterfaceRequest &p) const;
 	};
 
 	RefCntPtr<HttpRequest> request;
