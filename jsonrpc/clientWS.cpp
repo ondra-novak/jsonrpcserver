@@ -46,7 +46,7 @@ JSON::ConstValue ClientWS::onBackwardRPC(ConstStrA msg,
 void ClientWS::sendResponse(JSON::ConstValue id, JSON::ConstValue result,
 		JSON::ConstValue error) {
 
-	Synchronized<FastLockR> _(callLock);
+	Synchronized<FastLockR> _(lock);
 	JSON::Builder bld(cfg.jsonFactory);
 	JSON::Builder::CObject req = bld("id",id)
 			("result",result)
@@ -73,7 +73,7 @@ void ClientWS::connectInternal() {
 }
 
 void ClientWS::connect(PNetworkEventListener listener) {
-	Synchronized<FastLockR> _(controlLock);
+	Synchronized<FastLockR> _(lock);
 	if (this->listener != null) {
 		disconnect();
 	}
@@ -97,11 +97,17 @@ PNetworkStream ClientWS::onInitConnection(BredyHttpClient::HttpClient &http) {
 
 }
 
-void ClientWS::disconnectInternal() {
-	if (failWait.isRunning())
-		failWait.stop();
+void ClientWS::disconnectInternal(natural reason) {
 
 	if (stream != null) {
+		if (reason != naturalNull) {
+			try {
+					conn->closeConnection(reason);
+				} catch(...) {
+					//ignore errors - sending close packet is optional
+				}
+		}
+
 		Notifier ntf;
 		this->listener->remove(stream, conn, &ntf);
 		ntf.wait(null);
@@ -110,18 +116,18 @@ void ClientWS::disconnectInternal() {
 	}
 }
 
-void ClientWS::disconnect() {
-	Synchronized<FastLockR> _(controlLock);
+void ClientWS::disconnect(natural reason) {
+	Synchronized<FastLockR> _(lock);
 
 	if (this->listener != null) {
 
-		disconnectInternal();
+		disconnectInternal(reason);
 		listener = null;
 	}
 }
 
 Future<IClient::Result> ClientWS::callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context) {
-	Synchronized<FastLockR> _(callLock);
+	Synchronized<FastLockR> _(lock);
 	JSON::Builder bld(cfg.jsonFactory);
 	natural thisid = idcounter++;
 	JSON::Builder::CObject req = bld("id",thisid)
@@ -146,7 +152,7 @@ Future<IClient::Result> ClientWS::callAsync(ConstStrA method, JSON::ConstValue p
 			stream->flush();
 		} catch (NetworkException &e) {
 			waitingRequests.push(Request(thisid,msg,f.getPromise()));
-			SyncReleased<FastLockR> _(callLock);
+			SyncReleased<FastLockR> _(lock);
 			onCloseOutput(naturalNull);
 		}
 	}
@@ -160,7 +166,7 @@ IClient::Result ClientWS::call(ConstStrA method, JSON::ConstValue params, JSON::
 }
 
 void ClientWS::onConnect() {
-	Synchronized<FastLockR> _(controlLock);
+	Synchronized<FastLockR> _(lock);
 	while (!waitingRequests.empty()) {
 		Request r = waitingRequests.top();
 		waitingRequests.pop();
@@ -170,7 +176,7 @@ void ClientWS::onConnect() {
 			stream->flush();
 		} catch (NetworkException &e) {
 			waitingRequests.push(r);
-			SyncReleased<FastLockR> _(callLock);
+			SyncReleased<FastLockR> _(lock);
 			onCloseOutput(naturalNull);
 			break;
 		}
@@ -183,7 +189,7 @@ void ClientWS::onLostConnection(natural code) {
 
 void ClientWS::onTextMessage(ConstStrA msg) {
 	try {
-		Synchronized<FastLockR> _(callLock);
+		Synchronized<FastLockR> _(lock);
 		JSON::Value v = cfg.jsonFactory->fromString(msg);
 		JSON::Value result = v["result"];
 		JSON::Value error = v["error"];
@@ -239,7 +245,7 @@ void ClientWS::onTextMessage(ConstStrA msg) {
 }
 
 void ClientWS::onCloseOutput(natural code) {
-	disconnectInternal();
+	disconnectInternal(naturalNull);
 	onLostConnection(code);
 }
 
@@ -281,7 +287,7 @@ ClientWS::Request::Request(natural id, StringA request,Promise<Result> result)
 }
 
 bool ClientWS::reconnect() {
-	Synchronized<FastLockR> _(controlLock);
+	Synchronized<FastLockR> _(lock);
 	if (listener == null)
 		return false;
 	connectInternal();

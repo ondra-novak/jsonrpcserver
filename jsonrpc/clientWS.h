@@ -54,8 +54,16 @@ public:
 	void connect(PNetworkEventListener listener);
 
 	///Disconnects websocket
-	/** closes connection and disables reconnect() feature */
-	void disconnect();
+	/** closes connection and disables reconnect() feature
+	 *
+	 *
+	 * @param reason specifies reason to disconnect. Reason is sent to the server. If
+	 * reason is equal to naturalNull (default), no reason is sent.
+	 *
+	 * Recommended reasons are specified in WebSocketsConstants
+	  */
+
+	void disconnect(natural reason=naturalNull);
 
 	///Reconnects the disconnected websocket client
 	/** Works only if called after onLostConnection() is issued.
@@ -96,11 +104,11 @@ public:
 
 	///called when connection lost
 	/**
-	 * You can use this callback to create autoreconnect function
+	 * You can use this callback to create auto-reconnect function
 	 *
 	 * Because function is called in context of network-listener's thread, you should
 	 * not call reconnect() directly. Instead you should create a thread which will reconnect after
-	 * a short delay. The delay should raise with unsuccesful requests to reconnect
+	 * a short delay. The delay should raise with unsuccessful requests to reconnect
 	 *
 	 *
 	 * @param code reason for reconnect. If naturalNull - no reason given
@@ -166,9 +174,7 @@ protected:
 	PWsConn conn;
 	ClientConfig cfg;
 	PNetworkEventListener listener;
-	Thread failWait;
 
-	FastLockR controlLock;
 
 	struct Request {
 		natural id;
@@ -180,7 +186,7 @@ protected:
 
 	Map<natural, Promise<Result> > waitingResults;
 	Queue<Request> waitingRequests;
-	FastLockR callLock;
+	FastLockR lock;
 	natural idcounter;
 
 
@@ -192,7 +198,7 @@ protected:
 	void rearmStream();
 
 private:
-	void disconnectInternal();
+	void disconnectInternal(natural reason);
 	void connectInternal();
 	void callOnLostConnectionOnExit(natural code);
 };
