@@ -16,14 +16,27 @@
 #include "lightspeed/base/containers/queue.h"
 
 namespace BredyHttpClient {
-/// WSRPC object
-/** There is mayor difference between standard HTTP/S and WS interface. HTTP client
- * doesn't require any background service, it can send request and wait for reply without
- * need to do anything on background. In contrast, ClientWS supports notifications and callback
- * functions that can be called asynchronously. The client will need some background processing.
- * It require at least running thread or registration on NetworkEventListener
+/// WebSockets client
+/** WebSocketsClient object is permanently active object in compare to HttpClient which is
+ * active only in time of a request. To use the object, you will need one
+ * instance of NetworkEventListener at least. This requires extra thread. You
+ * can still use the client in single thread application, but this need to
+ * check data on connected stream manually and for protocols based on request-response
+ * will require special handling between the request and response.
  *
- * */
+ * To create WebSocketsClient instance, create new class which inherits the WebSocketsClass
+ * and overwrite some functions you will need for correct operation.
+ * Then construct the instance of this new class  with prepared config ClientConfig.
+ * Then you can call connect() which requires an url and the reference to an instance of NetworkEventListener.
+ * Once the connection is established, you can sendTextMessage or sendBinMessage and you can receive
+ * message through onTextMessage or onBinMessage.
+ *
+ * Object doesn't support autoreconnect, however it has some support for it. Once
+ * the connection is lost, the function onLostConnection is called. Your code can
+ * try to call reconnect after some delay. It is strongly recomended to create
+ * a thread which will perform the reconnect, or to use a scheduler (which itself
+ * is running on separate thread)
+ */
 class WebSocketsClient: public BredyHttpSrv::AbstractWebSocketConnection<WebSocketsClient, false>,  public ISleepingObject {
 public:
 
@@ -92,14 +105,14 @@ public:
 	/**
 	 * You can use this callback to create auto-reconnect function
 	 *
-	 * Because function is called in context of network-listener's thread, you should
+	 * Because function is called in the context of network-listener's thread, you should
 	 * not call reconnect() directly. Instead you should create a thread which will reconnect after
 	 * a short delay. The delay should raise with unsuccessful requests to reconnect
 	 *
 	 *
 	 * @param code reason for reconnect. If naturalNull - no reason given
 	 */
-	virtual void onLostConnection(natural code);
+	virtual void onLostConnection(natural code) {}
 
 	///Sends text message
 	/**
@@ -151,21 +164,40 @@ public:
 	 */
 	PNetworkStream getStream() const;
 
-	///called when text message arrives
+	///called when a text message arrives
 	/**
 	 * @param msg message
 	 *
-	 * @note function is called in context of thread which invokes the function wakeUp(). If you need
+	 * @note function is called in context of thread which invoked the function wakeUp(). If you need
 	 * to process long operation, you should to move execution to separate thread
 	 *
 	 */
-	virtual void onTextMessage(ConstStrA msg);
+	virtual void onTextMessage(ConstStrA msg) {(void)msg;}
 
-	virtual void onBinaryMessage(ConstBin msg);
+	///called when a binary message arrives
+	/**
+	 * @param msg message
+	 *
+	 * @note function is called in context of thread which invoked the function wakeUp(). If you need
+	 * to process long operation, you should to move execution to separate thread
+	 *
+	 */
+	virtual void onBinaryMessage(ConstBin msg) {(void)msg;}
 
-	virtual void onCloseOutput(natural code);
 
-	virtual void onPong(ConstBin msg);
+	///receives pong payload
+	virtual void onPong(ConstBin msg) {(void)msg;}
+
+	///Give to object chance to run for some time
+	/** By default, function wakeUp is called from the NetworkEventListener. If the object
+	 * is not connected to any of such an object, there is no way, how to check the connection for
+	 * some new data. Function wakeUp should be called when some data has been
+	 * detected on the connection. You can use for example INetworkResource::wait() for this purpose.
+	 * Call getStream() to receive an instance of underlying connection
+	 *
+	 * @param reason
+	 */
+	virtual void wakeUp(natural reason = 0) throw();
 
 
 protected:
@@ -173,7 +205,6 @@ protected:
 	natural stream_read(byte *buffer, natural length);
 	void stream_write(const byte *buffer, natural length);
 	void stream_closeOutput();
-	virtual void wakeUp(natural reason = 0) throw();
 
 
 
@@ -188,6 +219,14 @@ protected:
 	 */
 	virtual PNetworkStream onInitConnection(BredyHttpClient::HttpClient &http);
 
+	///called when connection has been closed by a remove site
+	/**
+	 * @param code reason of close. The value naturalNull means that connection has
+	 * been closed unexpectly.
+	 *
+	 * @note you should call original handler for correct function
+	 */
+	virtual void onCloseOutput(natural code);
 
 
 

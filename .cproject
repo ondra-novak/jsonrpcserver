@@ -73,10 +73,11 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="examples|httpserver|jsonrpc|RESTApi|resources/bin2c.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="RESTApi"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="dbhelpers"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="httpclient"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="httpserver"/>
 						<entry excluding="ServiceContext.cpp|db.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="jsonrpc"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="resources"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -130,10 +131,12 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="examples|resources/bin2c.c|RESTApi|httpserver|jsonrpc" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="RESTApi"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="dbhelpers"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="examples"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="httpclient"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="httpserver"/>
 						<entry excluding="ServiceContext.cpp|db.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="jsonrpc"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="resources"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

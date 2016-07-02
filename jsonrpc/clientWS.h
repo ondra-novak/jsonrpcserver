@@ -10,12 +10,12 @@
 
 #include <lightspeed/base/containers/queue.h>
 #include "iclient.h"
-#include "../httpserver/abstractWebSockets.h"
 #include "lightspeed/base/actions/promise.h"
 
 #include "lightspeed/mt/thread.h"
 
 #include "lightspeed/base/containers/map.h"
+#include "../httpclient/webSocketsClient.h"
 namespace jsonrpc {
 /// WSRPC object
 /** There is mayor difference between standard HTTP/S and WS interface. HTTP client
@@ -25,9 +25,10 @@ namespace jsonrpc {
  * It require at least running thread or registration on NetworkEventListener
  *
  * */
-class ClientWS: public IClient {
+class ClientWS: public IClient, public BredyHttpClient::WebSocketsClient {
 public:
 
+	typedef BredyHttpClient::WebSocketsClient Super;
 	///creates websocket jsonrpc client.
 	/**
 	 *
@@ -53,32 +54,6 @@ public:
 	 */
 	void connect(PNetworkEventListener listener);
 
-	///Disconnects websocket
-	/** closes connection and disables reconnect() feature
-	 *
-	 *
-	 * @param reason specifies reason to disconnect. Reason is sent to the server. If
-	 * reason is equal to naturalNull (default), no reason is sent.
-	 *
-	 * Recommended reasons are specified in WebSocketsConstants
-	  */
-
-	void disconnect(natural reason=naturalNull);
-
-	///Reconnects the disconnected websocket client
-	/** Works only if called after onLostConnection() is issued.
-	 *
-	 * @retval true reconnected or client has been already connected
-	 * @retval false disconnected, cannot be reconnected
-	 */
-	bool reconnect();
-
-	///determines whether WS client is disconnected
-	/**
-	 * @retval true client is disconnected (reconnect will fail)
-	 * @retval false client is connected or in reconnecting state. reconnect might success
-	 */
-	bool isDisconnected() const;
 
 	///Perform RPC call asynchronously
 	/**
@@ -98,23 +73,10 @@ public:
 
 
 	///called when notify received
-	virtual void onNotify(ConstStrA notifyMethod, JSON::ConstValue params);
-	///called when stream is connected
-	virtual void onConnect();
-
-	///called when connection lost
-	/**
-	 * You can use this callback to create auto-reconnect function
-	 *
-	 * Because function is called in context of network-listener's thread, you should
-	 * not call reconnect() directly. Instead you should create a thread which will reconnect after
-	 * a short delay. The delay should raise with unsuccessful requests to reconnect
-	 *
-	 *
-	 * @param code reason for reconnect. If naturalNull - no reason given
-	 */
-	virtual void onLostConnection(natural code);
-
+	virtual void onNotify(ConstStrA notifyMethod, JSON::ConstValue params) {
+		(void)notifyMethod;
+		(void)params;
+	}
 
 	///Called when there is error while receiving from websockets.
 	/**
@@ -125,68 +87,19 @@ public:
 	 * default implementation closes connection
 	 */
 
-	virtual void onReceiveError(ConstStrA msg, bool exception);
+	virtual void onReceiveError(ConstStrA msg, bool exception) {
+		(void)msg;(void)exception;
+	}
 
 	virtual JSON::ConstValue onBackwardRPC(ConstStrA msg, const JSON::ConstValue params);
 
 protected:
 
+	JSON::PFactory jsonFactory;
+	StringA cfgurl;
 
-	class WsConn;
-	friend class BredyHttpSrv::AbstractWebSocketConnection<WsConn, false>;
-	class WsConn: public BredyHttpSrv::AbstractWebSocketConnection<WsConn, false>, public RefCntObj, public ISleepingObject {
-	public:
-		WsConn(ClientWS &owner, PInOutStream data):owner(owner),data(data) {}
-
-
-		natural stream_read(byte *buffer, natural length);
-		void stream_write(const byte *buffer, natural length);
-		void stream_closeOutput();
-
-		void onTextMessage(ConstStrA msg);
-		void onCloseOutput(natural code);
-		void onPong(ConstBin msg);
-		void onBinaryMessage(ConstBin msg);
-
-		virtual void wakeUp(natural reason = 0) throw();
-
-
-	protected:
-		ClientWS &owner;
-		PInOutStream data;
-	};
-
-	typedef RefCntPtr<WsConn> PWsConn;
-
-
-	///Called before connection is initialized
-	/** implementation can append own headers to http connection
-	 * Then implementation must call original implementation to finish ws hanshake.
-	 * After the return implementation can retrieve status code and headers
-	 *
-	 * @param http http connection
-	 * @return connected stream
-	 * @exception HttpStatusException if other status then 200 is returned, function throws HttpStatusException
-	 */
-	virtual PNetworkStream onInitConnection(BredyHttpClient::HttpClient &http);
-
-	PNetworkStream stream;
-	PWsConn conn;
-	ClientConfig cfg;
-	PNetworkEventListener listener;
-
-
-	struct Request {
-		natural id;
-		StringA request;
-		Promise<Result> result;
-
-		Request (natural id,StringA request,Promise<Result> result);
-	};
 
 	Map<natural, Promise<Result> > waitingResults;
-	Queue<Request> waitingRequests;
-	FastLockR lock;
 	natural idcounter;
 
 
@@ -195,12 +108,7 @@ protected:
 	void onCloseOutput(natural code);
 
 	void sendResponse(JSON::ConstValue id, JSON::ConstValue result, JSON::ConstValue error);
-	void rearmStream();
 
-private:
-	void disconnectInternal(natural reason);
-	void connectInternal();
-	void callOnLostConnectionOnExit(natural code);
 };
 } /* namespace snapytap */
 

@@ -28,6 +28,7 @@ void WebSocketsClient::sendTextMessage(ConstStrA msg) {
 	Synchronized<FastLockR> _(lock);
 	if (stream != null) try {
 		Super::sendTextMessage(msg,true);
+		stream->flush();
 		return;
 	} catch (NetworkException &e) {
 		onReconnect().thenCall(Action::create(this,&WebSocketsClient::sendTextMessage, StringA(msg)));
@@ -42,6 +43,7 @@ void WebSocketsClient::sendBinMessage(ConstBin msg) {
 	Synchronized<FastLockR> _(lock);
 	if (stream != null) try {
 		Super::sendBinMessage(msg,true);
+		stream->flush();
 		return;
 	} catch (NetworkException &e) {
 		onReconnect().thenCall(Action::create(this,&WebSocketsClient::sendBinMessage, StringB(msg)));
@@ -55,24 +57,19 @@ void WebSocketsClient::sendBinMessage(ConstBin msg) {
 void WebSocketsClient::sendPing(ConstBin msg) {
 	if (stream != null) {
 		Super::sendPing(msg);
+		stream->flush();
 	}
 }
 
 void WebSocketsClient::sendPong(ConstBin msg) {
 	if (stream != null) {
 		Super::sendPong(msg);
+		stream->flush();
 	}
 }
 
 PNetworkStream WebSocketsClient::getStream() const {
 	return stream;
-}
-
-void WebSocketsClient::onBinaryMessage(ConstBin ) {
-}
-
-
-void WebSocketsClient::onPong(ConstBin ) {
 }
 
 
@@ -151,12 +148,6 @@ void WebSocketsClient::onConnect() {
 	}
 }
 
-void WebSocketsClient::onLostConnection(natural code) {
-	(void)code;
-}
-
-void WebSocketsClient::onTextMessage(ConstStrA ) {
-}
 
 void WebSocketsClient::onCloseOutput(natural code) {
 	disconnectInternal(naturalNull);
