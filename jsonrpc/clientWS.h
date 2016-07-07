@@ -35,7 +35,6 @@ public:
 	 * @param cfg
 	 */
 	ClientWS(const ClientConfig &cfg);
-	~ClientWS();
 
 	///Connects the websockets interface
 	/**
@@ -93,6 +92,14 @@ public:
 
 	virtual JSON::ConstValue onBackwardRPC(ConstStrA msg, const JSON::ConstValue params);
 
+	///Called when connection has been established
+	/**
+	 * @note Internal lock is held in this function. You should avoid to block the thread. If you
+	 * need to send request in this thread, you have to use callAsync, because call() will deadlock.
+	 * You also should avoid to wait for future.
+	 */
+	virtual void onConnect();
+
 protected:
 
 	JSON::PFactory jsonFactory;
@@ -104,8 +111,8 @@ protected:
 
 
 
+
 	void onTextMessage(ConstStrA msg);
-	void onCloseOutput(natural code);
 
 	void sendResponse(JSON::ConstValue id, JSON::ConstValue result, JSON::ConstValue error);
 

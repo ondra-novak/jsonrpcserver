@@ -139,6 +139,9 @@ void ClientWS::onTextMessage(ConstStrA msg) {
 }
 
 
+void ClientWS::onConnect() {
+	Super::onConnect();
+}
 
 
 }

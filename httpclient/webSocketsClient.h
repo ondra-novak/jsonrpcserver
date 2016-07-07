@@ -97,7 +97,10 @@ public:
 	/** you have to call original implementation for delivery of messages collected during
 	 * disconnected pause (waiting for reconnect). It is possible to call this
 	 * before initial messages are send or after (for example, if you need to restore
-	 * connection state, before the collected messages are sent
+	 * connection state, before the collected messages are sent)
+	 *
+	 * @note during this call, internal lock is held. Waiting for response here causes deadlock. You
+	 * should avoid to blocking this thread - it can easy cause a deadlock
 	 */
 	virtual void onConnect();
 
@@ -112,7 +115,7 @@ public:
 	 *
 	 * @param code reason for reconnect. If naturalNull - no reason given
 	 */
-	virtual void onLostConnection(natural code) {}
+	virtual void onLostConnection(natural code) {(void)code;}
 
 	///Sends text message
 	/**
@@ -202,6 +205,7 @@ public:
 
 protected:
 
+	friend class BredyHttpSrv::AbstractWebSocketConnection<WebSocketsClient, false>;
 	natural stream_read(byte *buffer, natural length);
 	void stream_write(const byte *buffer, natural length);
 	void stream_closeOutput();

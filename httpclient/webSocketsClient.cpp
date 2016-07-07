@@ -15,6 +15,10 @@
 #include "lightspeed/base/exceptions/netExceptions.h"
 
 #include "lightspeed/base/actions/message.h"
+#include "../httpserver/abstractWebSockets.tcc"
+#include "lightspeed/base/actions/promise.tcc"
+
+
 namespace BredyHttpClient {
 
 WebSocketsClient::WebSocketsClient(const ClientConfig& cfg):cfg(cfg){
@@ -140,10 +144,15 @@ void WebSocketsClient::disconnect(natural reason) {
 
 
 void WebSocketsClient::onConnect() {
-	Synchronized<FastLockR> _(lock);
-	while (!queuedMsgs.empty()) {
-		Promise<void> r = queuedMsgs.top();
-		queuedMsgs.pop();
+	Queue<Promise<void> > queueCopy;
+	{
+		Synchronized<FastLockR> _(lock);
+		queueCopy.swap(queuedMsgs);
+	}
+
+	while (!queueCopy.empty()) {
+		Promise<void> r = queueCopy.top();
+		queueCopy.pop();
 		r.resolve();
 	}
 }
