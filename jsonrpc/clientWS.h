@@ -70,6 +70,8 @@ public:
 
 	Result call(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0);
 
+protected:
+
 
 	///called when notify received
 	virtual void onNotify(ConstStrA notifyMethod, JSON::ConstValue params) {
@@ -100,7 +102,7 @@ public:
 	 */
 	virtual void onConnect();
 
-protected:
+
 
 	JSON::PFactory jsonFactory;
 	StringA cfgurl;
@@ -115,6 +117,9 @@ protected:
 	void onTextMessage(ConstStrA msg);
 
 	void sendResponse(JSON::ConstValue id, JSON::ConstValue result, JSON::ConstValue error);
+
+	virtual void onLostConnection(natural);
+
 
 };
 } /* namespace snapytap */

@@ -151,12 +151,12 @@ bool AbstractWebSocketConnection<Impl,serverSide>::onRawDataIncome() {
 	switch (opcode) {
 	case opcodeConnClose:
 		if (payloadLen < 2) {
-			this->_invoke().onCloseOutput(1000);
 			closeConnection(1000);
+			this->_invoke().onCloseOutput(1000);
 		} else {
 			natural status = (natural(payload[0]) << 8) + payload[1];
-			this->_invoke().onCloseOutput(status);
 			closeConnection(status);
+			this->_invoke().onCloseOutput(status);
 		}
 		return false;
 

@@ -57,6 +57,13 @@ void ClientWS::connect(PNetworkEventListener listener) {
 
 Future<IClient::Result> ClientWS::callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context) {
 	Synchronized<FastLockR> _(lock);
+
+	if (params == null) {
+		params = jsonFactory->array();
+	} else if (!params->isArray()) {
+		params = JSON::Container(jsonFactory->array()).add(params);
+	}
+
 	JSON::Builder bld(jsonFactory);
 	natural thisid = idcounter++;
 	JSON::Builder::CObject req = bld("id",thisid)
@@ -141,6 +148,12 @@ void ClientWS::onTextMessage(ConstStrA msg) {
 
 void ClientWS::onConnect() {
 	Super::onConnect();
+}
+
+void ClientWS::onLostConnection(natural) {
+	Synchronized<FastLockR> _(lock);
+	waitingResults.clear();
+
 }
 
 

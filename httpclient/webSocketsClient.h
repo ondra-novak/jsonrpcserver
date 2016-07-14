@@ -238,6 +238,8 @@ protected:
 	ClientConfig cfg;
 	PNetworkEventListener listener;
 	StringA url;
+	natural closeCode;
+
 
 	FastLockR lock;
 
@@ -245,6 +247,7 @@ protected:
 
 
 	void rearmStream();
+	void lostConnection(natural c);
 
 private:
 	void disconnectInternal(natural reason);

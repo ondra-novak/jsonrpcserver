@@ -27,7 +27,7 @@ namespace jsonsrv {
 			///Use short timeout
 			/** Notification is broadcasted through various clients.Use shortest possible
 			 * timeout. You need to send short messages otherwise clients can be dropped often
-			 * by mistake
+			 * by a mistake
 			 */
 			shortTimeout,
 

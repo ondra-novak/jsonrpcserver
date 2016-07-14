@@ -36,7 +36,7 @@ void WebSocketsClient::sendTextMessage(ConstStrA msg) {
 		return;
 	} catch (NetworkException &e) {
 		onReconnect().thenCall(Action::create(this,&WebSocketsClient::sendTextMessage, StringA(msg)));
-		onCloseOutput(naturalNull);
+		lostConnection(naturalNull);
 	} else {
 		onReconnect().thenCall(Action::create(this,&WebSocketsClient::sendTextMessage, StringA(msg)));
 	}
@@ -51,7 +51,7 @@ void WebSocketsClient::sendBinMessage(ConstBin msg) {
 		return;
 	} catch (NetworkException &e) {
 		onReconnect().thenCall(Action::create(this,&WebSocketsClient::sendBinMessage, StringB(msg)));
-		onCloseOutput(naturalNull);
+		lostConnection(naturalNull);
 	} else {
 		onReconnect().thenCall(Action::create(this,&WebSocketsClient::sendBinMessage, StringB(msg)));
 	}
@@ -85,6 +85,7 @@ void WebSocketsClient::connectInternal() {
 	httpc.setHeader("Sec-WebSocket-Key", "x3JJHMbDL1EzLkh9GBhXDw==");
 	stream = onInitConnection(httpc);
 	this->listener->add(stream, this, INetworkResource::waitForInput, naturalNull, 0);
+	this->requestClose = false;
 	onConnect();
 }
 
@@ -159,8 +160,7 @@ void WebSocketsClient::onConnect() {
 
 
 void WebSocketsClient::onCloseOutput(natural code) {
-	disconnectInternal(naturalNull);
-	onLostConnection(code);
+	closeCode = code;
 }
 
 natural WebSocketsClient::stream_read(byte* buffer, natural length) {
@@ -191,12 +191,22 @@ bool WebSocketsClient::isDisconnected() const {
 	return listener == null && url.empty();
 }
 
+void WebSocketsClient::lostConnection(natural c) {
+	disconnectInternal(naturalNull);
+	onLostConnection(c);
+}
+
 void WebSocketsClient::rearmStream() {
-	if (stream != null) {
-		while (stream->dataReady()) {
-			if (!onRawDataIncome()) onCloseOutput(naturalNull);
+	closeCode = 0;
+	while (!closeCode && stream->dataReady()) {
+		if (!onRawDataIncome()) {
+			if (closeCode==0)
+				closeCode = naturalNull;
 		}
-		if (listener != null)
+	}
+	if (closeCode) {
+		lostConnection(closeCode);
+	} else if (listener != null) {
 			listener->add(stream, this, INetworkResource::waitForInput, naturalNull, 0);
 	}
 }
