@@ -16,7 +16,15 @@
 
 #include "lightspeed/base/containers/map.h"
 #include "../httpclient/webSocketsClient.h"
+
+namespace jsonsrv {
+	class PreparedNotify;
+}
+
 namespace jsonrpc {
+
+typedef jsonsrv::PreparedNotify PreparedNotify;
+
 /// WSRPC object
 /** There is mayor difference between standard HTTP/S and WS interface. HTTP client
  * doesn't require any background service, it can send request and wait for reply without
@@ -68,7 +76,21 @@ public:
 	 */
 	Future<Result> callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0);
 
+	///Perform RPC call synchronously
+	/**
+	 * @param method method name
+	 * @param params arguments must be array
+	 * @param context context (optional)
+	 * @return function returns result (return value + context)
+	 *
+	 * @note because function blocks current thread, it must not be combined with callAsync (response is
+	 * received in response thread, which should not be blocked).
+	 */
 	Result call(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0);
+
+	void sendNotify(ConstStrA method, const JSON::ConstValue &params);
+	void sendNotify(const PreparedNotify &preparedNotify);
+	PreparedNotify prepareNotify(ConstStrA method, const JSON::ConstValue &params);
 
 protected:
 
@@ -79,6 +101,15 @@ protected:
 		(void)params;
 	}
 
+	enum ReceiveError {
+		///error caused by exception - you can rethrow-recatch the exception to explore details
+		errException,
+		///error caused that invalid frame has been received - you can explire the frame to see what happened
+		errInvalidFrame,
+		///error caused that received frame has no promise to resolve, so received data will be ignored - you can explore the frame.
+		errUnexpectedResponse
+	};
+
 	///Called when there is error while receiving from websockets.
 	/**
 	 *
@@ -88,8 +119,8 @@ protected:
 	 * default implementation closes connection
 	 */
 
-	virtual void onReceiveError(ConstStrA msg, bool exception) {
-		(void)msg;(void)exception;
+	virtual void onReceiveError(ConstStrA msg, ReceiveError errorType) {
+		(void)msg;(void)errorType;
 	}
 
 	virtual JSON::ConstValue onBackwardRPC(ConstStrA msg, const JSON::ConstValue params);
@@ -117,8 +148,8 @@ protected:
 	void onTextMessage(ConstStrA msg);
 
 	void sendResponse(JSON::ConstValue id, JSON::ConstValue result, JSON::ConstValue error);
-
 	virtual void onLostConnection(natural);
+
 
 
 };

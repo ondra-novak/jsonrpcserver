@@ -120,7 +120,7 @@ void WsCollector<UserData>::forEach(const Fn& fn,
 
 		typename ConnMap::Iterator iter = connMap.getFwIter();
 		const typename ConnMap::KeyValue &kv = iter.peek();
-		PreparedNotifyScope prep(kv.key, method,params);
+		PreparedNotify prep = kv.key->prepare(method,params);
 		while (iter.hasItems()) {
 			const typename ConnMap::KeyValue &kv = iter.getNext();
 			try {
@@ -177,7 +177,7 @@ void WsCollector<UserData>::forEach(const Fn& fn,
 
 		typename ConnMap::Iterator iter = connMap.getFwIter();
 		const typename ConnMap::KeyValue &kv = iter.peek();
-		PreparedNotifyScope prep(kv.key, method,params);
+		PreparedNotify prep = kv.key->prepare(method,params);
 		while (iter.hasItems()) {
 			const typename ConnMap::KeyValue &kv = iter.getNext();
 			exec->execute(Msg(fn,kv.key, kv.value.userData,prep,toRemove,toRemoveLock));

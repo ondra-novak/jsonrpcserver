@@ -15,6 +15,7 @@
 #include "lightspeed/base/exceptions/netExceptions.h"
 
 #include "lightspeed/base/actions/promise.tcc"
+#include "rpcnotify.h"
 namespace jsonrpc {
 
 ClientWS::ClientWS(const ClientConfig& cfg):WebSocketsClient(cfg),idcounter(1) {
@@ -103,18 +104,22 @@ void ClientWS::onTextMessage(ConstStrA msg) {
 
 				natural reqid = id->getUInt();
 				const Promise<Result> *p = waitingResults.find(reqid);
-				Promise<Result> q = *p;
-				waitingResults.erase(reqid);
-				if (p) {
-					if (error == null || error->isNull()) {
-						q.resolve(Result(result,context));
-					} else {
-						q.reject(RpcError(THISLOCATION,error));
+				if (p == 0)
+					onReceiveError(msg, errUnexpectedResponse);
+				else {
+					Promise<Result> q = *p;
+					waitingResults.erase(reqid);
+					if (p) {
+						if (error == null || error->isNull()) {
+							q.resolve(Result(result,context));
+						} else {
+							q.reject(RpcError(THISLOCATION,error));
+						}
 					}
 				}
 			}//id=null - invalid frame
 			else {
-				onReceiveError(msg,false);
+				onReceiveError(msg,errInvalidFrame);
 			}
 		} else if (method != null && params != null) {
 			if (id == null || id->isNull()) {
@@ -141,7 +146,7 @@ void ClientWS::onTextMessage(ConstStrA msg) {
 
 
 	} catch (...) {
-		onReceiveError(msg,true);
+		onReceiveError(msg,errException);
 	}
 }
 
@@ -153,9 +158,22 @@ void ClientWS::onConnect() {
 void ClientWS::onLostConnection(natural) {
 	Synchronized<FastLockR> _(lock);
 	waitingResults.clear();
+}
 
+
+void ClientWS::sendNotify(ConstStrA method, const JSON::ConstValue& params) {
+	Synchronized<FastLockR> _(lock);
+	sendNotify(PreparedNotify(method,params,jsonFactory));
+}
+
+void ClientWS::sendNotify(const PreparedNotify& preparedNotify) {
+	sendTextMessage(preparedNotify.content);
+}
+
+PreparedNotify ClientWS::prepareNotify(ConstStrA method, const JSON::ConstValue& params) {
+	Synchronized<FastLockR> _(lock);
+	return PreparedNotify(method,params,jsonFactory);
 }
 
 
 }
-

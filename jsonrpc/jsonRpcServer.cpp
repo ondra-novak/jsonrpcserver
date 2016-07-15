@@ -97,7 +97,12 @@ namespace jsonsrv {
 		nullV = JSON::create()(null);
 	}
 
-	void JsonRpcServer::logMethod(IHttpRequest &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput)
+	void JsonRpcServer::logMethod(IHttpRequest &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput) {
+		IHttpPeerInfo &pinfo = invoker.getIfc<IHttpPeerInfo>();
+		ConstStrA peerAddr = pinfo.getPeerRealAddr();
+		logMethod(peerAddr,methodName,params,context,logOutput);
+	}
+	void JsonRpcServer::logMethod(ConstStrA source, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput)
 	{
 		if (logfile == nil) return;
 		if (logRotateCounter != DbgLog::rotateCounter) {
@@ -107,8 +112,6 @@ namespace jsonsrv {
 		}
 
 		LogObject lg(THISLOCATION);
-		IHttpPeerInfo &pinfo = invoker.getIfc<IHttpPeerInfo>();
-		ConstStrA peerAddr = pinfo.getPeerRealAddr();
 		ConstStrA paramsStr;
 		LogBuffers &buffers = logBuffers[ITLSTable::getInstance()];
 		buffers.strparams.clear();
@@ -137,7 +140,7 @@ namespace jsonsrv {
 		pr("%{04}1/%{02}2/%{02}3 %{02}4:%{02}5:%{02}6 - [\"%7\",\"%8\",%9,%10,%11]\n")
 			<< tms.year << tms.month << tms.day
 			<< tms.hour << tms.min << tms.sec
-			<< peerAddr << methodName << resparamstr << rescontextptr << resoutputptr;
+			<< source << methodName << resparamstr << rescontextptr << resoutputptr;
 		logfile->flush();
 	}
 

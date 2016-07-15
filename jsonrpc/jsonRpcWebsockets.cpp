@@ -270,20 +270,26 @@ void JsonRpcWebsocketsConnection::dropConnection() {
 
 }
 
-void JsonRpcWebsocketsConnection::sendPrepared(const PreparedNotify* ntf, TimeoutControl tmControl) {
+void JsonRpcWebsocketsConnection::sendPrepared(const PreparedNotify& ntf, TimeoutControl tmControl) {
 	Synchronized<FastLockR> _(lock);
 	TmControlScope tmscope(this->stream,tmControl);
-	this->sendTextMessage(ntf->content,true);
+	this->sendTextMessage(ntf.content,true);
 }
 
-PreparedNotify *JsonRpcWebsocketsConnection::prepare(
+StringA buildPreparedNotify(const JSON::Builder& json, ConstStrA notifyName,
+		JSON::ConstValue params) {
+	JSON::ConstValue req = json("method", notifyName)("params", params)("id",
+			json(nil));
+	return json.factory->toString(*req);
+}
+
+PreparedNotify::PreparedNotify(ConstStrA notifyName, JSON::ConstValue params, const JSON::Builder &json)
+	:content(buildPreparedNotify(json, notifyName, params)) {}
+
+PreparedNotify JsonRpcWebsocketsConnection::prepare(
 		LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments) {
 	Synchronized<FastLockR> _(lock);
-		JSON::ConstValue req = json("method",name)
-				("params",arguments)
-				("id",json(nil));
-
-		return new PreparedNotify(json.factory->toString(*req));
+	return PreparedNotify(name,arguments,json);
 }
 
 IRpcNotify *IRpcNotify::fromRequest(RpcRequest *r) {
@@ -291,9 +297,6 @@ IRpcNotify *IRpcNotify::fromRequest(RpcRequest *r) {
 	return conn;
 }
 
-void JsonRpcWebsocketsConnection::unprepare(PreparedNotify* ntf) throw () {
-	delete ntf;
-}
 Future<void> JsonRpcWebsocketsConnection::onClose() {
 	return onCloseFuture;
 }

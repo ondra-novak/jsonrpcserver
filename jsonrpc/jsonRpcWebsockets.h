@@ -21,13 +21,6 @@ using namespace BredyHttpSrv;
 
 class JsonRpcWebsocketsConnection;
 
-class PreparedNotify {
-public:
-	StringA content;
-
-	PreparedNotify(StringA content):content(content) {}
-};
-
 
 class JsonRpcWebsocketsConnection: public WebSocketConnection, public IRpcNotify{
 public:
@@ -44,12 +37,10 @@ public:
 	 */
 	void sendNotification(ConstStrA name, JSON::ConstValue arguments, TimeoutControl tmControl);
 
-	PreparedNotify *prepare(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments);
+	PreparedNotify prepare(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments);
 
-	void sendPrepared(const PreparedNotify *ntf, TimeoutControl tmControl);
+	void sendPrepared(const PreparedNotify &ntf, TimeoutControl tmControl);
 
-	void unprepare(PreparedNotify *ntf) throw();
-;
 
 
 	///Server call method on the client

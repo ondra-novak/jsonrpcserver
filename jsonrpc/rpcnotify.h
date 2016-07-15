@@ -11,7 +11,18 @@
 
 namespace jsonsrv {
 
-	class PreparedNotify;
+	///contains prepared notification
+	/** Object has just prepared notification ready to send. Using
+	 * prepared notification increases performance while notification
+	 * is sent to many listeners
+	 */
+	class PreparedNotify {
+	public:
+		const StringA content;
+
+		PreparedNotify(ConstStrA notifyName, JSON::ConstValue params, const JSON::Builder &json);
+	};
+
 	class IRpcNotify: public LightSpeed::IInterface {
 	public:
 
@@ -33,12 +44,6 @@ namespace jsonsrv {
 
 		};
 
-		///contains prepared notification
-		/** Object has just prepared notification ready to send. Using
-		 * prepared notification increases performance while notification
-		 * is sent to many listeners
-		 */
-		friend class PreparedNotify;
 
 		///Prepares notification
 		/**
@@ -59,7 +64,7 @@ namespace jsonsrv {
 		 * handle this situation.
 		 *
 		 */
-		virtual PreparedNotify *prepare(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments) = 0;
+		virtual PreparedNotify prepare(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments) = 0;
 
 
 		///Send prepared notification
@@ -67,17 +72,9 @@ namespace jsonsrv {
 		 * @param prepared pointer to prepared notification
 		 * @param tmControl controls timeout
 		 */
-		virtual void sendPrepared(const PreparedNotify *prepared, TimeoutControl tmControl = shortTimeout) = 0;
+		virtual void sendPrepared(const PreparedNotify &prepared, TimeoutControl tmControl = shortTimeout) = 0;
 
 
-		///Destroyes prepared notification
-		/**
-		 * @param prepared pointer to prepared notification.
-		 *
-		 * You have to call this function when object is no longer needed. Note that
-		 * until the notification is destroyed, the connection is locked.
-		 */
-		virtual void unprepare(PreparedNotify *prepared) throw() = 0;
 		///Sends notification
 		/**
 		 * @param name name of notification
@@ -134,22 +131,6 @@ namespace jsonsrv {
 		virtual Future<void> onClose() = 0;
 	};
 
-
-	class PreparedNotifyScope {
-	public:
-		PreparedNotifyScope(PreparedNotify *ntf, IRpcNotify *obj)
-			:ntf(ntf),obj(obj) {}
-		PreparedNotifyScope(IRpcNotify *firstSubscriber, ConstStrA name, LightSpeed::JSON::ConstValue arguments)
-			:ntf(firstSubscriber->prepare(name, arguments)), obj(firstSubscriber) {}
-		~PreparedNotifyScope() throw() {
-			obj->unprepare(ntf);
-		}
-		operator PreparedNotify *() {return ntf;}
-		operator const PreparedNotify *() const {return ntf;}
-	protected:
-		PreparedNotify *ntf;
-		IRpcNotify *obj;
-	};
 
 }
 

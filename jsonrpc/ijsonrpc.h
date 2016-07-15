@@ -21,7 +21,24 @@ namespace jsonsrv {
  */
 	class IJsonRpcLogObject: public IInterface {
 	public:
+		///Log method call to rpclog
+		/**
+		 * @param invoker reference to request that invoked the call
+		 * @param methodName method name
+		 * @param params params of the call
+		 * @param context context of the call (optional)
+		 * @param logOutput output of the call (optional)
+		 */
 		virtual void logMethod(IHttpRequest &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput) = 0;
+		///More general loging of the method, especially when they came from a different source, that http.
+		/**
+		 * @param source source. In original interface there is IP address of the caller. However, you can now specify different source.
+		 * @param methodName name of the method
+		 * @param params params or the call
+		 * @param context context of the call (optional)
+		 * @param logOutput output of the call (optional)
+		 */
+		virtual void logMethod(ConstStrA source, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput) = 0;
 	};
 
 
