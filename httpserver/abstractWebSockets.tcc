@@ -91,6 +91,15 @@ void AbstractWebSocketConnection<Impl,serverSide>::sendFrame(
 
 template<typename Impl, bool serverSide>
 bool AbstractWebSocketConnection<Impl,serverSide>::onRawDataIncome() {
+
+	class FrameCommit {
+	public:
+		AutoArray<byte> &frame;
+		natural commit;
+		FrameCommit(AutoArray<byte> &frame,natural commit):frame(frame),commit(commit) {}
+		~FrameCommit() {frame.erase(0,commit);}
+	};
+
 	if (requestClose) return false;
 	natural avail = frame.getAllocatedSize() - frame.length();
 	if (avail == 0) avail = 256;
@@ -145,6 +154,8 @@ bool AbstractWebSocketConnection<Impl,serverSide>::onRawDataIncome() {
 	natural frameLen = beginOfFrame + payloadLen;
 	ConstBin payload = frame.mid(beginOfFrame, payloadLen);
 
+	FrameCommit fcommit(frame, frameLen);
+
 	byte opcode = frame[0] & 0xF;
 	bool final = (frame[0] & 0x80) != 0;
 
@@ -197,7 +208,6 @@ bool AbstractWebSocketConnection<Impl,serverSide>::onRawDataIncome() {
 			return false;
 	}
 
-	frame.erase(0,frameLen);
 	return !requestClose;
 }
 
@@ -262,6 +272,13 @@ void AbstractWebSocketConnection<Impl, serverSide>::setMaskingFn(IWebSocketMaski
 	this->maskingFn = maskingFn;
 }
 
+
+template<typename Impl, bool serverSide>
+void AbstractWebSocketConnection<Impl, serverSide>::reset() {
+	requestClose = false;
+	frame.clear();
+	fragmentBuffer.clear();
+}
 
 }
 

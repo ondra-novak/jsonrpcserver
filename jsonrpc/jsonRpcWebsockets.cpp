@@ -184,6 +184,7 @@ void JsonRpcWebsocketsConnection::onTextMessage(ConstStrA msg) {
 			callRes.error = json.factory->newValue(e.what());
 			callRes.id = id;
 			callRes.logOutput = callRes.error;
+			callRes.result = json.factory->newValue(null);
 		}
 		if (!id->isNull()) {
 			JSON::Builder::Object response = json("result",callRes.result)

@@ -85,7 +85,7 @@ void WebSocketsClient::connectInternal() {
 	httpc.setHeader("Sec-WebSocket-Key", "x3JJHMbDL1EzLkh9GBhXDw==");
 	stream = onInitConnection(httpc);
 	this->listener->add(stream, this, INetworkResource::waitForInput, naturalNull, 0);
-	this->requestClose = false;
+	this->reset();
 	onConnect();
 }
 

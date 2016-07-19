@@ -223,6 +223,10 @@ protected:
 
 	void deliverPayload(byte opcode,ConstBin data);
 
+	///Resets internal state.
+	/** For example, if you reconnected stream - clears last unfinished frame, and various states */
+	void reset();
+
 private:
 	///Implementation must define body of this function
 	/**
