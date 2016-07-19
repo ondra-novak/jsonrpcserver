@@ -488,7 +488,7 @@ natural HttpResponse::peek(void* buffer, natural size) const {
 		return x;
 	case rmReadingChunk:
 		if (size > remainLength) size = remainLength;
-		x = com.read(buffer,size);
+		x = com.peek(buffer,size);
 		if (x == 0) throw IncompleteStream(THISLOCATION);
 		return x;
 	case rmEof:
