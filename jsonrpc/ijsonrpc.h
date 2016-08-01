@@ -21,7 +21,24 @@ namespace jsonsrv {
  */
 	class IJsonRpcLogObject: public IInterface {
 	public:
-		virtual void logMethod(IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *output) = 0;
+		///Log method call to rpclog
+		/**
+		 * @param invoker reference to request that invoked the call
+		 * @param methodName method name
+		 * @param params params of the call
+		 * @param context context of the call (optional)
+		 * @param logOutput output of the call (optional)
+		 */
+		virtual void logMethod(IHttpRequest &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput) = 0;
+		///More general loging of the method, especially when they came from a different source, that http.
+		/**
+		 * @param source source. In original interface there is IP address of the caller. However, you can now specify different source.
+		 * @param methodName name of the method
+		 * @param params params or the call
+		 * @param context context of the call (optional)
+		 * @param logOutput output of the call (optional)
+		 */
+		virtual void logMethod(ConstStrA source, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput) = 0;
 	};
 
 
@@ -89,15 +106,15 @@ namespace jsonsrv {
 
 	    struct CallResult {
 	    	///Result of the call
-	    	JSON::PNode result;
+	    	JSON::Value result;
 	    	///Error of the call (result is "null")
-	    	JSON::PNode error;
+	    	JSON::Value error;
 	    	///Id returned to the caller
-	    	JSON::PNode id;
+	    	JSON::Value id;
 	    	///New context, if changed, or NULL (no change)
-	    	JSON::PNode newContext;
+	    	JSON::Value newContext;
 	    	///output that should be logged out - can be different than result (default is "null")
-	    	JSON::PNode logOutput;
+	    	JSON::ConstValue logOutput;
 	    };
 
 	    ///Calls method on JsonRpc interface
@@ -122,7 +139,7 @@ namespace jsonsrv {
 	     *  is thrown. Also unknown exceptions (such a ... or exceptions not inherited from
 	     *  std::exception are thrown outside of this call
 	     */
-	    virtual CallResult callMethod(IHttpRequest *httpRequest, ConstStrA methodName, JSON::INode *args, JSON::INode *context, JSON::INode *id) = 0;
+	    virtual  CallResult callMethod(IHttpRequest *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Value &context, const JSON::Value &id) = 0;
 
 
 	    ///Tests whether object can accept request from specified origin

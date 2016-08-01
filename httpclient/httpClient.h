@@ -16,6 +16,11 @@
 #include "interfaces.h"
 
 #include "lightspeed/base/containers/map.h"
+
+#ifdef LIGHTSPEED_PLATFORM_WINDOWS
+#pragma warning (disable:4250)
+#endif
+
 namespace BredyHttpClient {
 
 using namespace LightSpeed;
@@ -202,7 +207,7 @@ public:
 	 */
 	template<typename Fn>
 	bool enumHeaders(const Fn &fn) {
-		for (HdrMap::Iterator iter = hdrMap.getFwIter(); iter.hasItems();) {
+		for (HdrMap::Iterator iter = respHdrMap.getFwIter(); iter.hasItems();) {
 			const HdrMap::KeyValue &kv = iter.getNext();
 			if (fn(kv.key, kv.value)) return true;
 		}
@@ -259,6 +264,8 @@ protected:
 		virtual natural getTimeout() const;
 		virtual natural wait(natural waitFor, natural timeout) const;
 		virtual natural doWait(natural waitFor, natural timeout) const;
+		virtual void *proxyInterface(IInterfaceRequest &p);
+		virtual const void *proxyInterface(const IInterfaceRequest &p) const;
 	};
 
 	RefCntPtr<HttpRequest> request;
@@ -289,9 +296,9 @@ private:
 
 	StrRef urlToOpen;
 	Method methodToOpen;
-	HdrMap hdrMap;
+	HdrMap reqHdrMap, respHdrMap;
 	natural status;
-	ConstStrA statusMessage;
+	StringA statusMessage;
 
 	PoolAlloc pool;
 

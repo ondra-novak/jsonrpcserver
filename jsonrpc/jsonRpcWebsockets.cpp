@@ -94,16 +94,30 @@ protected:
 
 };
 
+class TmControlScope {
+public:
+	PNetworkStream stream;
+	natural defTm;
+	TmControlScope(PNetworkStream stream, IRpcNotify::TimeoutControl control)
+		:stream(stream),defTm(stream->getTimeout()) {
+		if (control == IRpcNotify::shortTimeout) stream->setTimeout(1);
+	}
+	~TmControlScope() {
+		stream->setTimeout(defTm);
+	}
+};
 
 JsonRpcWebsocketsConnection::JsonRpcWebsocketsConnection(IHttpRequest &request, IJsonRpc& handler, StringA openMethod)
 	:WebSocketConnection(request),handler(handler),nextPromiseId(0),http(request),openMethod(openMethod.getMT()) {
 
 	logobject = handler.getIfcPtr<IJsonRpcLogObject>();
+	onCloseFuture.clear(StdAlloc::getInstance());
 }
 
-void JsonRpcWebsocketsConnection::sendNotification(ConstStrA name, JSON::PNode arguments) {
-	Synchronized<FastLock> _(lock);
-	JSON::PNode req = json("method",name)
+void JsonRpcWebsocketsConnection::sendNotification(ConstStrA name, JSON::ConstValue arguments, TimeoutControl tmControl) {
+	Synchronized<FastLockR> _(lock);
+	TmControlScope tmscope(this->stream,tmControl);
+	JSON::ConstValue req = json("method",name)
 			("params",arguments)
 			("id",nil);
 	ConstStrA msg = json.factory->toString(*req);
@@ -111,7 +125,7 @@ void JsonRpcWebsocketsConnection::sendNotification(ConstStrA name, JSON::PNode a
 }
 
 Future<JSON::PNode> JsonRpcWebsocketsConnection::callMethod(ConstStrA name, JSON::PNode arguments) {
-	Synchronized<FastLock> _(lock);
+	Synchronized<FastLockR> _(lock);
 	natural promiseId = nextPromiseId++;
 	JSON::PNode req = json("method",name)
 			("params",arguments)
@@ -140,7 +154,7 @@ IHttpHandlerContext* JsonRpcWebsocketsConnection::getContext() const {
 
 
 void JsonRpcWebsocketsConnection::onTextMessage(ConstStrA msg) {
-	Synchronized<FastLock> _(lock);
+	Synchronized<FastLockR> _(lock);
 	LS_LOGOBJ(lg);
 
 	JSON::PNode req = json.factory->fromString(msg);
@@ -162,7 +176,7 @@ void JsonRpcWebsocketsConnection::onTextMessage(ConstStrA msg) {
 		HttpRequestWrapper httpwrp(&http,this);
 		try
 		{
-			SyncReleased<FastLock> _(lock);
+			SyncReleased<FastLockR> _(lock);
 			callRes = handler.callMethod(&httpwrp,method,params,context,id);
 			if (logobject)
 				logobject->logMethod(http,method,params,context,callRes.logOutput);
@@ -171,6 +185,7 @@ void JsonRpcWebsocketsConnection::onTextMessage(ConstStrA msg) {
 			callRes.error = json.factory->newValue(e.what());
 			callRes.id = id;
 			callRes.logOutput = callRes.error;
+			callRes.result = json.factory->newValue(null);
 		}
 		if (!id->isNull()) {
 			JSON::Builder::Object response = json("result",callRes.result)
@@ -220,12 +235,14 @@ WebSocketConnection* JsonRpcWebsockets::onNewConnection(
 }
 
 void JsonRpcWebsocketsConnection::onCloseOutput(natural ) {
-	Synchronized<FastLock> _(lock);
+	onCloseFuture.getPromise().resolve();
+	Synchronized<FastLockR> _(lock);
 	context = nil;
 }
 
 JsonRpcWebsocketsConnection::~JsonRpcWebsocketsConnection() {
-	Synchronized<FastLock> _(lock);
+	onCloseFuture.getPromise().resolve();
+	Synchronized<FastLockR> _(lock);
 	context = nil;
 }
 
@@ -235,7 +252,7 @@ void JsonRpcWebsocketsConnection::onConnect() {
 		{
 			JSON::PNode nullNode = json.factory->newNullNode();
 			JSON::PNode emptyArr = json.array();
-			SyncReleased<FastLock> _(lock);
+			SyncReleased<FastLockR> _(lock);
 			callRes = handler.callMethod(&http,openMethod,emptyArr,nullNode,nullNode);
 			if (logobject)
 				logobject->logMethod(http,openMethod,emptyArr,nullNode,callRes.logOutput);
@@ -247,22 +264,43 @@ void JsonRpcWebsocketsConnection::onConnect() {
 	}
 }
 
-void JsonRpcWebsocketsConnection::sendNotification(const PreparedNtf& ntf) {
-	this->sendTextMessage(ntf,true);
+void JsonRpcWebsocketsConnection::dropConnection() {
+	onCloseFuture.getPromise().resolve();
+	Synchronized<FastLockR> _(lock);
+	stream->closeOutput();
+	context = nil;
+
 }
 
-JsonRpcWebsocketsConnection::PreparedNtf JsonRpcWebsocketsConnection::prepareNotification(
-		LightSpeed::ConstStrA name, LightSpeed::JSON::PNode arguments) {
-	Synchronized<FastLock> _(lock);
-	JSON::PNode req = json("method",name)
-			("params",arguments)
-			("id",nil);
-	return  IRpcNotify::prepare(json.factory->toString(*req));
+void JsonRpcWebsocketsConnection::sendPrepared(const PreparedNotify& ntf, TimeoutControl tmControl) {
+	Synchronized<FastLockR> _(lock);
+	TmControlScope tmscope(this->stream,tmControl);
+	this->sendTextMessage(ntf.content,true);
+}
+
+StringA buildPreparedNotify(const JSON::Builder& json, ConstStrA notifyName,
+		JSON::ConstValue params) {
+	JSON::ConstValue req = json("method", notifyName)("params", params)("id",
+			json(nil));
+	return json.factory->toString(*req);
+}
+
+PreparedNotify::PreparedNotify(ConstStrA notifyName, JSON::ConstValue params, const JSON::Builder &json)
+	:content(buildPreparedNotify(json, notifyName, params)) {}
+
+PreparedNotify JsonRpcWebsocketsConnection::prepare(
+		LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments) {
+	Synchronized<FastLockR> _(lock);
+	return PreparedNotify(name,arguments,json);
 }
 
 IRpcNotify *IRpcNotify::fromRequest(RpcRequest *r) {
 	JsonRpcWebsocketsConnection *conn = JsonRpcWebsocketsConnection::getConnection(*r->httpRequest);
 	return conn;
+}
+
+Future<void> JsonRpcWebsocketsConnection::onClose() {
+	return onCloseFuture;
 }
 
 } /* namespace jsonsrv */

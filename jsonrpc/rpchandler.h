@@ -12,6 +12,7 @@
 #include <lightspeed/base/exceptions/exception.h>
 #include "lightspeed/base/actions/message.h"
 #include "../httpserver/httprequest.h"
+#include "rpcerror.h"
 
 #pragma once
 
@@ -54,24 +55,24 @@ struct RpcRequest {
 	/** This pointer is null by default. When method wants to send context as reply,
 	 * it must create class node here using jsonFactory
 	 */
-	JSON::PNode contextOut;
+	JSON::Value contextOut;
 	///Data reported as output to logfile
 	/** to report whole output, set this member same as return value.
 	 * Default value NULL will disable output reporting
 	 * Otherwise, any JSON value set to this node will be reported.
 	 */
-	JSON::PNode logOutput;
+	JSON::Container logOutput;
 	///User defined localdata carried through whole request including multicall reqiest
-	JSON::PNode localData;
+	JSON::Value localData;
 
 
-	void setContext(const char *name, JSON::PNode value) {
+	void setContext(const char *name, const JSON::Value &value) {
 		if (contextOut == nil) contextOut = jsonFactory->newClass();
-		contextOut->add(name,value);
+		contextOut.set(name,value);
 	}
-	void setLogOutput(const char *name, JSON::PNode value) {
+	void setLogOutput(const char *name, const JSON::ConstValue &value) {
 		if (logOutput == nil) logOutput = jsonFactory->newClass();
-		logOutput->add(name,value);
+		logOutput.set(name,value);
 	}
 
 	ConstStrA argStrA(natural n) const {
@@ -116,91 +117,6 @@ struct RpcRequest {
 
 typedef Message<JSON::PNode,  RpcRequest *> RpcCall;
 typedef RpcCall::Ifc IRpcCall;
-
-
-class RpcError: public Exception {
-public:
-	LIGHTSPEED_EXCEPTIONFINAL;
-	RpcError(const ProgramLocation &loc, JSON::PNode errorNode);
-	RpcError(const ProgramLocation &loc, JSON::IFactory *factory, natural status, String statusMessage);
-	RpcError(const ProgramLocation &loc,const  RpcRequest *r, natural status, String statusMessage);
-	~RpcError() throw() {}
-	const JSON::PNode &getError() const;
-
-	void message(ExceptionMsg &msg) const;
-
-protected:
-	JSON::PNode errorNode;
-};
-
-class RpcCallError: public Exception {
-public:
-	LIGHTSPEED_EXCEPTIONFINAL;
-	RpcCallError(const ProgramLocation &loc, natural status, StringA statusMessage)
-		:Exception(loc),status(status),statusMessage(statusMessage) {}
-
-	natural getStatus() const {return status;}
-	const StringA &getStatusMessage() const {return statusMessage;}
-	~RpcCallError() throw() {}
-
-protected:
-	natural status;
-	StringA statusMessage;
-
-	void message(ExceptionMsg &msg) const;
-
-};
-
-
-inline RpcError::RpcError(const ProgramLocation& loc,JSON::PNode errorNode)
-	:Exception(loc),errorNode(errorNode)
-{
-}
-
-inline RpcError::RpcError(const ProgramLocation &loc, JSON::IFactory *factory, natural status, String statusMessage)
-	:Exception(loc),
-	 errorNode(factory->newClass()->add("status",
-			 	 factory->newValue(status))->add("statusMessage",
-			 			 factory->newValue(statusMessage)))
-{
-
-}
-
-inline RpcError::RpcError(const ProgramLocation &loc,const  RpcRequest *r, natural status, String statusMessage)
-	:Exception(loc),
-	 errorNode(r->jsonFactory->newClass()->add("status",
-			 	 r->jsonFactory->newValue(status))->add("statusMessage",
-			 			 r->jsonFactory->newValue(statusMessage)))
-{
-
-}
-
-
-inline const JSON::PNode& RpcError::getError() const {
-	return errorNode;
-}
-
-inline void RpcError::message(ExceptionMsg& msg) const {
-	msg("JsonRpc Exception: %1") << JSON::createFast()->toString(*errorNode);
-}
-
-inline void RpcCallError::message(ExceptionMsg& msg) const {
-	msg("JsonRpc Call Exception: %1 %2") << status << statusMessage;
-}
-
-class RpcMandatoryField: public RpcError {
-public:
-	LIGHTSPEED_EXCEPTIONFINAL;
-	RpcMandatoryField(const ProgramLocation &loc, JSON::IFactory *factory, ConstStrA field)
-		:RpcError(loc,factory,400,String(ConstStrA("Mandatory field: ")+field)),field(field) {}
-	ConstStrA getField() const {return field;}
-	~RpcMandatoryField() throw() {}
-protected:
-	StringA field;
-
-
-};
-
 
 
 }

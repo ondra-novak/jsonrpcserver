@@ -52,6 +52,9 @@ public:
 
 	virtual bool isPeerTrustedProxy(ConstStrA ip);
 
+	TCPServer &getServer() {return tcplisten;}
+	const TCPServer &getServer() const {return tcplisten;}
+
 protected:
 
 	class LocalParallelExecutor: public ParallelExecutor {

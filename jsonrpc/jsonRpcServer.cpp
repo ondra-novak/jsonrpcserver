@@ -97,7 +97,12 @@ namespace jsonsrv {
 		nullV = JSON::create()(null);
 	}
 
-	void JsonRpcServer::logMethod( IHttpRequest &invoker, ConstStrA methodName, JSON::INode *params, JSON::INode *context, JSON::INode *logOutput )
+	void JsonRpcServer::logMethod(IHttpRequest &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput) {
+		IHttpPeerInfo &pinfo = invoker.getIfc<IHttpPeerInfo>();
+		ConstStrA peerAddr = pinfo.getPeerRealAddr();
+		logMethod(peerAddr,methodName,params,context,logOutput);
+	}
+	void JsonRpcServer::logMethod(ConstStrA source, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput)
 	{
 		if (logfile == nil) return;
 		if (logRotateCounter != DbgLog::rotateCounter) {
@@ -107,19 +112,23 @@ namespace jsonsrv {
 		}
 
 		LogObject lg(THISLOCATION);
-		IHttpPeerInfo &pinfo = invoker.getIfc<IHttpPeerInfo>();
-		ConstStrA peerAddr = pinfo.getPeerRealAddr();
 		ConstStrA paramsStr;
 		LogBuffers &buffers = logBuffers[ITLSTable::getInstance()];
 		buffers.strparams.clear();
 		buffers.strcontext.clear();
 		buffers.stroutput.clear();
-		if (params == 0) params = nullV;
-		if (context == 0) context = nullV;
-		if (logOutput == 0) logOutput = nullV;
-		JSON::serialize(params,buffers.strparams,false);
-		JSON::serialize(context,buffers.strcontext,false);
-		JSON::serialize(logOutput,buffers.stroutput,false);;
+		if (params == 0)
+			JSON::serialize(nullV,buffers.strparams,false);
+		else
+			JSON::serialize(params,buffers.strparams,false);
+		if (context == 0)
+			JSON::serialize(nullV,buffers.strcontext,false);
+		else
+			JSON::serialize(context,buffers.strcontext,false);
+		if (logOutput == 0)
+			JSON::serialize(nullV,buffers.stroutput,false);
+		else
+			JSON::serialize(logOutput,buffers.stroutput,false);;
 		ConstStrA resparamstr(buffers.strparams.getArray());
 		ConstStrA rescontextptr(buffers.strcontext.getArray());
 		ConstStrA resoutputptr(buffers.stroutput.getArray());
@@ -131,7 +140,7 @@ namespace jsonsrv {
 		pr("%{04}1/%{02}2/%{02}3 %{02}4:%{02}5:%{02}6 - [\"%7\",\"%8\",%9,%10,%11]\n")
 			<< tms.year << tms.month << tms.day
 			<< tms.hour << tms.min << tms.sec
-			<< peerAddr << methodName << resparamstr << rescontextptr << resoutputptr;
+			<< source << methodName << resparamstr << rescontextptr << resoutputptr;
 		logfile->flush();
 	}
 

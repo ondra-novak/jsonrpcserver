@@ -176,6 +176,10 @@ public:
 
 
 	///Call this function repeatedly while there are data to read
+	/**
+	 * @retval true processed
+	 * @retval false connection has been closed by remote site
+	 */
 
 	bool onRawDataIncome();
 
@@ -218,6 +222,10 @@ protected:
 	bool requestClose;
 
 	void deliverPayload(byte opcode,ConstBin data);
+
+	///Resets internal state.
+	/** For example, if you reconnected stream - clears last unfinished frame, and various states */
+	void reset();
 
 private:
 	///Implementation must define body of this function

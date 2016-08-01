@@ -77,6 +77,7 @@ natural HttpRequest::write(const void* buffer, natural size) {
 	case useDefinedByUser:
 		return com.write(buffer,size);
 	}
+	throw; //should never reach
 }
 
 natural HttpRequest::defaultChunkMinSize = 4096;
@@ -222,7 +223,7 @@ HttpResponse::HttpResponse(IInputStream* com, IHttpResponseCB &cb)
 }
 
 HttpResponse::HttpResponse(IInputStream* com, IHttpResponseCB &cb, ReadHeaders)
-:com(*com),hdrCallback(cb),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()),hdrContentLength(naturalNull),hdrTEChunked(false) {
+:com(*com),hdrCallback(cb),status(0),rMode(rmStatus),ibuff(com->getIfc<IInputBuffer>()),hdrContentLength(naturalNull),hdrTEChunked(false) {
 	if (com == 0) throwNullPointerException(THISLOCATION);
 	readHeaders();
 }
@@ -290,6 +291,8 @@ bool HttpResponse::checkStream() {
 			return true;
 		case rmEof: return true;
 		}
+	throw; //should never reach
+
 }
 
 bool HttpResponse::processSingleHeader(TypeOfHeader toh, natural size) {
@@ -392,8 +395,7 @@ bool HttpResponse::readHeaderLine(TypeOfHeader toh) {
 }
 
 bool HttpResponse::endOfStream() {
-	rMode = rmEof;
-	return true;
+	throw IncompleteStream(THISLOCATION);
 }
 
 bool HttpResponse::processHeaders() {
@@ -410,6 +412,7 @@ bool HttpResponse::processHeaders() {
 
 	if (hdrContentLength != naturalNull) {
 			remainLength = hdrContentLength;
+			rMode = rmDirectLimited;
 	}
 
 
@@ -470,6 +473,8 @@ natural HttpResponse::read(void* buffer, natural size) {
 	case rmContinue:
 		return 0;
 	}
+	throw; //should never reach
+
 }
 
 
@@ -488,13 +493,15 @@ natural HttpResponse::peek(void* buffer, natural size) const {
 		return x;
 	case rmReadingChunk:
 		if (size > remainLength) size = remainLength;
-		x = com.read(buffer,size);
+		x = com.peek(buffer,size);
 		if (x == 0) throw IncompleteStream(THISLOCATION);
 		return x;
 	case rmEof:
 	case rmContinue:
 		return 0;
 	}
+	throw; //should never reach
+
 }
 
 bool HttpResponse::canRead() const {
@@ -520,6 +527,8 @@ natural HttpResponse::dataReady() const {
 		case rmEof:
 			return 1;
 	}
+	throw; //should never reach
+
 }
 
 

@@ -19,6 +19,8 @@ namespace jsonsrv {
 
 using namespace BredyHttpSrv;
 
+class JsonRpcWebsocketsConnection;
+
 
 class JsonRpcWebsocketsConnection: public WebSocketConnection, public IRpcNotify{
 public:
@@ -33,11 +35,12 @@ public:
 	 *
 	 * @note notification is send with id=null as specification says.
 	 */
-	void sendNotification(ConstStrA name, JSON::PNode arguments);
+	void sendNotification(ConstStrA name, JSON::ConstValue arguments, TimeoutControl tmControl);
 
-	void sendNotification(const PreparedNtf &ntf);
-	PreparedNtf prepareNotification(LightSpeed::ConstStrA name, LightSpeed::JSON::PNode arguments);
-;
+	PreparedNotify prepare(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments);
+
+	void sendPrepared(const PreparedNotify &ntf, TimeoutControl tmControl);
+
 
 
 	///Server call method on the client
@@ -82,7 +85,13 @@ public:
 
 	virtual void closeConnection(natural code=1000) {WebSocketConnection::closeConnection(code);}
 
+	virtual void dropConnection();
+
 	~JsonRpcWebsocketsConnection();
+
+
+	virtual Future<void> onClose();
+
 
 protected:
 	virtual void onTextMessage(ConstStrA msg);
@@ -96,9 +105,11 @@ protected:
 
 	WaitingPromises waitingPromises;
 
-	FastLock lock;
+	FastLockR lock;
 	JSON::Builder json;
 	IHttpRequest &http;
+
+	Future<void> onCloseFuture;
 
 	StringA openMethod;
 	AllocPointer<IHttpHandlerContext> context;
@@ -107,6 +118,8 @@ protected:
 	AllocPointer<IHttpHandlerContext> jsonrpc_context;
 
 	class HttpRequestWrapper;
+
+	Optional<PreparedNotify> prepared;
 
 private:
 	//do not call sendTextMessage directly

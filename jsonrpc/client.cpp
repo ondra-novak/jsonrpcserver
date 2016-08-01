@@ -9,6 +9,7 @@
 
 #include "lightspeed/base/exceptions/httpStatusException.h"
 #include "lightspeed/base/actions/promise.tcc"
+
 namespace jsonrpc {
 
 Client::Client(const ClientConfig& cfg)
@@ -25,7 +26,7 @@ Future<Client::Result> Client::callAsync(ConstStrA method, JSON::ConstValue para
 	JSON::Builder json(jsonFactory);
 
 	//build request
-	JSON::Builder::Object obj = json("id", preparedList.length())
+	JSON::Builder::CObject obj = json("id", preparedList.length())
 			("method",method)
 			("params",params);
 	//if context is set, add to request
@@ -139,18 +140,18 @@ void Client::runBatch() {
 						const PreparedItem &itm = processing[id];
 						//it should not be done
 						if (!itm.done) {
-							//pick result
-							JSON::ConstValue result = r["result"];
-							//pick error
-							JSON::ConstValue error = r["error"];
-							//pick context
-							JSON::ConstValue context = r->getPtr("context");
 							//mark it done
 							itm.done = true;
+							//pick result
+							JSON::Value result = r["result"];
+							//pick error
+							JSON::Value error = r["error"];
+							//pick context
+							JSON::Value context = r["context"];
 							//if error
 							if (error != nil && !error->isNull()) {
 								//reject promise
-								itm.result.reject(RpcError(THISLOCATION,error));
+								itm.result.reject(RpcError(THISLOCATION,static_cast<JSON::Value &>(error)));
 							} else {
 								//otherwise resolve promise
 								itm.result.resolve(Result(result,context));
@@ -192,11 +193,11 @@ Future<Client::Result> Client::Batch::call(ConstStrA method, JSON::ConstValue pa
 	return client.callAsync(method,params,context);
 }
 
-Client::PreparedItem::PreparedItem(JSON::Value request,Promise<Result> result):request(request),result(result),done(false) {}
+Client::PreparedItem::PreparedItem(const JSON::ConstValue &request,Promise<Result> result):request(request),result(result),done(false) {}
 Client::PreparedItem::~PreparedItem() {}
 
 
 } /* namespace jsonrpc */
 
-template LightSpeed::Promise<jsonrpc::Client::Result>::Promise(LightSpeed::Promise<jsonrpc::Client::Result> const&);
 
+template class LightSpeed::Promise<jsonrpc::Client::Result>;
