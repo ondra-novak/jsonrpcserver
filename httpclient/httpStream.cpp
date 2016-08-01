@@ -77,6 +77,7 @@ natural HttpRequest::write(const void* buffer, natural size) {
 	case useDefinedByUser:
 		return com.write(buffer,size);
 	}
+	throw; //should never reach
 }
 
 natural HttpRequest::defaultChunkMinSize = 4096;
@@ -290,6 +291,8 @@ bool HttpResponse::checkStream() {
 			return true;
 		case rmEof: return true;
 		}
+	throw; //should never reach
+
 }
 
 bool HttpResponse::processSingleHeader(TypeOfHeader toh, natural size) {
@@ -470,6 +473,8 @@ natural HttpResponse::read(void* buffer, natural size) {
 	case rmContinue:
 		return 0;
 	}
+	throw; //should never reach
+
 }
 
 
@@ -495,6 +500,8 @@ natural HttpResponse::peek(void* buffer, natural size) const {
 	case rmContinue:
 		return 0;
 	}
+	throw; //should never reach
+
 }
 
 bool HttpResponse::canRead() const {
@@ -520,6 +527,8 @@ natural HttpResponse::dataReady() const {
 		case rmEof:
 			return 1;
 	}
+	throw; //should never reach
+
 }
 
 

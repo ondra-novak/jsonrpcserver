@@ -34,7 +34,7 @@ void WebSocketsClient::sendTextMessage(ConstStrA msg) {
 		Super::sendTextMessage(msg,true);
 		stream->flush();
 		return;
-	} catch (NetworkException &e) {
+	} catch (NetworkException &) {
 		onReconnect().thenCall(Action::create(this,&WebSocketsClient::sendTextMessage, StringA(msg)));
 		lostConnection(naturalNull);
 	} else {
@@ -49,7 +49,7 @@ void WebSocketsClient::sendBinMessage(ConstBin msg) {
 		Super::sendBinMessage(msg,true);
 		stream->flush();
 		return;
-	} catch (NetworkException &e) {
+	} catch (NetworkException &) {
 		onReconnect().thenCall(Action::create(this,&WebSocketsClient::sendBinMessage, StringB(msg)));
 		lostConnection(naturalNull);
 	} else {

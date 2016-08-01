@@ -429,7 +429,7 @@ void HttpClient::createRequest(ConstStrA url, Method method) {
 				try {
 					response->skipRemainBody();
 					connectionReused = true;
-				} catch (const NetworkException &e) {
+				} catch (const NetworkException &) {
 					response = nil;
 					nstream = nil;
 				}

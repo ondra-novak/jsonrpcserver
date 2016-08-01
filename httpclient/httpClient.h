@@ -16,6 +16,11 @@
 #include "interfaces.h"
 
 #include "lightspeed/base/containers/map.h"
+
+#ifdef LIGHTSPEED_PLATFORM_WINDOWS
+#pragma warning (disable:4250)
+#endif
+
 namespace BredyHttpClient {
 
 using namespace LightSpeed;
