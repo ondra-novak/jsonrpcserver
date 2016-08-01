@@ -73,6 +73,20 @@
   <ItemGroup>
     <ClInclude Include="client\client.h" />
     <ClInclude Include="client\iclient.h" />
+    <CustomBuild Include="config.windows.h">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" "%(RootDir)%(Directory)config.h"
+if exist "%(RootDir)%(Directory)..\config.windows.h" echo #include  "%(RootDir)%(Directory)..\config.windows.h" &gt;&gt; "%(RootDir)%(Directory)config.h"
+if exist "%(RootDir)%(Directory)..\..\config.windows.h" echo #include  "%(RootDir)%(Directory)..\..\config.windows.h" &gt;&gt; "%(RootDir)%(Directory)config.h"
+</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">copy "%(FullPath)" "%(RootDir)%(Directory)config.h"
+if exist "%(RootDir)%(Directory)..\config.windows.h" echo #include  "%(RootDir)%(Directory)..\config.windows.h" &gt;&gt; "%(RootDir)%(Directory)config.h"
+if exist "%(RootDir)%(Directory)..\..\config.windows.h" echo #include  "%(RootDir)%(Directory)..\..\config.windows.h" &gt;&gt; "%(RootDir)%(Directory)config.h"
+</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Creating config</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Creating config</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(RootDir)%(Directory)config.h</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(RootDir)%(Directory)config.h</Outputs>
+    </CustomBuild>
     <ClInclude Include="httpclient\httpClient.h" />
     <ClInclude Include="httpclient\httpStream.h" />
     <ClInclude Include="httpclient\interfaces.h" />
