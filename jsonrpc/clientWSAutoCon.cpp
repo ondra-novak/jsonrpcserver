@@ -62,6 +62,10 @@ bool ClientWSAutoConn::reconnect() {
 		scheduleReconnect();
 		LS_LOG.info("(WS:%1) Unable to reconnect websockets: error:%2 - will retry") << cfgurl << e.what();
 		return true;
+	} catch (IOException &e) {
+		scheduleReconnect();
+		LS_LOG.info("(WS:%1) websockets IO exception: error:%2 - will retry") << cfgurl << e.what();
+		return true;
 	}
 }
 
