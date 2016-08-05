@@ -19,6 +19,7 @@
 
 namespace BredyHttpSrv {
 	class IJobScheduler;
+	class IHttpRequestInfo;
 }
 
 namespace jsonsrv {
@@ -48,6 +49,8 @@ typedef jsonsrv::PreparedNotify PreparedNotify;
 class ClientWS: public IClient, public BredyHttpClient::WebSocketsClient {
 public:
 
+	///When IHttpRequest explored for the http-method, this string will be returned. You can determine, that connection is in client mode
+	static ConstStrA httpMethodStr;
 
 
 	typedef BredyHttpClient::WebSocketsClient Super;
@@ -101,6 +104,9 @@ public:
 		/** if set to null,  logging is disabled */
 		Pointer<jsonsrv::IJsonRpcLogObject> logObject;
 
+		/// Method called through the dispatcher when connection is established.
+		StringA connectMethod;
+
 		///Constructs config from the IHttpMapper, which is available during server initialization
 		/**
 		 * @param mapper reference to a httpmapper, which is available during method ServerMain::onStartServer.
@@ -119,6 +125,8 @@ public:
 		 * scheduler and server's thread pool
 		 */
 		static ConnectConfig fromRequest(BredyHttpSrv::IHttpRequest &request);
+
+
 	};
 
 
@@ -174,10 +182,15 @@ protected:
 
 
 	///called when notify received
-	virtual void onNotify(ConstStrA notifyMethod, JSON::ConstValue params) {
-		(void)notifyMethod;
-		(void)params;
-	}
+	/** By default, function calls dispatcher if defined, otherwise notification is ignored
+	 *
+	 * @param method method which is being notified
+	 * @param params arguments of the call
+	 * @param context context of the call
+	 *
+	 * @note notification has no return, there is no response to the caller, because you have no id associated with the call
+	 */
+	virtual void onNotify(ConstStrA method, const JSON::Value &params, const JSON::Value &context);
 
 	///Called when there is error while receiving from websockets.
 	/**
@@ -195,7 +208,19 @@ protected:
 		(void)v;
 	}
 
-	virtual JSON::ConstValue onBackwardRPC(ConstStrA msg, const JSON::ConstValue params);
+
+	///called when income RPC received
+	/** By default, function calls the dispatcher if defined, otherwise, RPC exception is returned as the method doesn't exists
+	 *
+	 * @param method name of the method
+	 * @param params arguments of the call
+	 * @param context context of the call
+	 * @param id request id
+	 *
+	 * To return value, function must call sendResponse() with apropriate ID. It can be done in different thread
+	 */
+
+	virtual void onIncomeRPC(ConstStrA method, const JSON::Value &params, const JSON::Value &context, const JSON::Value &id );
 
 	///Called when connection has been established
 	/**
@@ -216,12 +241,25 @@ protected:
 
 
 
+	///called with text message received by the web socket
+	/** Default implementation parses the message and calls processMessage() */
+	virtual void onTextMessage(ConstStrA msg);
 
-	void onTextMessage(ConstStrA msg);
+	///Processes JSON message, identifies its type and call aproproate handler */
+	virtual void processMessage(JSON::Value msg);
 
-	void processMessage(JSON::Value msg);
+	///Formats and sends a response
+	/**
+	 *
+	 * @param id id of the request which response is being send
+	 * @param result result
+	 * @param error error message
+	 *
+	 * @note if result is defined, error must be json-null and vice versa
+	 */
+	virtual void sendResponse(JSON::ConstValue id, JSON::ConstValue result, JSON::ConstValue error);
 
-	void sendResponse(JSON::ConstValue id, JSON::ConstValue result, JSON::ConstValue error);
+
 	virtual void onLostConnection(natural);
 
 	virtual void scheduleReconnect();
@@ -232,7 +270,22 @@ protected:
 	Pointer<jsonsrv::IJsonRpc> dispatcher;
 	Pointer<jsonsrv::IJsonRpcLogObject> logObject;
 	Pointer<jsonsrv::IExecutor> executor;
+	StringA connectMethod;
 
+
+	//Transfer execution to the executor instead running the messages on the listener's thread
+	virtual void wakeUp(natural reason) throw();
+	//calls Super::wakeUp, need to called in the executor
+	void super_wakeUp(natural reason) throw();
+
+	/*Is locked, when some code is running inside the executor.
+	  This prevents disconnection and/or destruction of the object during it and
+	  also prevents mistakenly called wakeUp if the request is already processed
+	  */
+	FastLock inExecutor;
+	RefCntPtr<BredyHttpSrv::IHttpRequestInfo> fakeRequest;
+
+	class ClientFakeRequest;
 
 };
 } /* namespace snapytap */

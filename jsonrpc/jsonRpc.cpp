@@ -504,7 +504,7 @@ Optional<bool> JsonRpc::isAllowedOrigin(ConstStrA origin) {
 	}
 }
 
-JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Value &context, const JSON::Value &id) {
+JsonRpc::CallResult JsonRpc::callMethod(IHttpRequestInfo *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Value &context, const JSON::Value &id) {
 	LogObject lg(THISLOCATION);
 
 	typedef StringPool<char, SmallAlloc<256> > StrP;
@@ -527,6 +527,10 @@ JsonRpc::CallResult JsonRpc::callMethod(IHttpRequest *httpRequest, ConstStrA met
 	if (rq.idnode == null) {
 		throw RpcCallError(THISLOCATION, 400,"Missing 'id' field in the RPC request header");
 	}
+	//this allows to have arguments not in array (i.e. named argumenst)
+	//however, method expects, that arguments are in the array
+	if (!rq.args->isArray())
+		rq.args = f->array()->add(rq.args);
 
 	Str name = pool.add(methodName);
 	Str idname = pool.add(id->getStringUtf8());

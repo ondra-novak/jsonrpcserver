@@ -60,21 +60,35 @@ public:
 	 *
 	 * @note IHttpMapper implements IInterface. There are some services available through it,
 	 * for example IJobScheduler, IJobManager and IHttpLiveLog
+	 *
+	 * @note if function thrown an exception, service immediately exits, however onServerFinish is called
+	 * during stack unwind
 	 */
 	virtual natural onStartServer(IHttpMapper &httpMapper) = 0;
 	///Called after the server is initialized and serving content
 	/**
 	 * @param httpMapper interface to map additional services. You can anytime dynamically add
 	 * or remove services from the server
+	 *
+	 * 	 * @note if function thrown an exception, service immediately exits, however onServerFinish is called
+	 * during stack unwind
+	 *
 	 */
 	virtual void onServerReady(IHttpMapper &) {}
 
 	///Caled when Stop command issued - but in this point, server is still running
+	/**	 * @note if function thrown an exception, service immediately exits, however onServerFinish is called
+	 * during stack unwind
+	 */
 	virtual void onStopServer(IHttpMapper &) {};
 
 	///Called when server finished
 	/** At this point, server is stopped, but interface is still valid
-	 * It is not necesery remove services from the interface. They will be removed automatically
+	 * It is not necesery remove services from the interface. They will be removed automatically.
+	 *
+	 * Function is called also if exception is thrown anytime during server's running. You
+	 * should use this function to finally destroy any object which refers to the server instance.
+	 * After function is returned, any reference to the server instance becomes invalid
 	 *
 	 * @param httpMapper
 	 */

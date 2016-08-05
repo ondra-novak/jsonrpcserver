@@ -69,7 +69,7 @@ public:
 	 *
 	 *
 	 *  */
-	static JsonRpcWebsocketsConnection *getConnection(IHttpRequest &request);
+	static JsonRpcWebsocketsConnection *getConnection(IHttpRequestInfo &request);
 
 	///Sets context of this connection
 	/**

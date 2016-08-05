@@ -115,73 +115,80 @@ integer AbstractServerMain::startService() {
 	lg.note("Configuration: newThreadTimeout=%1, threadIdleTimeout = %2") << serverConfig.newThreadTimeout << serverConfig.threadIdleTimeout;
 
 	HttpServer srv(serverIdent, serverConfig);
-	natural res = onStartServer(srv);
-	if (res != 0) {
-		lg.fatal("onStartServer returned nonzero result: %1 - exiting") << res;
-	}
+	natural res;
+	try {
 
-	if (!livelog.empty()) {
-		if (livelog_userlist.empty()) {
-			srv.addLiveLog(livelog);
-		} else {
-			ConstStrA realm;
-			if (livelog_realm.empty()) realm="livelog";
-			else realm = livelog_realm;
-			srv.addLiveLog(livelog,realm,livelog_userlist);
+		res = onStartServer(srv);
+		if (res != 0) {
+			lg.fatal("onStartServer returned nonzero result: %1 - exiting") << res;
 		}
 
-	}
+		if (!livelog.empty()) {
+			if (livelog_userlist.empty()) {
+				srv.addLiveLog(livelog);
+			} else {
+				ConstStrA realm;
+				if (livelog_realm.empty()) realm="livelog";
+				else realm = livelog_realm;
+				srv.addLiveLog(livelog,realm,livelog_userlist);
+			}
 
-	lg.progress("Starting server on port: %1 (master)") << port;
-	srv.start(port);
-	lg.progress("Server started");
-	started = true;
-	for (PortList::Iterator iter = otherPorts.getFwIter();iter.hasItems();) {
-		natural port = iter.getNext();
-		natural k = srv.addPort(port);
-		lg.progress("Added port (id:%2) : %1") << port << k;
-	}
-	for (HostList::Iterator iter = hostMappingUrls.getFwIter(); iter.hasItems();) {
-		StringA mapping = iter.getNext();
-		srv.mapHost(mapping);
-		lg.progress("Added mapping for url %1") << mapping;
-	}
-	//no longer needed
-	otherPorts.clear();
-	//no longer needed
-	hostMappingUrls.clear();
-
-#ifdef LIGHTSPEED_PLATFORM_LINUX
-	if (!usergroup.empty()) {
-		setUserGroup(usergroup);
-	} else if (getuid() == 0) {
-		lg.warning("STARTING UNDER root ACCOUNT! Consider to specify user and group in server.setusergroup config options");
-	}
-#endif
-
-
-	onServerReady(srv);
-
-	{
-		AllocPointer<StatHandler> statHandler;
-		if (!statsvpath.empty()) {
-			statHandler = new StatHandler;
-			srv.addSite(statsvpath,statHandler);
 		}
 
+		lg.progress("Starting server on port: %1 (master)") << port;
+		srv.start(port);
+		lg.progress("Server started");
+		started = true;
+		for (PortList::Iterator iter = otherPorts.getFwIter();iter.hasItems();) {
+			natural port = iter.getNext();
+			natural k = srv.addPort(port);
+			lg.progress("Added port (id:%2) : %1") << port << k;
+		}
+		for (HostList::Iterator iter = hostMappingUrls.getFwIter(); iter.hasItems();) {
+			StringA mapping = iter.getNext();
+			srv.mapHost(mapping);
+			lg.progress("Added mapping for url %1") << mapping;
+		}
+		//no longer needed
+		otherPorts.clear();
+		//no longer needed
+		hostMappingUrls.clear();
 
-		if (!statdumpfile.empty()) {
-			if (statHandler==nil) statHandler = new StatHandler;
-			statHandler->dumpStatsToFile(statdumpfile,&srv);
+	#ifdef LIGHTSPEED_PLATFORM_LINUX
+		if (!usergroup.empty()) {
+			setUserGroup(usergroup);
+		} else if (getuid() == 0) {
+			lg.warning("STARTING UNDER root ACCOUNT! Consider to specify user and group in server.setusergroup config options");
+		}
+	#endif
+
+
+		onServerReady(srv);
+
+		{
+			AllocPointer<StatHandler> statHandler;
+			if (!statsvpath.empty()) {
+				statHandler = new StatHandler;
+				srv.addSite(statsvpath,statHandler);
+			}
+
+
+			if (!statdumpfile.empty()) {
+				if (statHandler==nil) statHandler = new StatHandler;
+				statHandler->dumpStatsToFile(statdumpfile,&srv);
+			}
+
+			res = ServiceApp::startService();
 		}
 
-		res = ServiceApp::startService();
+		lg.progress("Exiting server (exit code: %1)") << res;
+		onStopServer(srv);
+		srv.stop();
+		onServerFinish(srv);
+	} catch (...) {
+		onServerFinish(srv);
+		throw;
 	}
-
-	lg.progress("Exiting server (exit code: %1)") << res;
-	onStopServer(srv);
-	srv.stop();
-	onServerFinish(srv);
 	lg.progress("----------------- Done ---------------------");
 	lg.progress("");
 	return res;

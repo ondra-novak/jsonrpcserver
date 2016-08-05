@@ -45,7 +45,7 @@ struct RpcRequest {
 	///pointer to HTTP request, which contains this call
 	/** This pointer can be sometimes nil, especially, when methos has not be invoked by HTTP request.
 	 */
-	Pointer<IHttpRequest> httpRequest;
+	Pointer<IHttpRequestInfo> httpRequest;
 	///Pointer to server stub providing this call
 	Pointer<IJsonRpc> serverStub;
 	///method context (JSONRPC extension)

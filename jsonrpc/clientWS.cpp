@@ -20,6 +20,7 @@
 #include "../httpserver/IJobScheduler.h"
 #include "rpcnotify.h"
 #include "../httpserver/httpServer.h"
+#include "ijsonrpc.h"
 namespace jsonrpc {
 
 ClientWS::ClientWS(const ClientConfig& cfg):WebSocketsClient(cfg),idcounter(1),reconnectMsg(0),reconnectDelay(1) {
@@ -30,20 +31,50 @@ ClientWS::ClientWS(const ClientConfig& cfg):WebSocketsClient(cfg),idcounter(1),r
 }
 
 
-JSON::ConstValue ClientWS::onBackwardRPC(ConstStrA msg,
-		const JSON::ConstValue params) {
+void ClientWS::onIncomeRPC(ConstStrA msg,
+		const JSON::Value &params, const JSON::Value &context, const JSON::Value &id) {
 
-	(void)msg;
-	(void)params;
-
-	throw jsonsrv::RpcCallError(THISLOCATION,404,"Method not found");
+	if (dispatcher) {
+		jsonsrv::IJsonRpc::CallResult res =  dispatcher->callMethod(fakeRequest,msg,params,context,id);
+		if (logObject) logObject->logMethod(cfgurl,msg,params,context,res.logOutput);
+		sendResponse(id,res.result,res.error);
+	} else {
+		throw jsonsrv::RpcCallError(THISLOCATION,404,"Method not found");
+	}
 }
+
+
+ConstStrA ClientWS::httpMethodStr("CLIENT");
+
+class ClientWS::ClientFakeRequest: public BredyHttpSrv::IHttpRequestInfo {
+public:
+	ClientWS &owner;
+
+	ClientFakeRequest(ClientWS &owner):owner(owner) {}
+
+	virtual ConstStrA getMethod() const {return httpMethodStr;}
+	virtual ConstStrA getPath() const {return owner.cfgurl;}
+	virtual ConstStrA getProtocol() const {return "ws";}
+	virtual HeaderValue getHeaderField(ConstStrA ) const {return HeaderValue();}
+	virtual HeaderValue getHeaderField(HeaderField ) const {return HeaderValue();}
+	virtual bool enumHeader(HdrEnumFn ) const {return false;}
+	virtual ConstStrA getBaseUrl() const {return owner.cfgurl;}
+	virtual StringA getAbsoluteUrl() const {return owner.cfgurl;}
+	virtual StringA getAbsoluteUrl(ConstStrA ) const {return owner.cfgurl;}
+	virtual bool keepAlive() const {return true;}
+	virtual void beginIO() {}
+	virtual void endIO() {}
+
+};
 
 void ClientWS::connect(const ConnectConfig &config) {
 	this->scheduler = config.scheduler;
 	this->executor = config.executor;
 	this->dispatcher = config.dispatcher;
 	this->logObject = config.logObject;
+	if (this->dispatcher) this->fakeRequest = new ClientFakeRequest(*this);
+	this->connectMethod = config.connectMethod;
+
 
 	try {
 		connect(config.listener);
@@ -65,7 +96,6 @@ void ClientWS::sendResponse(JSON::ConstValue id, JSON::ConstValue result,
 	ConstStrA msg = jsonFactory->toString(*req);
 
 	sendTextMessage(msg);
-
 }
 
 
@@ -108,8 +138,6 @@ IClient::Result ClientWS::call(ConstStrA method, JSON::ConstValue params, JSON::
 
 void ClientWS::processMessage(JSON::Value v) {
 	try {
-
-
 		JSON::Value result = v["result"];
 		JSON::Value error = v["error"];
 		JSON::Value context = v["context"];
@@ -140,11 +168,10 @@ void ClientWS::processMessage(JSON::Value v) {
 			}
 		} else if (method != null && params != null) {
 			if (id == null || id->isNull()) {
-				onNotify(method->getStringUtf8(), params);
+				onNotify(method->getStringUtf8(), params, context);
 			} else {
 				try {
-					JSON::ConstValue result = onBackwardRPC(method->getStringUtf8(), params);
-					sendResponse(id, result, jsonFactory->newValue(null));
+					onIncomeRPC(method->getStringUtf8(), params,context,id);
 				} catch (const RpcError &e) {
 					sendResponse(id, jsonFactory->newValue(null), e.getError());
 				} catch (const jsonsrv::RpcCallError &c) {
@@ -168,18 +195,20 @@ void ClientWS::processMessage(JSON::Value v) {
 }
 
 void ClientWS::onTextMessage(ConstStrA msg) {
+	JSON::Value v;
 	try {
-		Synchronized<FastLockR> _(lock);
-		JSON::Value v = jsonFactory->fromString(msg);
-		if (executor) executor->execute(IExecutor::ExecAction::create(this,&ClientWS::processMessage, v));
-		else processMessage(v);
+		v = jsonFactory->fromString(msg);
 	} catch (...) {
 		onParseError(msg);
 	}
+	processMessage(v);
 }
 
 
 void ClientWS::onConnect() {
+	if (dispatcher!=null && !connectMethod.empty()) {
+		onNotify(connectMethod,jsonFactory->array(),null);
+	}
 	Super::onConnect();
 }
 
@@ -187,7 +216,7 @@ void ClientWS::onLostConnection(natural) {
 	Synchronized<FastLockR> _(lock);
 	waitingResults.clear();
 	if (scheduler != null)
-					scheduleReconnect();
+			scheduleReconnect();
 }
 
 
@@ -206,15 +235,18 @@ PreparedNotify ClientWS::prepareNotify(ConstStrA method, const JSON::ConstValue&
 }
 
 void ClientWS::disconnect(natural reason) {
-	Super::disconnect(reason);
-	if (scheduler != null)
+	if (scheduler != null) {
 		scheduler->cancel(reconnectMsg,false);
+		scheduler = null;
+	}
+
+	Synchronized<FastLock> _(inExecutor);
+	Super::disconnect(reason);
 
 }
 
 ClientWS::~ClientWS() {
-	if (scheduler != null)
-		scheduler->cancelLoop(reconnectMsg);
+	disconnect();
 }
 
 bool ClientWS::reconnect() {
@@ -268,4 +300,29 @@ ClientWS::ConnectConfig ClientWS::ConnectConfig::fromRequest(BredyHttpSrv::IHttp
 	return out;
 }
 
+void ClientWS::wakeUp(natural reason) throw () {
+	if (executor) {
+		inExecutor.lock();
+		executor->execute(IExecutor::ExecAction::create(this,&ClientWS::super_wakeUp,reason));
+	} else {
+		Super::wakeUp(reason);
+	}
 }
+
+void ClientWS::super_wakeUp(natural reason) throw () {
+	Super::wakeUp(reason);
+	inExecutor.unlock();
+}
+
+void ClientWS::onNotify(ConstStrA method, const JSON::Value& params, const JSON::Value& context) {
+	if (dispatcher) {
+		jsonsrv::IJsonRpc::CallResult res =  dispatcher->callMethod(fakeRequest,method,params,context,JSON::getConstant(JSON::constNull));
+		if (logObject) logObject->logMethod(cfgurl,method,params,context,res.logOutput);
+	}
+
+}
+
+
+
+}
+

@@ -93,7 +93,7 @@ AutoArray<char,StaticAlloc<19> > getTimeAsStr(natural seconds) {
 }
 
 JSON::PNode BredyHttpSrv::StatHandler::getStatsJSON(
-		IHttpRequest *rq,
+		IHttpRequestInfo *rq,
 		JSON::IFactory* f) {
 	const HttpServer &server = rq->getIfc<HttpServer>();
 	const HttpStats &st = server.getStats();

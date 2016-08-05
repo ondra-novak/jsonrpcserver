@@ -122,7 +122,7 @@ namespace jsonsrv {
 	     *
 	     * @param httpRequest pointer to IHttpRequest. This pointer is then appear on RpcRequest
 	     * 			as httpRequest. You can set this argument to NULL but this can
-	     * 			cause crash when called method expect the valid pointer. Aslo
+	     * 			cause crash when called method expect the valid pointer. Also
 	     * 			note that method can request various interfaces from this argument. If you
 	     * 			are supply proxy object, don't forget to proxy interface requests to
 	     * 			the original object.
@@ -139,7 +139,7 @@ namespace jsonsrv {
 	     *  is thrown. Also unknown exceptions (such a ... or exceptions not inherited from
 	     *  std::exception are thrown outside of this call
 	     */
-	    virtual  CallResult callMethod(IHttpRequest *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Value &context, const JSON::Value &id) = 0;
+	    virtual  CallResult callMethod(IHttpRequestInfo *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Value &context, const JSON::Value &id) = 0;
 
 
 	    ///Tests whether object can accept request from specified origin

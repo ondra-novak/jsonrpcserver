@@ -47,7 +47,9 @@ ServiceContext::Connection *ServiceContext::createContext() {
 }
 
 ServiceContext::Connection* ServiceContext::getContext( jsonsrv::RpcRequest* r) {
-	return getContext(r->httpRequest);
+	//NOTE - can throw exception
+	IHttpRequest &rq = r->httpRequest->getIfc<IHttpRequest>();
+	return getContext(&rq);
 }
 
 

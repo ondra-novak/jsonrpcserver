@@ -143,7 +143,7 @@ Future<JsonRpcWebsocketsConnection::Result> JsonRpcWebsocketsConnection::callAsy
 	return promise;
 }
 
-JsonRpcWebsocketsConnection* JsonRpcWebsocketsConnection::getConnection(IHttpRequest& request) {
+JsonRpcWebsocketsConnection* JsonRpcWebsocketsConnection::getConnection(IHttpRequestInfo& request) {
 	HttpRequestWrapper *rq = request.getIfcPtr<HttpRequestWrapper>();
 	if (rq == 0) return 0;
 	return rq->owner;

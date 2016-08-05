@@ -29,18 +29,21 @@ using namespace LightSpeed;
     	virtual ~IHttpHandlerContext() {}
     };
 
-    ///Request object represents state of server for current request
-    /** The object contains information about single request. But you can receive more information
-     * from the object using Interface::getIfc() method. Object implements following additional interfaces:
-     *
-     * IHTTPMapper, IHttpPeerInfo, IHttpLiveLog, IJobScheduler, IJobManager, ITCPServerConnControl
-     *
 
+    ///Access various informations about the request
+    /** The request is split into two interface. This is minimal version of the request
+     * to allow other non-http service to access basic information of the request or
+     * similar function if the request is processed by different way or proxied.
+     *
+     * Interface just offers methods that only examine the request and cannot change it any way.
+     *
+     * You need to cast pointer to IHttpRequest which offers full weight functionality
+     * available for the http request
+     *
+     *
      */
-	class IHttpRequest: public IInOutStream, public HeaderFieldDef {
-
-	public:
-
+    class IHttpRequestInfo: public HeaderFieldDef, public virtual IRefCntInterface {
+    public:
     	typedef HeaderFieldDef::Field HeaderField;
 
 		typedef BredyHttpSrv::HeaderValue HeaderValue;
@@ -99,6 +102,113 @@ using namespace LightSpeed;
 		 * @retval false enumeration reached final record and stops
 		 */
 		virtual bool enumHeader(HdrEnumFn fn) const = 0;
+		///Retrieves base url (url for server's root)
+		/** Base url can be different than expected especially when
+		 * server runs behind the reverse proxy.
+		 * @return base url
+		 *
+		 * @see getAbsoluteUrl
+		 *
+		 */
+		virtual ConstStrA getBaseUrl() const = 0;
+		///Retrieves absolute url of the request
+		/**
+		 * Function also performs host-mapping to map host field to baseUrl, then it combines with request path
+		 * @return result should contain absolute URL of the request
+		 */
+		virtual StringA getAbsoluteUrl() const = 0;
+
+
+		///Calculates absolute url of a relative path
+		/**
+		 * @param relative path to the request.
+		 * @return calculated absolute path
+		 *
+		 * @note You can specify relpath by various ways
+		 *
+		 * empty string will return absolute URL of the current request
+		 *
+		 * relpath starting with '/' specifies absolute path for the current host. Note that vpath mapping
+		 * is applied, so if host is mapped to some vpath, you have to pretend that path to the absolute path.
+		 * Function then perform reversed host mapping to determine path relative to host's root
+		 *
+		 * relpath starting with '+/' will add slash and remain part of the string to the current path. This
+		 * also includes query string unless relpath also contains query
+		 *
+		 *
+		 */
+		virtual StringA getAbsoluteUrl(ConstStrA relpath) const = 0;
+		///Contains information whether caller should close connection after request is processed
+		/**
+		 *
+		 * @retval true connection will be kept alive. This result is returned when
+		 *   HTTP/1.1 is enabled or when Connection header is set keep-alive under HTTP/1.0
+		 *
+		 * @retval false connection will be closed. This  result is returned when
+		 *   HTTP/1.1 is disabled or when Connection header is set to close under  HTTP/1.1
+		 *
+		 *   By default, server also checks input protocol header. In http/1.0 with no
+		 *   Connection field in output header function returns false, because server
+		 *   doesn't support keep-alive for HTTP/1.0 protocol. But handler can
+		 *   supply right headers to keep connection alive. If this emitted in the header
+		 *   field, function starts returning true and server will not close connection
+		 *   after handler returns.
+		 *
+		 *   When HTTP/1.1 is enabled, chunked transfer encoding is in effect. By default,
+		 *   the server reports this in the headers and it sets keepAlive to true. When there
+		 *   is user header Transfer-Encoding, "chunked" is not enabled by default and
+		 *   handler must implement own keep-alive mechanism. If handler don't want to use
+		 *   keep-alive, it must emit header Connection: close. If the request contains
+		 *   Connection: close and no Connection: close header is emitted, server
+		 *   adds own header to assure the client that the connection will be closed.
+		 */
+		virtual bool keepAlive() const = 0;
+		///Begins IO operation
+		/**
+		 * Handler can operate in two modes. Busy mode and IO mode. In busy
+		 * mode, server expects that handler working on its task and does not
+		 * perform any IO which may block handler for some time. Handler can
+		 * start IO mode before it starts to read from network or perform any
+		 * other blocking possible operation.
+		 *
+		 * This function enters into IO mode.
+		 *
+		 * There can be a lot of threads in IO mode, but limited count of threads
+		 * in busy mode. This helps to find optimal thread count enough to cover
+		 * all IO/network operations without blocking busy threads.
+		 */
+		virtual void beginIO() = 0;
+
+		///Finish IO mode
+		/**
+		 * @see beginIO
+		 *
+		 * @note Function enters into busy mode. Because count of busy threads
+		 * is limited, function can block thread execution waiting on busy semaphore.
+		 */
+		virtual void endIO() = 0;
+
+
+		class SectionIO {
+		public:
+			SectionIO(IHttpRequestInfo &r):r(r) {r.beginIO();}
+			~SectionIO() {r.endIO();}
+			IHttpRequestInfo &r;
+		};
+    };
+
+    ///Request object represents state of server for current request
+    /** The object contains information about single request. But you can receive more information
+     * from the object using Interface::getIfc() method. Object implements following additional interfaces:
+     *
+     * IHTTPMapper, IHttpPeerInfo, IHttpLiveLog, IJobScheduler, IJobManager, ITCPServerConnControl
+     *
+
+     */
+	class IHttpRequest: public IInOutStream, public IHttpRequestInfo {
+
+	public:
+
 		///Sends all headers
 		/**
 		 * Function ensures, that all headers has been sent. If works only first time. Any other call causes no action.
@@ -166,42 +276,6 @@ using namespace LightSpeed;
 		 */
 		virtual void redirect(ConstStrA url, int code = 0) = 0;
 
-		///Retrieves base url (url for server's root)
-		/** Base url can be different than expected especially when
-		 * server runs behind the reverse proxy.
-		 * @return base url
-		 *
-		 * @see getAbsoluteUrl
-		 *  
-		 */
-		virtual ConstStrA getBaseUrl() const = 0;
-		///Retrieves absolute url of the request
-		/**
-		 * Function also performs host-mapping to map host field to baseUrl, then it combines with request path
-		 * @return result should contain absolute URL of the request 
-		 */
-		virtual StringA getAbsoluteUrl() const = 0;
-		
-
-		///Calculates absolute url of a relative path
-		/*
-		 * @param relative path to the request. 
-		 * @return calculated absolute path 
-		 *
-		 * @note You can specify relpath by various ways
-		 *
-		 * empty string will return absolute URL of the current request
-		 *
-		 * relpath starting with '/' specifies absolute path for the current host. Note that vpath mapping
-		 * is applied, so if host is mapped to some vpath, you have to pretend that path to the absolute path.
-		 * Function then perform reversed host mapping to determine path relative to host's root
-		 *
-		 * relpath starting with '+/' will add slash and remain part of the string to the current path. This
-		 * also includes query string unless relpath also contains query 
-		 *
-		 *
-		 */
-		virtual StringA getAbsoluteUrl(ConstStrA relpath) const = 0;
 
 		///Enables HTTP/1.1
 		/**
@@ -325,31 +399,6 @@ using namespace LightSpeed;
 		 */
 		 virtual natural forwardRequest(ConstStrA vpath, IHttpHandler **h = 0) = 0;
 
-		///Contains information whether caller should close connection after request is processed
-		/**
-		 *
-		 * @retval true connection will be kept alive. This result is returned when
-		 *   HTTP/1.1 is enabled or when Connection header is set keep-alive under HTTP/1.0
-		 *
-		 * @retval false connection will be closed. This  result is returned when
-		 *   HTTP/1.1 is disabled or when Connection header is set to close under  HTTP/1.1
-		 *
-		 *   By default, server also checks input protocol header. In http/1.0 with no
-		 *   Connection field in output header function returns false, because server
-		 *   doesn't support keep-alive for HTTP/1.0 protocol. But handler can
-		 *   supply right headers to keep connection alive. If this emitted in the header
-		 *   field, function starts returning true and server will not close connection
-		 *   after handler returns.
-		 *
-		 *   When HTTP/1.1 is enabled, chunked transfer encoding is in effect. By default,
-		 *   the server reports this in the headers and it sets keepAlive to true. When there
-		 *   is user header Transfer-Encoding, "chunked" is not enabled by default and
-		 *   handler must implement own keep-alive mechanism. If handler don't want to use
-		 *   keep-alive, it must emit header Connection: close. If the request contains
-		 *   Connection: close and no Connection: close header is emitted, server
-		 *   adds own header to assure the client that the connection will be closed.
-		 */
-		virtual bool keepAlive() const = 0;
 
 		///Retrieves underlying connection object
 		/**@note writting directly to the connection object can break
@@ -405,30 +454,6 @@ using namespace LightSpeed;
 		virtual natural getPostBodySize() const = 0;
 
 
-		///Begins IO operation
-		/**
-		 * Handler can operate in two modes. Busy mode and IO mode. In busy
-		 * mode, server expects that handler working on its task and does not
-		 * perform any IO which may block handler for some time. Handler can
-		 * start IO mode before it starts to read from network or perform any
-		 * other blocking possible operation.
-		 *
-		 * This function enters into IO mode.
-		 *
-		 * There can be a lot of threads in IO mode, but limited count of threads
-		 * in busy mode. This helps to find optimal thread count enough to cover
-		 * all IO/network operations without blocking busy threads.
-		 */
-		virtual void beginIO() = 0;
-
-		///Finish IO mode
-		/**
-		 * @see beginIO
-		 *
-		 * @note Function enters into busy mode. Because count of busy threads
-		 * is limited, function can block thread execution waiting on busy semaphore.
-		 */
-		virtual void endIO() = 0;
 
 
 		///Sets maximum post body size
@@ -491,13 +516,6 @@ using namespace LightSpeed;
 		 * @param durationMs duration in milliseconds
 		 */
 		virtual void recordRequestDuration(natural durationMs) = 0;
-
-		class SectionIO {
-		public:
-			SectionIO(IHttpRequest &r):r(r) {r.beginIO();}
-			~SectionIO() {r.endIO();}
-			IHttpRequest &r;
-		};
 };
 
 	class IHttpHandler {

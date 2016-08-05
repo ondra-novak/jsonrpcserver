@@ -23,7 +23,7 @@ namespace BredyHttpSrv {
 		virtual natural onData(IHttpRequest &request);
 
 
-		static JSON::PNode getStatsJSON(IHttpRequest *rq,JSON::IFactory *jsonFactory);
+		static JSON::PNode getStatsJSON(IHttpRequestInfo *rq,JSON::IFactory *jsonFactory);
 
 		void dumpStatsToFile(FilePath fname, HttpServer *server);
 		void stopDumpJob();
