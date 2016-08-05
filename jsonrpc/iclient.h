@@ -45,7 +45,7 @@ public:
 	 *
 	 *
 	 */
-	Future<Result> callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0);
+	virtual Future<Result> callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0) = 0;
 
 
 	///Performs RPC call synchronously
@@ -56,7 +56,9 @@ public:
 	 * @param context context (optional)
 	 * @return result can be convertible to JSON::ConstValue however it contains a context if returned
 	 */
-	Result call(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0);
+	virtual Result call(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0) {
+		return callAsync(method, params, context).getValue();
+	}
 
 };
 

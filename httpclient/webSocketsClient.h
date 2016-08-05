@@ -76,7 +76,7 @@ public:
 	 * Recommended reasons are specified in WebSocketsConstants
 	  */
 
-	void disconnect(natural reason=naturalNull);
+	virtual void disconnect(natural reason=naturalNull);
 
 	///Reconnects the disconnected websocket client
 	/** Works only if called after onLostConnection() is issued.
@@ -84,7 +84,7 @@ public:
 	 * @retval true reconnected or client has been already connected
 	 * @retval false disconnected, cannot be reconnected
 	 */
-	bool reconnect();
+	virtual bool reconnect();
 
 	///determines whether WS client is disconnected
 	/**

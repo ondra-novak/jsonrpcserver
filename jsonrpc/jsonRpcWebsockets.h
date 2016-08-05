@@ -11,7 +11,10 @@
 #include "ijsonrpc.h"
 #include "lightspeed/base/actions/promise.h"
 #include "lightspeed/base/containers/map.h"
+
+#include "iclient.h"
 #include "rpcnotify.h"
+
 
 
 namespace jsonsrv {
@@ -22,7 +25,7 @@ using namespace BredyHttpSrv;
 class JsonRpcWebsocketsConnection;
 
 
-class JsonRpcWebsocketsConnection: public WebSocketConnection, public IRpcNotify{
+class JsonRpcWebsocketsConnection: public WebSocketConnection, public IRpcNotify, public jsonrpc::IClient{
 public:
 	JsonRpcWebsocketsConnection(IHttpRequest &request, IJsonRpc &handler, StringA openMethod);
 
@@ -54,7 +57,7 @@ public:
 	 * result is put to the promise as resolution. If response is failure, error
 	 * is thrown through the promise as RpcError
 	 */
-	Future<JSON::PNode> callMethod(ConstStrA name, JSON::PNode arguments);
+	virtual Future<Result> callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0);
 
 	///Finds connection from the http request
 	/** request reference can be picked up at RpcRequest
@@ -101,7 +104,7 @@ protected:
 	IJsonRpc &handler;
 	IJsonRpcLogObject *logobject;
 	natural nextPromiseId;
-	typedef Map<natural, Promise<JSON::PNode> > WaitingPromises;
+	typedef Map<natural, Promise<Result> > WaitingPromises;
 
 	WaitingPromises waitingPromises;
 
@@ -120,6 +123,8 @@ protected:
 	class HttpRequestWrapper;
 
 	Optional<PreparedNotify> prepared;
+
+
 
 private:
 	//do not call sendTextMessage directly

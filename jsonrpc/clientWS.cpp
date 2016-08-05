@@ -7,6 +7,7 @@
 
 #include "clientWS.h"
 
+#include <lightspeed/base/actions/executor.h>
 #include "../httpclient/httpClient.h"
 #include "../httpserver/abstractWebSockets.tcc"
 #include "lightspeed/base/exceptions/httpStatusException.h"
@@ -15,10 +16,13 @@
 #include "lightspeed/base/exceptions/netExceptions.h"
 
 #include "lightspeed/base/actions/promise.tcc"
+
+#include "../httpserver/IJobScheduler.h"
 #include "rpcnotify.h"
+#include "../httpserver/httpServer.h"
 namespace jsonrpc {
 
-ClientWS::ClientWS(const ClientConfig& cfg):WebSocketsClient(cfg),idcounter(1) {
+ClientWS::ClientWS(const ClientConfig& cfg):WebSocketsClient(cfg),idcounter(1),reconnectMsg(0),reconnectDelay(1) {
 	if (cfg.jsonFactory == null) jsonFactory = JSON::create();
 	else jsonFactory = cfg.jsonFactory;
 
@@ -35,6 +39,19 @@ JSON::ConstValue ClientWS::onBackwardRPC(ConstStrA msg,
 	throw jsonsrv::RpcCallError(THISLOCATION,404,"Method not found");
 }
 
+void ClientWS::connect(const ConnectConfig &config) {
+	this->scheduler = config.scheduler;
+	this->executor = config.executor;
+	this->dispatcher = config.dispatcher;
+	this->logObject = config.logObject;
+
+	try {
+		connect(config.listener);
+	} catch (NetworkException &) {
+		scheduleReconnect();
+	}
+
+}
 
 void ClientWS::sendResponse(JSON::ConstValue id, JSON::ConstValue result,
 		JSON::ConstValue error) {
@@ -89,10 +106,10 @@ IClient::Result ClientWS::call(ConstStrA method, JSON::ConstValue params, JSON::
 	return callAsync(method,params,context).getValue();
 }
 
-void ClientWS::onTextMessage(ConstStrA msg) {
+void ClientWS::processMessage(JSON::Value v) {
 	try {
-		Synchronized<FastLockR> _(lock);
-		JSON::Value v = jsonFactory->fromString(msg);
+
+
 		JSON::Value result = v["result"];
 		JSON::Value error = v["error"];
 		JSON::Value context = v["context"];
@@ -105,7 +122,7 @@ void ClientWS::onTextMessage(ConstStrA msg) {
 				natural reqid = id->getUInt();
 				const Promise<Result> *p = waitingResults.find(reqid);
 				if (p == 0)
-					onReceiveError(msg, errUnexpectedResponse);
+					onDispatchError(v);
 				else {
 					Promise<Result> q = *p;
 					waitingResults.erase(reqid);
@@ -119,7 +136,7 @@ void ClientWS::onTextMessage(ConstStrA msg) {
 				}
 			}//id=null - invalid frame
 			else {
-				onReceiveError(msg,errInvalidFrame);
+				onDispatchError(v);
 			}
 		} else if (method != null && params != null) {
 			if (id == null || id->isNull()) {
@@ -144,9 +161,20 @@ void ClientWS::onTextMessage(ConstStrA msg) {
 			}
 		}
 
-
 	} catch (...) {
-		onReceiveError(msg,errException);
+		onDispatchError(v);
+	}
+
+}
+
+void ClientWS::onTextMessage(ConstStrA msg) {
+	try {
+		Synchronized<FastLockR> _(lock);
+		JSON::Value v = jsonFactory->fromString(msg);
+		if (executor) executor->execute(IExecutor::ExecAction::create(this,&ClientWS::processMessage, v));
+		else processMessage(v);
+	} catch (...) {
+		onParseError(msg);
 	}
 }
 
@@ -158,6 +186,8 @@ void ClientWS::onConnect() {
 void ClientWS::onLostConnection(natural) {
 	Synchronized<FastLockR> _(lock);
 	waitingResults.clear();
+	if (scheduler != null)
+					scheduleReconnect();
 }
 
 
@@ -175,5 +205,67 @@ PreparedNotify ClientWS::prepareNotify(ConstStrA method, const JSON::ConstValue&
 	return PreparedNotify(method,params,jsonFactory);
 }
 
+void ClientWS::disconnect(natural reason) {
+	Super::disconnect(reason);
+	if (scheduler != null)
+		scheduler->cancel(reconnectMsg,false);
+
+}
+
+ClientWS::~ClientWS() {
+	if (scheduler != null)
+		scheduler->cancelLoop(reconnectMsg);
+}
+
+bool ClientWS::reconnect() {
+	try {
+		return Super::reconnect();
+	} catch (NetworkException &e) {
+		scheduleReconnect();
+		return true;
+	} catch (IOException &e) {
+		scheduleReconnect();
+		return true;
+	}
+}
+
+void ClientWS::scheduleReconnect() {
+	natural d = reconnectDelay;
+	reconnectDelay = (reconnectDelay * 3+1)/2;
+	if (reconnectDelay > 60) reconnectDelay = 60;
+	reconnectMsg = scheduler->schedule(
+			ThreadFunction::create(this, &ClientWS::reconnect), d);
+}
+
+
+ClientWS::ConnectConfig ClientWS::ConnectConfig::fromHttpMapper( BredyHttpSrv::IHttpMapper& mapper) {
+	//extract server from the mapper
+	BredyHttpSrv::HttpServer &server = mapper.getIfc<BredyHttpSrv::HttpServer>();
+	//retrieve TCP server instance
+	TCPServer &tcp = server.getServer();
+	ConnectConfig  out;
+	//use TCP's server executor
+	out.executor = tcp.getExecutor();
+	//use TCP's server listener
+	out.listener = tcp.getEventListener();
+	//extract scheduler
+	out.scheduler = mapper.getIfcPtr<BredyHttpSrv::IJobScheduler>();
+	return out;
+}
+
+ClientWS::ConnectConfig ClientWS::ConnectConfig::fromRequest(BredyHttpSrv::IHttpRequest& request) {
+	//extract server from the mapper
+	BredyHttpSrv::HttpServer &server = request.getIfc<BredyHttpSrv::HttpServer>();
+	//retrieve TCP server instance
+	TCPServer &tcp = server.getServer();
+	ConnectConfig  out;
+	//use TCP's server executor
+	out.executor = tcp.getExecutor();
+	//use TCP's server listener
+	out.listener = tcp.getEventListener();
+	//extract scheduler
+	out.scheduler = request.getIfcPtr<BredyHttpSrv::IJobScheduler>();
+	return out;
+}
 
 }

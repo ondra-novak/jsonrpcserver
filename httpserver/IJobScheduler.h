@@ -122,7 +122,9 @@ public:
 	 * rescheduling happened, it repeats operation, until the action is canceled
 	 *
 	 * @param action reference to action pointer. Function expects, that every cycle the
-	 * scheduled action stores
+	 * scheduled action updates the variable
+	 *
+	 * @note function may block current thread
 	 *
 	 */
 	virtual void cancelLoop( void * volatile &action) = 0;
