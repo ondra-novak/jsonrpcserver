@@ -602,6 +602,21 @@ using namespace LightSpeed;
 		typedef IHttpRequest::SectionIO SectionIO;
 		typedef BredyHttpSrv::HeaderValue HeaderValue;
 
+		///Creates handler by binding a function
+		/** To use this function, you need to include bind.tcc.
+		 *
+		 * You can create handler from any function. Function has the same format as onRequest(). There is no onData
+		 * function. Instead, the function also called for onData, with vpath equal to empty string.
+		 *
+		 * @param fn
+		 * @return
+		 */
+		template<typename Fn>
+		static IHttpHandler *bind(const Fn &fn);
+
+		template<typename ObjPtr, typename Obj>
+		static IHttpHandler *bind(ObjPtr obj, natural (Obj::*fn)(IHttpRequest &request, ConstStrA vpath));
+
 	};
 
 
@@ -633,6 +648,7 @@ using namespace LightSpeed;
 		 @param mapLine original definition, or any definition where host can be extracted
 		 */
 		virtual void unmapHost(ConstStrA mapLine) = 0;
+
 	};
 
 
@@ -680,8 +696,6 @@ using namespace LightSpeed;
 		virtual void addLiveLog(ConstStrA path, ConstStrA realm, ConstStrA userList ) = 0;
 		virtual ~IHttpLiveLog() {}
 	};
-
 }
-
 
 #endif /* JSONRPCSERVER_HTTPREQUEST_H_ */
