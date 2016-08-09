@@ -9,6 +9,7 @@
 #include <lightspeed/base/containers/autoArray.tcc>
 #include "lightspeed/base/debug/dbglog.h"
 
+#include "lightspeed/base/interface.tcc"
 namespace jsonsrv {
 
 	using namespace LightSpeed;
