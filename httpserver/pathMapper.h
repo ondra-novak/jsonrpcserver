@@ -28,8 +28,10 @@ class PathMapper {
 	typedef StringPool<char> SPool;
 	typedef Map<SPool::Str, IHttpHandler *, std::greater<SPool::Str> > HandlerMap;
 
+
 public:
 
+	~PathMapper();
 	void addHandler(ConstStrA path, IHttpHandler *h);
 	void removeHandler(ConstStrA path);
 	void clear();

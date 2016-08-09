@@ -9,6 +9,7 @@
 #include "lightspeed/base/containers/stringpool.tcc"
 #include "lightspeed/base/debug/dbglog.h"
 #include "lightspeed/base/containers/map.tcc"
+#include "httprequest.h"
 
 namespace BredyHttpSrv {
 
@@ -81,6 +82,10 @@ void PathMapper::MappingIter::fetchFirst() {
 }
 
 void PathMapper::clear() {
+	HandlerMap::Iterator iter = handlers.getFwIter();
+	while(iter.hasItems()) {
+		iter.getNext().value->release();
+	}
 	handlers.clear();
 	strings.clear();
 }
@@ -88,6 +93,11 @@ void PathMapper::clear() {
 PathMapper::MappingIter PathMapper::findPathMapping(ConstStrA path) const {
 	return MappingIter(handlers,path);
 }
+
+BredyHttpSrv::PathMapper::~PathMapper() {
+	clear();
+}
+
 
 /* namespace jsonsvc */
 

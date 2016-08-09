@@ -597,32 +597,73 @@ using namespace LightSpeed;
 		 */
 		virtual natural onData(IHttpRequest &request) = 0;
 
+		///called when object is released from the httpserver
+		/** When httpserver object is destroyed, this function is called for
+		 * every handler. You can destroy it here. Default implementation will
+		 * not destroy handler (compatible mode) */
+		virtual void release() throw() {}
 
 		virtual ~IHttpHandler() {}
 		typedef IHttpRequest::SectionIO SectionIO;
 		typedef BredyHttpSrv::HeaderValue HeaderValue;
 
 		///Creates handler by binding a function
-		/** To use this function, you need to include bind.tcc.
+		/**
 		 *
 		 * You can create handler from any function. Function has the same format as onRequest(). There is no onData
 		 * function. Instead, the function also called for onData, with vpath equal to empty string.
 		 *
-		 * @param fn
-		 * @return
+		 * @param fn reference to a function or a lambda function (c++11)
+		 * @return pointer to the handler. Once the handler is registered (through addSite), it
+		 * is automatically destroyed once no longer needed. This also applied when
+		 * function addSite throws an exception.
 		 */
 		template<typename Fn>
-		static IHttpHandler *bind(const Fn &fn);
+		static IHttpHandler *bindFn(const Fn &fn);
+
+		///Creates handler by binding a member function
+		/**
+		 * @param obj pointer to and object. It can be either a raw pointer or a smart pointer.
+		 *     Pointer is released once handler is no longer needed
+		 * @param fn pointer to function
+		 * @return pointer to the handler. Once the handler is registered (through addSite), it
+		 * is automatically destroyed once no longer needed. This also applied when
+		 * function addSite throws an exception.
+		 */
 
 		template<typename ObjPtr, typename Obj>
-		static IHttpHandler *bind(ObjPtr obj, natural (Obj::*fn)(IHttpRequest &request, ConstStrA vpath));
+		static IHttpHandler *bindFn(ObjPtr obj, natural (Obj::*fn)(IHttpRequest &request, ConstStrA vpath));
+
+
+		template<typename Fn>
+		static IHttpHandler *bindFnShared(const Fn &fn);
+
+		template<typename ObjPtr, typename Obj>
+		static IHttpHandler *bindFnShared(ObjPtr obj, natural (Obj::*fn)(IHttpRequest &request, ConstStrA vpath));
 
 	};
 
 
 	class IHttpMapper: virtual public IInterface {
 	public:
+		///Registers new site by path
+		/**
+		 *
+		 * @param path path relative to server root. Note that host mapping can be in effect when path is resolved
+		 * @param handler pointer to the handler
+		 * @note function calls handler->release() once handler is no longer needed. This
+		 * also applied when registration is not successful. Attempt to register two
+		 * handler at one path causes exception. However, you can register different handler
+		 * to more specific or more general path. The longest path has perecedence
+		 *
+		 * @note It is allowed to add or remove sites during the server is online. It allows
+		 * dynamic handlers. However, path resolving may be less effective in copare to
+		 * use lookup-map in single handler.
+		 *
+		 */
 		virtual void addSite(ConstStrA path, IHttpHandler *handler) = 0;
+		///Removes handler from the path
+		///
 		virtual void removeSite(ConstStrA path) = 0;
 
 		///Maps host to vpath
