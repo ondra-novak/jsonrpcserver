@@ -1,0 +1,46 @@
+/*
+ * httpHandler.h
+ *
+ *  Created on: 10. 8. 2016
+ *      Author: ondra
+ */
+
+#ifndef JSONRPC_JSONRPCSERVER_H5046506504_HTTPHANDLER_H_
+#define JSONRPC_JSONRPCSERVER_H5046506504_HTTPHANDLER_H_
+#include "../httpserver/httprequest.h"
+#include "idispatch.h"
+
+namespace jsonrpc {
+
+using namespace LightSpeed;
+
+class HttpHandler: public BredyHttpSrv::IHttpHandler {
+public:
+	HttpHandler(IDispatcher &dispatcher);
+	HttpHandler(IDispatcher &dispatcher, const JSON::Builder &json);
+
+
+protected:
+	virtual natural onRequest(BredyHttpSrv::IHttpRequest& request, ConstStrA vpath);
+	virtual natural onData(BredyHttpSrv::IHttpRequest& request);
+
+	virtual natural onGET(BredyHttpSrv::IHttpRequest&,  ConstStrA ) {return 403;}
+	virtual natural onPOST(BredyHttpSrv::IHttpRequest& , ConstStrA );
+	virtual natural onOtherMethod(BredyHttpSrv::IHttpRequest& , ConstStrA ) {return 403;}
+
+	class IRequestContext: public BredyHttpSrv::IHttpHandlerContext {
+	public:
+		virtual natural onData(BredyHttpSrv::IHttpRequest& request) = 0;
+	};
+
+
+	IDispatcher &dispatcher;
+	JSON::Builder json;
+
+	class RpcContext;
+
+};
+
+} /* namespace jsonrpc */
+
+#endif /* JSONRPC_JSONRPCSERVER_H5046506504_TTPHANDLER_H_ */
