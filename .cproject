@@ -155,6 +155,7 @@
 		</configuration>
 		<configuration configurationName="Debug">
 			<resource resourceType="FOLDER" workspacePath="/jsonrpcserver/tmp"/>
+			<resource resourceType="FOLDER" workspacePath="/jsonrpcserver/resources"/>
 		</configuration>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>

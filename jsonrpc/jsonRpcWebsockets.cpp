@@ -15,11 +15,11 @@
 
 namespace jsonsrv {
 
-class JsonRpcWebsocketsConnection::HttpRequestWrapper: public BredyHttpSrv::IHttpRequest {
+class JsonRpcWebsocketsConnection::HttpRequestWrapper: public BredyHttpSrv::IHttpRequestInfo {
 public:
-	HttpRequestWrapper(BredyHttpSrv::IHttpRequest *r, JsonRpcWebsocketsConnection *owner):r(r),owner(owner) {}
+	HttpRequestWrapper(BredyHttpSrv::IHttpRequestInfo *r, JsonRpcWebsocketsConnection *owner):r(r),owner(owner) {}
 
-	BredyHttpSrv::IHttpRequest  * const r;
+	BredyHttpSrv::IHttpRequestInfo  * const r;
 	JsonRpcWebsocketsConnection * const owner;
 
 protected:
@@ -29,50 +29,10 @@ protected:
 	virtual HeaderValue getHeaderField(ConstStrA field) const {return r->getHeaderField(field);}
 	virtual HeaderValue getHeaderField(HeaderField field) const {return r->getHeaderField(field);}
 	virtual bool enumHeader(HdrEnumFn fn) const {return r->enumHeader(fn);}
-	virtual void sendHeaders() {}
-	virtual void header(ConstStrA , ConstStrA ) {}
-	virtual void header(HeaderField , ConstStrA ) {}
-	virtual void status(natural , ConstStrA = ConstStrA()) {}
-	virtual void errorPage(natural , ConstStrA = ConstStrA(), ConstStrA = ConstStrA()) {}
-	virtual void redirect(ConstStrA , int = 0) {}
 	virtual ConstStrA getBaseUrl() const {return r->getBaseUrl();}
-	virtual void useHTTP11(bool ) {}
-	virtual bool isField(ConstStrA text, HeaderField fld) const {return r->isField(text,fld);}
-	virtual natural read(void *,  natural ) {return 0;}
-    virtual natural write(const void *,  natural )  {return 0;}
-	virtual natural peek(void *, natural ) const {return 0;}
-	virtual bool canRead() const {return false;}
-	virtual bool canWrite() const {return false;}
-	virtual void flush() {}
-	virtual natural dataReady() const {return 0;}
-	virtual void finish() {}
-	virtual bool headersSent() const {return true;}
-	virtual natural callHandler(ConstStrA , IHttpHandler ** = 0) {return 0;}
-	virtual natural forwardRequest(ConstStrA, IHttpHandler ** = 0) { return 0; }
 	virtual bool keepAlive() const {return true;}
-	virtual PNetworkStream getConnection() {return nil;}
-	virtual void setRequestContext(IHttpHandlerContext *context) {
-		rctx = context;
-	}
-	virtual void setConnectionContext(IHttpHandlerContext *context) {
-		owner->jsonrpc_context = context;
-	}
-	virtual IHttpHandlerContext *getRequestContext() const {
-		return rctx;
-	}
-	virtual IHttpHandlerContext *getConnectionContext() const {
-		return owner->jsonrpc_context;
-	}
-	virtual natural getPostBodySize() const {
-		return 0;
-	}
 	virtual void beginIO() {r->beginIO();}
 	virtual void endIO()   {r->endIO();}
-	virtual void setMaxPostSize(natural ) {}
-	virtual void attachThread(natural ) {}
-	virtual void closeOutput() {}
-	virtual void setRequestName(ConstStrA ) {}
-	virtual void recordRequestDuration(natural x) {r->recordRequestDuration(x);}
 
 	virtual void *proxyInterface(IInterfaceRequest &p) {
 		void *x = IInterface::proxyInterface(p);
@@ -88,9 +48,6 @@ protected:
 	virtual StringA getAbsoluteUrl() const { return r->getAbsoluteUrl(); }
 	virtual StringA getAbsoluteUrl(ConstStrA relpath) const { return r->getAbsoluteUrl(relpath); }
 
-
-
-	AllocPointer<IHttpHandlerContext> rctx;
 
 };
 

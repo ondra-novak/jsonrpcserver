@@ -18,7 +18,8 @@ namespace BredyHttpSrv{
 
 class HttpServer:  public BredyHttpSrv::ConnHandler,
 					public IJobManager,
-					public IHttpLiveLog {
+					public IHttpLiveLog,
+					public IServerSvcs {
 public:
 	struct Config {
 		natural maxThreads;
@@ -54,6 +55,12 @@ public:
 
 	TCPServer &getServer() {return tcplisten;}
 	const TCPServer &getServer() const {return tcplisten;}
+
+	virtual IExecutor &getExecutor() {return *tcplisten.getExecutor();}
+	virtual PNetworkEventListener getNetworkListener() {return tcplisten.getEventListener();}
+	virtual IJobScheduler &getScheduler() {return jobScheduler;}
+
+
 
 protected:
 

@@ -486,6 +486,11 @@ natural HttpReqImpl::forwardRequest(ConstStrA vpath, IHttpHandler **h) {
 
 }
 
+natural HttpReqImpl::forwardRequestTo(IHttpHandler *h, ConstStrA vpath) {
+	curHandler = h;
+	return h->onRequest(*this,vpath);
+}
+
 
 
 void HttpReqImpl::finishChunk() {

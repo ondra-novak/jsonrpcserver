@@ -61,6 +61,7 @@ public:
 	virtual void closeOutput();
 	virtual bool headersSent() const {return bHeaderSent;}
 	virtual natural forwardRequest(ConstStrA vpath, IHttpHandler **h = 0);
+	 virtual natural forwardRequestTo(IHttpHandler *h, ConstStrA vpath);
 	virtual bool keepAlive() const { return !closeConn; }
 
 

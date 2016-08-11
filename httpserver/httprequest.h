@@ -16,6 +16,7 @@
 
 namespace LightSpeed {
 	class NetworkAddress;
+	class IExecutor;
 }
 
 namespace BredyHttpSrv {
@@ -23,6 +24,7 @@ namespace BredyHttpSrv {
 using namespace LightSpeed;
 
     class IHttpHandler;
+    class IJobScheduler;
 
     class IHttpHandlerContext: public DynObject, public IInterface {
     public:
@@ -399,6 +401,26 @@ using namespace LightSpeed;
 		 */
 		 virtual natural forwardRequest(ConstStrA vpath, IHttpHandler **h = 0) = 0;
 
+		 ///Commands the server to use specified handler for future request processing
+		 /**
+		  *
+		  * Function works similar to forwardRequest with one important difference. Whereas
+		  * the formwardRequest chooses handler depend on path (performs path-mapping), the function
+		  * forwardReqestTo forwards request to the specified handler without additional mapping. It
+		  * allows to implement own path-mapping rules.
+		  *
+		  * @param h handler to use
+		  * @param vpath vpath passed to the handler
+		  * @return Function performs onRequest call on the handler, and then return its value. You
+		  * should also return the same value from current handler. Next call of onData will be
+		  * forwarded to specified handler. The handler must remain exist until the request
+		  * is finished.
+		  *
+		  * Because new handler is not registered on path-mapping, it won't be called for other
+		  * request until the request is forwarded-to again.
+		  *
+		  */
+		 virtual natural forwardRequestTo(IHttpHandler *h, ConstStrA vpath) = 0;
 
 		///Retrieves underlying connection object
 		/**@note writting directly to the connection object can break
@@ -736,6 +758,45 @@ using namespace LightSpeed;
 		 */
 		virtual void addLiveLog(ConstStrA path, ConstStrA realm, ConstStrA userList ) = 0;
 		virtual ~IHttpLiveLog() {}
+	};
+
+	///Access to server services, not connected to current connection
+	/** To access this interface, use the getIfc<IServerSvcs> */
+	class IServerSvcs: virtual public IInterface {
+	public:
+		///Receives reference to server's executor
+		/** Server's executor is object responsible to assign threads and
+		 * execute code along with the active connection. You can
+		 * use the executor if you need to detach code from the curren thread.
+		 *
+		 * You should avoid to use executor from the server's thread, because
+		 * it can cause deadlock. Request the threads from threads not belong to the server,
+		 * or from the scheduler
+		 * @return Reference to the server's executor
+		 */
+		virtual IExecutor &getExecutor() = 0;
+
+		///Receives reference to the server's network listener
+		/** Network listener is one or more threads which are responsible to monitor
+		 * sleeping connection and send notification when connection's state is changed.
+		 *
+		 * You can use server's network listener, however, if there is many waiting connection, at time
+		 * it can reduce performance.
+		 * @return
+		 */
+		virtual PNetworkEventListener getNetworkListener() = 0;
+
+
+		///Returns the scheduler
+		/** Scheduler is basic component of the HttpServer. You can use the scheduler to
+		 * schedule many operations.
+		 *
+		 * Scheduler has one thread for scheduling, scheduled actions are executed in the scheduler's
+		 * thread. If you need to execute a long operation, you should use server's executor and
+		 * transfers the execution there.
+		 * @return
+		 */
+		virtual IJobScheduler &getScheduler() = 0;
 	};
 }
 

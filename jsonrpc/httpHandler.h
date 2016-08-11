@@ -9,6 +9,8 @@
 #define JSONRPC_JSONRPCSERVER_H5046506504_HTTPHANDLER_H_
 #include "../httpserver/httprequest.h"
 #include "idispatch.h"
+#include "lightspeed/utils/FilePath.h"
+
 
 namespace jsonrpc {
 
@@ -20,11 +22,14 @@ public:
 	HttpHandler(IDispatcher &dispatcher, const JSON::Builder &json);
 
 
+	void setClientPage(const FilePath &path);
+	void unsetClientPage();
+
 protected:
 	virtual natural onRequest(BredyHttpSrv::IHttpRequest& request, ConstStrA vpath);
 	virtual natural onData(BredyHttpSrv::IHttpRequest& request);
 
-	virtual natural onGET(BredyHttpSrv::IHttpRequest&,  ConstStrA ) {return 403;}
+	virtual natural onGET(BredyHttpSrv::IHttpRequest&,  ConstStrA );
 	virtual natural onPOST(BredyHttpSrv::IHttpRequest& , ConstStrA );
 	virtual natural onOtherMethod(BredyHttpSrv::IHttpRequest& , ConstStrA ) {return 403;}
 
@@ -38,6 +43,10 @@ protected:
 	JSON::Builder json;
 
 	class RpcContext;
+	AllocPointer<BredyHttpSrv::IHttpHandler> webClient;
+
+
+
 
 };
 

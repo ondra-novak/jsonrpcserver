@@ -7,9 +7,16 @@
 
 #include "httpHandler.h"
 
+#include <lightspeed/base/actions/executor.h>
 #include "lightspeed/base/streams/fileio.h"
 
 #include "lightspeed/base/actions/promise.h"
+
+#include "../httpserver/queryParser.h"
+#include "lightspeed/base/text/textParser.tcc"
+#include "../httpserver/simpleWebSite.h"
+
+using LightSpeed::parseUnsignedNumber;
 namespace jsonrpc {
 
 using namespace BredyHttpSrv;
@@ -20,6 +27,11 @@ public:
 		:version(version),request(request),owner(owner) {}
 
 	virtual natural onData(IHttpRequest &request);
+
+	void onResultDetached(JSON::ConstValue v);
+	void onResultDetached2(JSON::ConstValue v);
+	void onResultAttached(JSON::ConstValue v);
+	natural onError(const Exception &e);
 
 protected:
 	natural version;
@@ -53,12 +65,18 @@ natural HttpHandler::onData(IHttpRequest& request) {
 
 natural HttpHandler::onPOST(IHttpRequest& request, ConstStrA vpath) {
 	request.header(IHttpRequest::fldContentType,"application/json");
+	natural version = 1;
 
+	QueryParser qp(vpath);
+	while (qp.hasItems()) {
+		const QueryField &qf = qp.getNext();
+		if (qf.name == ConstStrA("ver")) {
+			parseUnsignedNumber(qf.value.getFwIter(),version,10);
+		}
+	}
 
-
-
-
-
+	RpcContext *ctx = new RpcContext(version,request,*this);
+	request.setRequestContext(ctx);
 
 	return stContinue;
 
@@ -76,14 +94,65 @@ natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 
 	Future<JSON::ConstValue> futureresult;
 	owner.dispatcher.dispatchMessage(val,version,owner.json,&request,futureresult.getPromise());
-	const JSON::ConstValue *v = futureresult.tryGetValue();
-	if (v != 0) {
-				SeqFileOutput output(&request);
-				owner.json.factory->toStream(*(*v),output);
-				return stContinue;
+	try {
+		const JSON::ConstValue *v = futureresult.tryGetValue();
+		if (v != 0) {
+			onResultAttached(*v);
+			return stContinue;
+		} else {
+			futureresult.thenCall(Message<void, JSON::ConstValue>::create(this,&HttpHandler::RpcContext::onResultDetached));
+			return stDetach;
+		}
+	} catch (Exception &e) {
+		return onError(e);
+	} catch (std::exception &e) {
+		return onError(StdException(THISLOCATION,e));
+	} catch (...) {
+		return onError(UnknownException(THISLOCATION));
+	}
+
+}
+
+void HttpHandler::setClientPage(const FilePath& path) {
+	webClient = new BredyHttpSrv::SimpleWebSite(path,0);
+}
+void HttpHandler::unsetClientPage() {
+	webClient = null;
+}
+
+
+natural HttpHandler::onGET(BredyHttpSrv::IHttpRequest&r, ConstStrA vpath) {
+	if (vpath.empty()) {
+		r.redirect("+/",303);return 0;
+	}
+	if (vpath[0] != '/') return stNotFound;
+	if (webClient == null) {
+		r.header(r.fldAllow,"POST, OPTIONS");
+		return stMethodNotAllowed;
 	} else {
-		/*futureresult.then()*/
-		return stDetach;
+		return r.forwardRequestTo(webClient,vpath.offset(1));
+	}
+
+
+}
+
+void HttpHandler::RpcContext::onResultDetached(JSON::ConstValue v) {
+	IExecutor &executor = request.getIfc<IServerSvcs>().getExecutor();
+	executor.execute(IExecutor::ExecAction::create(this,&HttpHandler::RpcContext::onResultDetached,v));
+}
+
+
+void HttpHandler::RpcContext::onResultDetached2(JSON::ConstValue v) {
+	onResultAttached(v);
+	request.attachThread(stContinue);
+}
+
+void HttpHandler::RpcContext::onResultAttached(JSON::ConstValue v) {
+	try {
+		SeqFileOutput output(&request);
+		owner.json.factory->toStream(*v,output);
+	} catch (...) {
+		//failed to deliver response, ignore exeception
 	}
 
 }
