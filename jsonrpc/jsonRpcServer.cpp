@@ -97,7 +97,7 @@ namespace jsonsrv {
 		nullV = JSON::create()(null);
 	}
 
-	void JsonRpcServer::logMethod(IHttpRequest &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput) {
+	void JsonRpcServer::logMethod(IHttpRequestInfo &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput) {
 		IHttpPeerInfo &pinfo = invoker.getIfc<IHttpPeerInfo>();
 		ConstStrA peerAddr = pinfo.getPeerRealAddr();
 		logMethod(peerAddr,methodName,params,context,logOutput);

@@ -39,6 +39,21 @@ using namespace LightSpeed;
 		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const;
 	};
 
+	class ParseException: public RpcException {
+	public:
+		LIGHTSPEED_EXCEPTIONFINAL;
+		ParseException(const ProgramLocation &loc, StringA description):LightSpeed::Exception(loc)
+			,description(description) {}
+		~ParseException() throw() {}
+
+	protected:
+
+		StringA description;
+
+		void message(ExceptionMsg &msg) const;
+		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const;
+	};
+
 	class MethodException: public RpcException {
 	public:
 		LIGHTSPEED_EXCEPTIONFINAL;
@@ -54,6 +69,17 @@ using namespace LightSpeed;
 		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const;
 	};
 
+	class UncauchException: public MethodException {
+	public:
+		LIGHTSPEED_EXCEPTIONFINAL;
+		UncauchException(const ProgramLocation &loc, const Exception &e);
+
+	protected:
+
+		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const;
+		TypeInfo type;
+
+	};
 
 
 

@@ -38,7 +38,13 @@ public:
     virtual void regStatsHandler(ConstStrA name, IMethod *fn, natural untilVer=naturalNull);
     virtual void unregStats(ConstStrA name, natural ver=naturalNull);
     virtual void setLogObject(ILog *logObject);
-    virtual void callMethod(const Request &req, Promise<Response> result);
+    virtual void callMethod(const Request &req, Promise<Response> result) throw();
+    virtual JSON::ConstValue dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural version, const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request, Promise<Response> result) throw();
+
+    ILog *getLogObject() const;
+
+
+    virtual void enumMethods(const IMethodEnum &enm) const;
 
 
 

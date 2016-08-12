@@ -87,7 +87,7 @@ namespace jsonsrv {
 		 * @param context context of the call (optional)
 		 * @param logOutput output of the call (optional)
 		 */
-		virtual void logMethod(IHttpRequest &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput);
+		virtual void logMethod(IHttpRequestInfo &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput);
 		///More general loging of the method, especially when they came from a different source, that http.
 		/**
 		 * @param source source. In original interface there is IP address of the caller. However, you can now specify different source.

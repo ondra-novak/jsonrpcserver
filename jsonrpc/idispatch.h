@@ -1,4 +1,5 @@
 #pragma once
+#include <lightspeed/base/interface.h>
 #include "lightspeed/base/containers/constStr.h"
 #include <lightspeed/utils/json/json.h>
 
@@ -12,7 +13,7 @@ namespace jsonrpc {
 
 using namespace LightSpeed;
 
-class IDispatch;
+class IDispatcher;
 
 ///Object passed to the every call of the every method
 struct Request {
@@ -35,7 +36,7 @@ struct Request {
 	///pointer to HTTP interface. Can be NULL
 	Pointer<BredyHttpSrv::IHttpRequestInfo> httpRequest;
 	///pointer to dispatcher
-	Pointer<IDispatch> dispatcher;
+	Pointer<IDispatcher> dispatcher;
 };
 
 ///Contains result of the call
@@ -46,6 +47,10 @@ struct Response {
 	///contains update of the context, can be null if not applied
 	const JSON::ConstValue context;
 	///contains data to be logged into rpclog, can be null if not applied
+	/** Method can log different result than returned to the caller. In most of
+	 * cases, methods will log only errors. However it is possible to log result
+	 *  or something else. It must be json.
+	 */
 	const JSON::ConstValue logOutput;
 
 	///construct only response
@@ -54,6 +59,10 @@ struct Response {
 	Response(JSON::ConstValue result,JSON::ConstValue context);
 	///construct response with context and log data
 	Response(JSON::ConstValue result,JSON::ConstValue context,JSON::ConstValue logOutput);
+
+	Response getMt() const {
+		return Response(result.getMT(), context.getMT(), logOutput.getMT());
+	}
 };
 
 ///Abstract method handler
@@ -116,7 +125,7 @@ protected:
 typedef jsonsrv::IJsonRpcLogObject ILog;
 
 ///Dispatches JSONRPC request to the handler, registers handlers, etc.
-class IDispatcher {
+class IDispatcher: public virtual IInterface {
 public:
 	///Calls RPC method
 	/**
@@ -124,7 +133,7 @@ public:
 	 * @param result result of the call. Note that promise can be unresolved, because method
 	 *  may be resolved asynchronously
 	 */
-    virtual void callMethod(const Request &req, Promise<Response> result) = 0;
+    virtual void callMethod(const Request &req, Promise<Response> result) throw() = 0;
 
 
     ///Calls RPC method directly from JSON
@@ -136,13 +145,15 @@ public:
      * @param json reference to JSON builder (must be MT safe)
      * @param request http request if available (NULL, if not)
      * @param result result is stored here
+     * @return message-id - because message ID is not carried through the result, you need
+     *  pass the ID to the result handler.
      */
-    virtual void dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural version, const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request, Promise<JSON::ConstValue> result) = 0;
+    virtual JSON::ConstValue dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural version, const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request, Promise<JSON::ConstValue> result) throw()= 0;
 };
 
 
 
-class IMethodRegister{
+class IMethodRegister: public virtual IInterface{
 public:
 	///Register method handler
 	/**
@@ -187,6 +198,15 @@ public:
     virtual void regStatsHandler(ConstStrA name, IMethod *fn, natural untilVer=naturalNull) = 0;
     ///Unregister the stat handler.
     virtual void unregStats(ConstStrA name, natural ver=naturalNull) = 0;
+
+    class IMethodEnum {
+    public:
+    	virtual void operator()(ConstStrA prototype, natural version) const = 0;
+    };
+
+    virtual void enumMethods(const IMethodEnum &enm) const  = 0;
+
+
     ///change log object
     /**
      * @param logObject use null, to disable logging

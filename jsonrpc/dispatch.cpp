@@ -36,8 +36,17 @@ inline void Dispatcher::createPrototype(ConstStrA methodName, JSON::ConstValue p
 	}
 }
 
+const void logToRpcLog(const Response &r, const Request &req) {
 
-void Dispatcher::callMethod(const Request& req, Promise<Response> result) {
+	Dispatcher *d = static_cast<Dispatcher *>(req.dispatcher.get());
+	ILog *l = d->getLogObject();
+	if (l) {
+		l->logMethod(*req.httpRequest,req.methodName,req.params,req.context,r.logOutput);
+	}
+}
+
+
+void Dispatcher::callMethod(const Request& req, Promise<Response> result) throw() {
 
 	AutoArray<char, SmallAlloc<256> > prototype;
 
@@ -49,7 +58,17 @@ void Dispatcher::callMethod(const Request& req, Promise<Response> result) {
 			throw LookupException(THISLOCATION,prototype);
 		}
 	}
-	(*m1)(req, result);
+
+
+	ILog *l = getLogObject();
+	if (l) {
+		Future<Response> newresult;
+		(*m1)(req, newresult.getPromise());
+		newresult.thenCall(Message<void,Response>::create(&logToRpcLog,req));
+		result.resolve(newresult);
+	} else {
+		(*m1)(req, result);
+	}
 
 }
 
@@ -116,6 +135,51 @@ bool Dispatcher::CmpMethodPrototype::operator ()(const Key &sa, const Key &sb) c
 	if (p1 < l1 && a[p1] != '*') return true;
 	if (p2 < l2 && b[p2] != '*') return false;
 	return sa.second < sb.second;
+}
+
+JSON::ConstValue Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg,
+	natural version, const JSON::Builder& json,
+	BredyHttpSrv::IHttpRequestInfo* request,
+	Promise<Response> result) throw () {
+
+	JSON::ConstValue id = jsonrpcmsg["id"];
+	JSON::ConstValue method = jsonrpcmsg["method"];
+	JSON::ConstValue params = jsonrpcmsg["params"];
+	JSON::ConstValue context = jsonrpcmsg["context"];
+
+	if (method == null) {
+		result.reject(ParseException(THISLOCATION,"Missing 'method'"));
+		return id;
+	} else if (!method->isString()) {
+		result.reject(ParseException(THISLOCATION,"Method must be string"));
+		return id;
+	} else if (params == null) {
+		result.reject(ParseException(THISLOCATION, "Missing 'params'"));
+		return id;
+	} else if (!params->isArray()) {
+		params = json << params;
+	}
+
+	Request r;
+	r.context = context;
+	r.dispatcher = Pointer<IDispatcher>(this);
+	r.httpRequest = request;
+	r.id = id;
+	r.isNotification = id == null || id->isNull();
+	r.json = json;
+	r.methodName = method.getStringA();
+	r.params = params;
+	r.version = version;
+
+	callMethod(r,result);
+	return id;
+}
+
+void Dispatcher::enumMethods(const IMethodEnum& enm) const {
+	for (MethodMap::Iterator iter = methodMap.getFwIter(); iter.hasItems();) {
+		const Key &key = iter.getNext().key;
+		enm(key.first, key.second);
+	}
 }
 
 }

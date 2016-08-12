@@ -33,4 +33,28 @@ JSON::ConstValue MethodException::getJSON(const JSON::Builder& json) const {
 }
 
 
+void ParseException::message(ExceptionMsg& msg) const {
+}
+
+JSON::ConstValue ParseException::getJSON(
+		const JSON::Builder& json) const {
+}
+
+UncauchException::UncauchException(const ProgramLocation& loc,
+		const Exception& e):Exception(loc)
+		,MethodException(loc,500,e.getMessageWithReason().getUtf8())
+		,type(typeid(e))
+
+{
+}
+
+JSON::ConstValue UncauchException::getJSON(const JSON::Builder& json) const {
+	return json("class","uncaughException")
+			("status",statusCode)
+			("statusMessage",statusMessage)
+			("type",type.name());
+
+}
+
+
 }

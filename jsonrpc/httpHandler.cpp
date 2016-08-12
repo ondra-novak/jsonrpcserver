@@ -15,6 +15,7 @@
 #include "../httpserver/queryParser.h"
 #include "lightspeed/base/text/textParser.tcc"
 #include "../httpserver/simpleWebSite.h"
+#include "errors.h"
 
 using LightSpeed::parseUnsignedNumber;
 namespace jsonrpc {
@@ -28,10 +29,13 @@ public:
 
 	virtual natural onData(IHttpRequest &request);
 
-	void onResultDetached(JSON::ConstValue v);
-	void onResultDetached2(JSON::ConstValue v);
-	void onResultAttached(JSON::ConstValue v);
-	natural onError(const Exception &e);
+	void onResultDetached(const Response &v, const JSON::ConstValue &id);
+	void onResultAttached(const Response &v, const JSON::ConstValue &id);
+	natural onError(const PException& e, const JSON::ConstValue &id);
+
+	void attachThread(natural status) {request.attachThread(status);}
+
+	class Action;
 
 protected:
 	natural version;
@@ -87,28 +91,32 @@ natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 
 	if (!request.canRead()) return 0;
 
-	JSON::ConstValue val; {
+	JSON::ConstValue val; try {
 		SeqFileInput input(&request);
 		val = owner.json.factory->fromStream(input);
+	} catch (std::exception &e) {
+		request.errorPage(400,ConstStrA(),e.what());
 	}
 
+	JSON::ConstValue id;
 	Future<JSON::ConstValue> futureresult;
-	owner.dispatcher.dispatchMessage(val,version,owner.json,&request,futureresult.getPromise());
+	id = owner.dispatcher.dispatchMessage(val,version,owner.json,&request,futureresult.getPromise());
 	try {
 		const JSON::ConstValue *v = futureresult.tryGetValue();
 		if (v != 0) {
-			onResultAttached(*v);
+			onResultAttached(*v,id);
 			return stContinue;
 		} else {
-			futureresult.thenCall(Message<void, JSON::ConstValue>::create(this,&HttpHandler::RpcContext::onResultDetached));
+			futureresult.thenCall(Message<void, JSON::ConstValue>::create(this,&HttpHandler::RpcContext::onResultDetached,id));
+			futureresult.onExceptionCall(Message<void, PException>::create(this,&HttpHandler::RpcContext::onError,id));
 			return stDetach;
 		}
 	} catch (Exception &e) {
-		return onError(e);
+		return onError(e.clone(),id);
 	} catch (std::exception &e) {
-		return onError(StdException(THISLOCATION,e));
+		return onError(StdException(THISLOCATION,e).clone(),id);
 	} catch (...) {
-		return onError(UnknownException(THISLOCATION));
+		return onError(UnknownException(THISLOCATION).clone(),id);
 	}
 
 }
@@ -136,27 +144,62 @@ natural HttpHandler::onGET(BredyHttpSrv::IHttpRequest&r, ConstStrA vpath) {
 
 }
 
-void HttpHandler::RpcContext::onResultDetached(JSON::ConstValue v) {
+class HttpHandler::RpcContext::Action: public IExecutor::ExecAction::Ifc {
+public:
+	LIGHTSPEED_CLONEABLECLASS;
+	HttpHandler::RpcContext &owner;
+	Response v;
+	JSON::ConstValue id;
+
+	Action(HttpHandler::RpcContext &owner,const Response v,const JSON::ConstValue &id)
+		:owner(owner),v(v.getMt()),id(id.getMT()) {}
+
+	void operator()() const {
+		owner.onResultAttached(v,id);
+		owner.attachThread(HttpHandler::stContinue);
+	}
+};
+
+
+void HttpHandler::RpcContext::onResultDetached(const Response &v, const JSON::ConstValue &id) {
 	IExecutor &executor = request.getIfc<IServerSvcs>().getExecutor();
-	executor.execute(IExecutor::ExecAction::create(this,&HttpHandler::RpcContext::onResultDetached,v));
+
+
+	executor.execute(Action(*this,v,id));
 }
 
 
-void HttpHandler::RpcContext::onResultDetached2(JSON::ConstValue v) {
-	onResultAttached(v);
-	request.attachThread(stContinue);
-}
+void HttpHandler::RpcContext::onResultAttached(const Response &v, const JSON::ConstValue &id) {
+	if (id != null && !id->isNull()) {
+		try {
+			JSON::Builder::CObject response = owner.json("id",id)
+				("error",null)
+				("result",v.result);
+			if (v.context) response("context",v.context);
 
-void HttpHandler::RpcContext::onResultAttached(JSON::ConstValue v) {
-	try {
-		SeqFileOutput output(&request);
-		owner.json.factory->toStream(*v,output);
-	} catch (...) {
-		//failed to deliver response, ignore exeception
+			SeqFileOutput output(&request);
+			owner.json.factory->toStream(*response,output);
+		} catch (...) {
+			//failed to deliver response, ignore exeception
+		}
 	}
 
 }
 
+natural HttpHandler::RpcContext::onError(const PException& e, const JSON::ConstValue &id) {
+
+	const RpcException *rpce = dynamic_cast<const RpcException *>(e.get());
+	if (rpce == 0) {
+		return onError(UncauchException(THISLOCATION,*e).clone(),id);
+	} else {
+		JSON::ConstValue response = owner.json("id",id)
+			("error",rpce->getJSON(owner.json))
+			("result",null);
+		SeqFileOutput output(&request);
+		owner.json.factory->toStream(*response,output);
+		return 0;
+	}
+}
 
 } /* namespace jsonrpc */
 
