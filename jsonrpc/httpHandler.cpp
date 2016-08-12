@@ -99,10 +99,10 @@ natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 	}
 
 	JSON::ConstValue id;
-	Future<JSON::ConstValue> futureresult;
+	Future<Response> futureresult;
 	id = owner.dispatcher.dispatchMessage(val,version,owner.json,&request,futureresult.getPromise());
 	try {
-		const JSON::ConstValue *v = futureresult.tryGetValue();
+		const Response *v = futureresult.tryGetValue();
 		if (v != 0) {
 			onResultAttached(*v,id);
 			return stContinue;

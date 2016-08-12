@@ -14,6 +14,8 @@ namespace jsonrpc {
 
 using namespace LightSpeed;
 
+Dispatcher::Dispatcher():oldAPI(*this) {}
+
 template<typename Container>
 inline void Dispatcher::createPrototype(ConstStrA methodName, JSON::ConstValue params, Container& container) {
 
@@ -36,7 +38,7 @@ inline void Dispatcher::createPrototype(ConstStrA methodName, JSON::ConstValue p
 	}
 }
 
-const void logToRpcLog(const Response &r, const Request &req) {
+void logToRpcLog(const Response &r, const Request &req) {
 
 	Dispatcher *d = static_cast<Dispatcher *>(req.dispatcher.get());
 	ILog *l = d->getLogObject();
@@ -51,10 +53,10 @@ void Dispatcher::callMethod(const Request& req, Promise<Response> result) throw(
 	AutoArray<char, SmallAlloc<256> > prototype;
 
 	createPrototype(req.methodName,req.params,prototype);
-	const IMethod *m1 = findMethod(prototype, req.version);
-	if (m1 == 0) {
+	PHandler m1 = findMethod(prototype, req.version);
+	if (m1 == null) {
 		m1 = findMethod(req.methodName, req.version);
-		if (m1 == 0) {
+		if (m1 == null) {
 			throw LookupException(THISLOCATION,prototype);
 		}
 	}
@@ -72,7 +74,8 @@ void Dispatcher::callMethod(const Request& req, Promise<Response> result) throw(
 
 }
 
-const IMethod* Dispatcher::findMethod(ConstStrA prototype, natural version) {
+Dispatcher::PHandler Dispatcher::findMethod(ConstStrA prototype, natural version) {
+	Synchronized<RWLock::ReadLock> _(mapLock);
 
 
 	MethodMap::Iterator iter = methodMap.seek(Key(StrKey(ConstStrA(prototype)),version+1));
@@ -80,7 +83,7 @@ const IMethod* Dispatcher::findMethod(ConstStrA prototype, natural version) {
 		const MethodMap::KeyValue &kv = iter.getNext();
 		if (kv.key.first == prototype && kv.key.second > version) return kv.value;
 	}
-	return 0;
+	return null;
 
 
 }
@@ -175,11 +178,140 @@ JSON::ConstValue Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg,
 	return id;
 }
 
+void Dispatcher::registerServerMethods(natural) {}
+
+void Dispatcher::regMethodHandler(ConstStrA method, IMethod* fn, natural untilVer) {
+	Synchronized<RWLock::WriteLock> _(mapLock);
+	fn->enableMTAccess();
+	methodMap.insert(Key(StrKey(StringA(method)),untilVer),fn);
+}
+
+void Dispatcher::unregMethod(ConstStrA method, natural ver) {
+	Synchronized<RWLock::WriteLock> _(mapLock);
+	methodMap.erase(Key(StrKey(method),ver));
+
+}
+
+void Dispatcher::regStatsHandler(ConstStrA name, IMethod* fn,natural untilVer) {
+	Synchronized<RWLock::WriteLock> _(mapLock);
+	fn->enableMTAccess();
+	statHandlers.insert(Key(StrKey(StringA(name)),untilVer),fn);
+}
+
+void Dispatcher::unregStats(ConstStrA name, natural ver) {
+	Synchronized<RWLock::WriteLock> _(mapLock);
+	methodMap.erase(Key(StrKey(name),ver));
+}
+
+void Dispatcher::setLogObject(ILog* log) {
+	Synchronized<RWLock::WriteLock> _(mapLock);
+	logObject = log;
+}
+
+
+ILog* Dispatcher::getLogObject() const {
+	return logObject;
+}
+
 void Dispatcher::enumMethods(const IMethodEnum& enm) const {
+	Synchronized<RWLock::ReadLock> _(mapLock);
 	for (MethodMap::Iterator iter = methodMap.getFwIter(); iter.hasItems();) {
 		const Key &key = iter.getNext().key;
 		enm(key.first, key.second);
 	}
 }
 
+class OldFunctionStub: public IMethod {
+public:
+	OldFunctionStub(const jsonsrv::IRpcCall &method):mptr(method.clone()) {}
+	virtual void operator()(const Request &req, Promise<Response> res) const {
+		jsonsrv::RpcRequest oldreq;
+		oldreq.args = static_cast<const JSON::Value &>(req.params);
+		oldreq.context = static_cast<const JSON::Value &>(req.context);
+		oldreq.functionName = req.methodName;
+		oldreq.httpRequest = req.httpRequest;
+		oldreq.id = req.id.getStringA();
+		oldreq.idnode = static_cast<const JSON::Value &>(req.id);
+		oldreq.jsonFactory = req.json.factory;
+		oldreq.serverStub = req.dispatcher->getIfcPtr<jsonsrv::IJsonRpc>();
+		JSON::Value oldres = (mptr)(&oldreq);
+		res.resolve(Response(oldres,oldreq.contextOut, oldreq.logOutput));
+	}
+
+protected:
+	jsonsrv::RpcCall mptr;
+
+
+};
+
+
+void Dispatcher::OldAPI::registerMethod(ConstStrA methodName,const jsonsrv::IRpcCall& method, ConstStrA ) {
+
+	owner.regMethodHandler(methodName,new OldFunctionStub(method));
 }
+
+void Dispatcher::OldAPI::eraseMethod(ConstStrA methodName) {
+	owner.unregMethod(methodName);
+}
+
+void Dispatcher::OldAPI::registerGlobalHandler(ConstStrA ,const jsonsrv::IRpcCall& ) {}
+void Dispatcher::OldAPI::eraseGlobalHandler(ConstStrA ) {}
+void Dispatcher::OldAPI::registerMethodObsolete(ConstStrA ) {}
+
+void Dispatcher::OldAPI::registerStatHandler(ConstStrA handlerName,const jsonsrv::IRpcCall& method) {
+	owner.regStatsHandler(handlerName,new OldFunctionStub(method));
+}
+
+void Dispatcher::OldAPI::eraseStatHandler(ConstStrA handlerName) {
+	owner.unregStats(handlerName);
+
+}
+
+void Dispatcher::OldAPI::setRequestMaxSize(natural ) {}
+
+Dispatcher::OldAPI::CallResult Dispatcher::OldAPI::callMethod(BredyHttpSrv::IHttpRequestInfo* httpRequest,
+				ConstStrA methodName, const JSON::Value& args,
+					const JSON::Value& context, const JSON::Value& id) {
+
+
+	JSON::Builder json;
+	Request req;
+	req.context = context;
+	req.params = args;
+	req.id = id;
+	req.methodName = methodName;
+	req.isNotification = false;
+	req.version = 1;
+	req.dispatcher = &owner;
+	req.httpRequest = httpRequest;
+	req.json = json.factory;
+	Future<Response> resp;
+	CallResult cres;
+	owner.callMethod(req,resp);
+	cres.id = id;
+	try {
+		const Response &result = resp.getValue();
+		cres.error = JSON::getConstant(JSON::constNull);
+		cres.result = static_cast<const JSON::Value &>(result.result);
+		cres.newContext = static_cast<const JSON::Value &>(result.context);
+		cres.logOutput = result.logOutput;
+		return cres;
+	} catch (jsonsrv::RpcError &e) {
+		cres.error = e.getError();
+		cres.result = JSON::getConstant(JSON::constNull);
+		cres.logOutput = cres.error;
+		return cres;
+	} catch (RpcException &e) {
+		cres.error = const_cast<JSON::INode *>(e.getJSON(json).get());
+		cres.result = JSON::getConstant(JSON::constNull);
+		cres.logOutput = cres.error;
+		return cres;
+	}
+}
+
+Optional<bool> Dispatcher::OldAPI::isAllowedOrigin(ConstStrA /*origin*/) {
+	return null;
+}
+
+}
+

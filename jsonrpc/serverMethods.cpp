@@ -43,8 +43,10 @@ JSON::ConstValue ServerMethods::rpcListMethods(const Request& r) {
 		Enum(JSON::Builder::Array result,natural limitVersion):result(result),limitVersion(limitVersion) {}
 		virtual void operator()(ConstStrA prototype, natural version) const {
 			if (prototype == prevPrototype) return;
-			prevPrototype = prototype;
-			if (version < limitVersion) result << prototype;
+			if (version < limitVersion) {
+				prevPrototype = prototype;
+				result << prototype;
+			}
 		}
 
 	};
@@ -53,8 +55,29 @@ JSON::ConstValue ServerMethods::rpcListMethods(const Request& r) {
 	return result;
 }
 
-JSON::ConstValue ServerMethods::rpcListMethodsDetailed(
-		const Request& r) {
+JSON::ConstValue ServerMethods::rpcListMethodsDetailed(const Request& r) {
+	IDispatcher *disp = r.dispatcher;
+	IMethodRegister &reg = disp->getIfc<IMethodRegister>();
+
+	class Enum: public IMethodRegister::IMethodEnum {
+	public:
+		mutable JSON::Builder::Object result;
+		Enum(JSON::Builder::Object result):result(result) {}
+		virtual void operator()(ConstStrA prototype, natural version) const {
+				JSON::Builder json(result.factory);
+				JSON::Value cv = result[prototype];
+				JSON::Value ver;
+				if (version == naturalNull) ver = json(null);
+				else ver = json(version);
+				if (result[prototype] == null)
+					result(prototype,json << ver);
+				else
+					json.array(result[prototype]) << ver;
+		}
+	};
+	JSON::Builder::Object result = r.json.object();
+	reg.enumMethods(Enum(result));
+	return result;
 }
 
 JSON::ConstValue ServerMethods::rpcMulticall(const Request& r) {

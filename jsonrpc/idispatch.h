@@ -66,7 +66,7 @@ struct Response {
 };
 
 ///Abstract method handler
-class IMethod {
+class IMethod: public RefCntObj {
 public:
 	virtual void operator()(const Request &, Promise<Response> ) const = 0;
 	virtual ~IMethod() {}
@@ -148,7 +148,7 @@ public:
      * @return message-id - because message ID is not carried through the result, you need
      *  pass the ID to the result handler.
      */
-    virtual JSON::ConstValue dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural version, const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request, Promise<JSON::ConstValue> result) throw()= 0;
+    virtual JSON::ConstValue dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural version, const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request, Promise<Response> result) throw()= 0;
 };
 
 

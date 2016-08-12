@@ -15,6 +15,8 @@
 #include "lightspeed/base/containers/map.h"
 
 #include "lightspeed/base/memory/sharedPtr.h"
+
+#include "lightspeed/mt/rwlock.h"
 namespace jsonrpc {
 
 using namespace LightSpeed;
@@ -27,6 +29,8 @@ public:
 	static const natural flagEnableMulticall = 2;
 	static const natural flagEnableListMethods = 4;
 	static const natural flagEnableStatHandler = 8;
+
+	Dispatcher();
 
     ///Register server's build methods
     /**
@@ -46,14 +50,44 @@ public:
 
     virtual void enumMethods(const IMethodEnum &enm) const;
 
+    class OldAPI: public jsonsrv::IJsonRpc {
+    public:
+		///old interface - emulate it
+		virtual void registerMethod(ConstStrA methodName, const jsonsrv::IRpcCall & method, ConstStrA help = ConstStrA());
+		///old interface - emulate it
+		virtual void eraseMethod(ConstStrA methodName);
+		///old interface - not implemented
+		virtual void registerGlobalHandler(ConstStrA methodUID, const jsonsrv::IRpcCall & method);
+		///old interface - not implemented
+		virtual void eraseGlobalHandler(ConstStrA methodUID);
+		///old interface - not implemented
+		virtual void registerMethodObsolete(ConstStrA methodName);
+		///old interface - emulate it
+		virtual void registerStatHandler(ConstStrA handlerName, const jsonsrv::IRpcCall & method);
+		///old interface - emulate it
+		virtual void eraseStatHandler(ConstStrA handlerName);
+		///old interface - not implemented
+		virtual void setRequestMaxSize(natural bytes);
+		///old interface - emulate it
+		virtual CallResult callMethod(BredyHttpSrv::IHttpRequestInfo *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Value &context, const JSON::Value &id);
+		///old interface - not implemented - return null
+		virtual Optional<bool> isAllowedOrigin(ConstStrA origin) ;
+
+	    virtual void setLogObject(ILog *logObject) {owner.setLogObject(logObject);}
+
+
+		OldAPI(Dispatcher &owner):owner(owner) {}
+
+	    Dispatcher &owner;
+
+    };
+
+    OldAPI oldAPI;
 
 
 protected:
 
-    const IMethod *findMethod(ConstStrA prototype, natural version);
 
-    template<typename Container>
-    static void createPrototype(ConstStrA methodName, JSON::ConstValue params, Container &container);
 
 
 
@@ -65,15 +99,22 @@ protected:
 	struct CmpMethodPrototype {
 		bool operator()(const Key &a, const Key &b) const;
 	};
-	typedef SharedPtr<IMethod> PHandler;
+	typedef RefCntPtr<IMethod> PHandler;
+
+
 
 	typedef MultiMap<Key, PHandler, CmpMethodPrototype> MethodMap;
 
 	typedef Map<StrKey,StringA> MethodHelp;
 
-	MethodMap methodMap;
+	MethodMap methodMap,statHandlers;
+	Pointer<ILog> logObject;
+	mutable RWLock mapLock;
 
 
+    template<typename Container>
+    static void createPrototype(ConstStrA methodName, JSON::ConstValue params, Container &container);
+    PHandler findMethod(ConstStrA prototype, natural version);
 };
 
 

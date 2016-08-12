@@ -9,10 +9,13 @@
 #define JSONRPC_JSONRPCSERVER_165465416_SERVER_H_
 
 #include "../httpserver/httprequest.h"
+#include "dispatch.h"
+#include "httpHandler.h"
+#include "serverMethods.h"
 
 namespace jsonrpc {
 
-class Server: public BredyHttpSrv::IHttpHandler {
+class Server: public ServerMethods, public Dispatcher, public HttpHandler {
 public:
 	Server();
 };
