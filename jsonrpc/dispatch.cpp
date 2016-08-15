@@ -10,6 +10,7 @@
 #include "errors.h"
 
 #include "lightspeed/base/containers/map.tcc"
+#include "idispatch.tcc"
 namespace jsonrpc {
 
 using namespace LightSpeed;
@@ -312,6 +313,7 @@ Dispatcher::OldAPI::CallResult Dispatcher::OldAPI::callMethod(BredyHttpSrv::IHtt
 Optional<bool> Dispatcher::OldAPI::isAllowedOrigin(ConstStrA /*origin*/) {
 	return null;
 }
+
 
 }
 

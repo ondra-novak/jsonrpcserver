@@ -104,101 +104,6 @@ public:
 	virtual ~IExceptionHandler() {}
 };
 
-///method handler with bound function.
-/** It calls specified function. The function must accept const Request &, and
- * results either Response or Promise<Response> or simple ConstValue
- */
-template<typename Fn>
-class BoundFunction: public IMethod {
-public:
-	BoundFunction(const Fn &fn):fn(fn) {}
-	void operator()(const Request &req, Promise<Response> response) const throw() {
-		try {
-			response.resolve(fn(req));
-		} catch (Exception &e) {
-			response.reject(e);
-		} catch (std::exception  &e) {
-			response.reject(StdException(THISLOCATION,e));
-		} catch (...) {
-			response.reject(UnknownException(THISLOCATION));
-		}
-	}
-protected:
-	Fn fn;
-};
-
-///Method handle with bound member function
-
-template<typename ObjPtr, typename Obj, typename Ret>
-class BoundMemberFunction: public IMethod {
-public:
-	typedef Ret (Obj::*FnRef)(const Request &req);
-
-	BoundMemberFunction(const ObjPtr objRef, FnRef fn):objRef(objRef),fn(fn) {}
-	void operator()(const Request &req, Promise<Response> response) const throw() {
-		try {
-			response.resolve((objRef->*fn)(req));
-		} catch (Exception &e) {
-			response.reject(e);
-		} catch (std::exception  &e) {
-			response.reject(StdException(THISLOCATION,e));
-		} catch (...) {
-			response.reject(UnknownException(THISLOCATION));
-		}
-	}
-protected:
-	ObjPtr objRef;
-	FnRef fn;
-};
-
-///method handler with bound function.
-/** It calls specified function. The function must accept const Request &, and
- * results either Response or Promise<Response> or simple ConstValue
- */
-template<typename Fn>
-class BoundExceptionHandler: public IExceptionHandler {
-public:
-	BoundExceptionHandler(const Fn &fn):fn(fn) {}
-	bool operator()(const Request &req, const PException &excp, Promise<Response> response) const throw() {
-		try {
-			return fn(req,excp,response);
-		} catch (Exception &e) {
-			response.reject(e);
-		} catch (std::exception  &e) {
-			response.reject(StdException(THISLOCATION,e));
-		} catch (...) {
-			response.reject(UnknownException(THISLOCATION));
-		}
-	}
-protected:
-	Fn fn;
-};
-
-///Method handle with bound member function
-
-template<typename ObjPtr, typename Obj, typename Ret>
-class BoundMemberExceptionHandler: public IExceptionHandler {
-public:
-	typedef Ret (Obj::*FnRef)(const Request &req, const PException &excp, Promise<Response> response);
-
-	BoundMemberExceptionHandler(const ObjPtr objRef, FnRef fn):objRef(objRef),fn(fn) {}
-	bool operator()(const Request &req, const PException &excp, Promise<Response> response) const throw() {
-		try {
-			return (objRef->*fn)(req,excp,response);
-		} catch (Exception &e) {
-			response.reject(e);
-		} catch (std::exception  &e) {
-			response.reject(StdException(THISLOCATION,e));
-		} catch (...) {
-			response.reject(UnknownException(THISLOCATION));
-		}
-	}
-protected:
-	ObjPtr objRef;
-	FnRef fn;
-};
-
-
 typedef jsonsrv::IJsonRpcLogObject ILog;
 
 ///Dispatches JSONRPC request to the handler, registers handlers, etc.
@@ -271,7 +176,9 @@ public:
 	virtual void unregMethod(ConstStrA method, natural ver=naturalNull) = 0;
 
 
-	virtual void regExceptionHandler(IMethod *fn, natural untilVer) = 0;
+	virtual void regExceptionHandler(ConstStrA name, IExceptionHandler *fn, natural untilVer = naturalNull) = 0;
+	virtual void unregExceptionHandler(ConstStrA name, natural untilVer = naturalNull) = 0;
+
 
     class IMethodEnum {
     public:
@@ -288,22 +195,15 @@ public:
     virtual void setLogObject(ILog *logObject) = 0;
 
     template<typename Fn>
-    void regMethod(ConstStrA method,const Fn &fn,natural ver=1) {
-    	regMethodHandler(method,new BoundFunction<Fn>(fn),ver);
-    }
+    void regMethod(ConstStrA method,const Fn &fn,natural ver=1);
     template<typename ObjPtr, typename Obj, typename Ret>
-    void regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &),natural ver=1) {
-    	regMethodHandler(method,new BoundMemberFunction<ObjPtr,Obj,Ret>(objPtr,fn),ver);
-    }
+    void regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &),natural ver=1);
 
     template<typename Fn>
-    void regStats(ConstStrA method,const Fn &fn,natural ver=1) {
-    	regStatsHandler(method,new BoundFunction<Fn>(fn),ver);
-    }
+    void regException(ConstStrA method,const Fn &fn,natural ver=1);
     template<typename ObjPtr, typename Obj, typename Ret>
-    void regStats(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &),natural ver=1) {
-    	regStatsHandler(method,new BoundMemberFunction<ObjPtr,Obj,Ret>(objPtr,fn),ver);
-    }
+    void regException(ConstStrA method, const ObjPtr &objPtr, bool (Obj::*fn)(const Request &, const PException &, Promise<Ret> ),natural ver=1);
+
 
 
 };
