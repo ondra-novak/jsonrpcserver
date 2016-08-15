@@ -68,10 +68,40 @@ struct Response {
 ///Abstract method handler
 class IMethod: public RefCntObj {
 public:
-	virtual void operator()(const Request &, Promise<Response> ) const = 0;
+
+	///Calls the method
+	/**
+	 * @param request request from the client, also contains the parameters
+	 * @param response promise which might be resolved with a result. However it is allowed
+	 * to left promise unresolved and resolve it later. By leaving promise unresolved, the current
+	 * thread is released for other requests waiting in the queue.
+	 */
+	virtual void operator()(const Request &, Promise<Response> ) const throw() = 0;
 	virtual ~IMethod() {}
 
 
+};
+
+///Abstract exception handler
+/** This exception handler is called, when method throws an exception which is unknown
+ * to the dispatcher. The exception handler can transform exception to an RpcException, or
+ * it can return a default response after the exception
+ */
+class IExceptionHandler: public RefCntObj {
+public:
+	///Handler is executed with reference to pointer to exception
+	/**
+	 * @param request pointer to the request
+	 * @param exception pointer to exception
+	 * @param response reference to promise to resolve
+	 * @retval true exception has been resolved. However, the promise can remain unresolved. In such
+	 * case, the dispatcher expect, that the exception will be resolved later.
+	 * @retval false exception has not been resolved. The dispatcher will call other handler
+	 *
+	 * Function can left promise unresolved. In this case, next exception
+	 */
+	virtual bool operator()(const Request &, const PException &, Promise<Response> ) const throw() = 0;
+	virtual ~IExceptionHandler() {}
 };
 
 ///method handler with bound function.
@@ -82,7 +112,7 @@ template<typename Fn>
 class BoundFunction: public IMethod {
 public:
 	BoundFunction(const Fn &fn):fn(fn) {}
-	void operator()(const Request &req, Promise<Response> response) const {
+	void operator()(const Request &req, Promise<Response> response) const throw() {
 		try {
 			response.resolve(fn(req));
 		} catch (Exception &e) {
@@ -105,9 +135,56 @@ public:
 	typedef Ret (Obj::*FnRef)(const Request &req);
 
 	BoundMemberFunction(const ObjPtr objRef, FnRef fn):objRef(objRef),fn(fn) {}
-	void operator()(const Request &req, Promise<Response> response) const {
+	void operator()(const Request &req, Promise<Response> response) const throw() {
 		try {
 			response.resolve((objRef->*fn)(req));
+		} catch (Exception &e) {
+			response.reject(e);
+		} catch (std::exception  &e) {
+			response.reject(StdException(THISLOCATION,e));
+		} catch (...) {
+			response.reject(UnknownException(THISLOCATION));
+		}
+	}
+protected:
+	ObjPtr objRef;
+	FnRef fn;
+};
+
+///method handler with bound function.
+/** It calls specified function. The function must accept const Request &, and
+ * results either Response or Promise<Response> or simple ConstValue
+ */
+template<typename Fn>
+class BoundExceptionHandler: public IExceptionHandler {
+public:
+	BoundExceptionHandler(const Fn &fn):fn(fn) {}
+	bool operator()(const Request &req, const PException &excp, Promise<Response> response) const throw() {
+		try {
+			return fn(req,excp,response);
+		} catch (Exception &e) {
+			response.reject(e);
+		} catch (std::exception  &e) {
+			response.reject(StdException(THISLOCATION,e));
+		} catch (...) {
+			response.reject(UnknownException(THISLOCATION));
+		}
+	}
+protected:
+	Fn fn;
+};
+
+///Method handle with bound member function
+
+template<typename ObjPtr, typename Obj, typename Ret>
+class BoundMemberExceptionHandler: public IExceptionHandler {
+public:
+	typedef Ret (Obj::*FnRef)(const Request &req, const PException &excp, Promise<Response> response);
+
+	BoundMemberExceptionHandler(const ObjPtr objRef, FnRef fn):objRef(objRef),fn(fn) {}
+	bool operator()(const Request &req, const PException &excp, Promise<Response> response) const throw() {
+		try {
+			return (objRef->*fn)(req,excp,response);
 		} catch (Exception &e) {
 			response.reject(e);
 		} catch (std::exception  &e) {
@@ -157,6 +234,8 @@ public:
 
 class IMethodRegister: public virtual IInterface{
 public:
+
+
 	///Register method handler
 	/**
 	 * @param method method name (and optionally, format of arguments)
@@ -190,18 +269,9 @@ public:
 	 * @param ver version (must be equal to version used during registration)
 	 */
 	virtual void unregMethod(ConstStrA method, natural ver=naturalNull) = 0;
-	///Registers stat handler, handler is not checked for aguments, the arguments of server.stat is passed directly
-	/**
-	 * @param name name of stat handler (no defintion arguments allowed)
-	 * @param fn function handles the statistics
-	 * @param untilVer defined when handler has been removed from the api. It is skipped, but
-	 * other handlers with same name can be used
-	 */
-    virtual void regStatsHandler(ConstStrA name, IMethod *fn, natural untilVer=naturalNull) = 0;
-    ///Unregister the stat handler.
-    virtual void unregStats(ConstStrA name, natural ver=naturalNull) = 0;
 
-    virtual PException setExceptionHandler(const std::exception &e) = 0;
+
+	virtual void regExceptionHandler(IMethod *fn, natural untilVer) = 0;
 
     class IMethodEnum {
     public:

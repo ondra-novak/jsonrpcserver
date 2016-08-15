@@ -7,6 +7,8 @@
 
 
 #include "db.h"
+
+
 #include "lightmysql/result.h"
 #include <mysql/mysql.h>
 #include "lightspeed/base/text/textParser.tcc"
@@ -15,8 +17,10 @@
 #include "lightspeed/base/timestamp.h"
 #include "lightspeed/base/exceptions/errorMessageException.h"
 #include "lightspeed/base/debug/dbglog.h"
-#include "../jsonrpc/base64.h"
 
+#include "lightspeed/utils/base64.h"
+#include <lightspeed/base/containers/convertString.h>
+using LightSpeed::convertString;
 using LightSpeed::TimeStamp;
 
 namespace jsonsrv {
@@ -242,7 +246,7 @@ LightSpeed::JSON::PNode jsonsrv::DBResultToJSON::getRow(const LightMySQL::Row& r
 				case set: nd = createArrayFromSet(*factory,row[i].as<ConstStrA>());break;
 				case setWithCustomSep1: nd = createArrayFromSet(*factory,row[i].as<ConstStrA>(),customSep1);break;
 				case setWithCustomSep2: nd = createArrayFromSet(*factory,row[i].as<ConstStrA>(),customSep2);break;
-				case binary: nd = factory->newValue(base64_encode(row[i].as<ConstStrA>()));
+				case binary: nd = factory->newValue(convertString(ByteToBase64Convert(),row[i].as<ConstBin>()));
 				case jsonstr: {
 					if (row[i].as<ConstStrA>().empty()) nd = factory->newNullNode();
 					else {

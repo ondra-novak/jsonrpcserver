@@ -224,7 +224,7 @@ void Dispatcher::enumMethods(const IMethodEnum& enm) const {
 class OldFunctionStub: public IMethod {
 public:
 	OldFunctionStub(const jsonsrv::IRpcCall &method):mptr(method.clone()) {}
-	virtual void operator()(const Request &req, Promise<Response> res) const {
+	virtual void operator()(const Request &req, Promise<Response> res) const throw() {
 		jsonsrv::RpcRequest oldreq;
 		oldreq.args = static_cast<const JSON::Value &>(req.params);
 		oldreq.context = static_cast<const JSON::Value &>(req.context);
