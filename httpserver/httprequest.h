@@ -207,7 +207,7 @@ using namespace LightSpeed;
      *
 
      */
-	class IHttpRequest: public IInOutStream, public IHttpRequestInfo {
+	class IHttpRequest: public IInOutStream, public IHttpRequestInfo, public ISleepingObject {
 
 	public:
 
@@ -497,21 +497,18 @@ using namespace LightSpeed;
 		virtual void setMaxPostSize(natural bytes) = 0;
 
 
-		///Attaches request to thread
-		/**
-		 * You can attach request which has been detached using stDetach status. Calling
-		 * this function in not-detached-state causes that request is ignored. To
-		 * handle various race conditions, calling function while request is not
-		 * detached causes that request is remembered and request is attached 
-		 * immediately after detach is completed. Also note, that using
-		 * other return value than stDetach clears the attach request. 
-		 *
-		 * @param status status code to complete request. It can be also any status
-		 *    that causes continuation of the request, such a stContinue or stWaitForWrite.
-		 *    Do not use stReject as status. It erases remembered attach request
-		 *		 
-		 * */
-		virtual void attachThread(natural status) = 0;
+		///Wakes the sleeping request up
+		 /**
+		  * @param reason argument is currently ignored. It is recomended to use zero.
+		  *
+		  * Once wakeUp is called, the sleeping connection is waken up and onData is called.
+		  *
+		  * If connection doesn't sleep, the request is recorded and applied when connection
+		  * is requested to sleep.
+		  *
+		  * @see stSleep
+		  */
+		virtual void wakeUp(natural reason = 0 ) throw() = 0;
 
 
 		///Sets request name
@@ -588,14 +585,19 @@ using namespace LightSpeed;
 			 */
 			stWaitForWrite = 999,
 
-			///Detach request from the thread
-			/**
-			 * This allows to keep request without blocking the thread.
-			 * Detached request can be attached back using IHttpRequest::attachThread()
-			 * Note that detached thread must not been left back because it causes
-			 * memory and resource leak. 
+			///Make request sleep
+			/** This put request to the sleep state. It stops to receive data and hangs connection
+			 * until it is waken up. Status allows to move processing of the request to
+			 * another thread. Once processing is done, the function wakeUp must be called to
+			 * wake up the request. The function wakeUp can be called from another thread
+			 * and causes, that request is resumed to one of server's thread. If there
+			 * is no available thread, the resuming is paused until some thread finishes its work.
+			 *
+			 * To solve varions race conditions, if function wakeUp is called before the
+			 * request is returned with state stSleep, the request is resumed immediatelly.
+			 *
 			 */
-			stDetach = 1000
+			stSleep = 1000
 		};
 
 

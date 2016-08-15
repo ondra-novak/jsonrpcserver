@@ -29,11 +29,8 @@ public:
 
 	virtual natural onData(IHttpRequest &request);
 
-	void onResultDetached(const Response &v, const JSON::ConstValue &id);
-	void onResultAttached(const Response &v, const JSON::ConstValue &id);
-	natural onError(const PException& e, const JSON::ConstValue &id);
-
-	void attachThread(natural status) {request.attachThread(status);}
+	void onResult(const Response &v, const JSON::ConstValue &id);
+	void onError(const PException& e, const JSON::ConstValue &id);
 
 	class Action;
 
@@ -41,6 +38,10 @@ protected:
 	natural version;
 	IHttpRequest &request;
 	HttpHandler &owner;
+	//result is stored here before it is send to the caller
+	//it can be created in another thread
+	//once connection is wakenUo, the value is grabbed and serialized to the output
+	JSON::ConstValue sendOnWakeUp;
 
 
 };
@@ -89,6 +90,13 @@ natural HttpHandler::onPOST(IHttpRequest& request, ConstStrA vpath) {
 
 natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 
+	if (sendOnWakeUp != null) {
+		SeqFileOutput output(&request);
+		owner.json.factory->toStream(*sendOnWakeUp,output);
+		sendOnWakeUp = null;
+		return stContinue;
+	}
+
 	if (!request.canRead()) return 0;
 
 	JSON::ConstValue val; try {
@@ -101,23 +109,11 @@ natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 	JSON::ConstValue id;
 	Future<Response> futureresult;
 	id = owner.dispatcher.dispatchMessage(val,version,owner.json,&request,futureresult.getPromise());
-	try {
-		const Response *v = futureresult.tryGetValue();
-		if (v != 0) {
-			onResultAttached(*v,id);
-			return stContinue;
-		} else {
-			futureresult.thenCall(Message<void, JSON::ConstValue>::create(this,&HttpHandler::RpcContext::onResultDetached,id));
-			futureresult.onExceptionCall(Message<void, PException>::create(this,&HttpHandler::RpcContext::onError,id));
-			return stDetach;
-		}
-	} catch (Exception &e) {
-		return onError(e.clone(),id);
-	} catch (std::exception &e) {
-		return onError(StdException(THISLOCATION,e).clone(),id);
-	} catch (...) {
-		return onError(UnknownException(THISLOCATION).clone(),id);
-	}
+	//this will carried instantly when function resolves the promise during its run
+	futureresult.thenCall(Message<void, JSON::ConstValue>::create(this,&HttpHandler::RpcContext::onResult,id),
+					Message<void, PException>::create(this,&HttpHandler::RpcContext::onError,id));
+	//moves execution back to the top of the function
+	return stSleep;
 
 }
 
@@ -144,49 +140,19 @@ natural HttpHandler::onGET(BredyHttpSrv::IHttpRequest&r, ConstStrA vpath) {
 
 }
 
-class HttpHandler::RpcContext::Action: public IExecutor::ExecAction::Ifc {
-public:
-	LIGHTSPEED_CLONEABLECLASS;
-	HttpHandler::RpcContext &owner;
-	Response v;
-	JSON::ConstValue id;
+void HttpHandler::RpcContext::onResult(const Response &v, const JSON::ConstValue &id) {
 
-	Action(HttpHandler::RpcContext &owner,const Response v,const JSON::ConstValue &id)
-		:owner(owner),v(v.getMt()),id(id.getMT()) {}
-
-	void operator()() const {
-		owner.onResultAttached(v,id);
-		owner.attachThread(HttpHandler::stContinue);
-	}
-};
-
-
-void HttpHandler::RpcContext::onResultDetached(const Response &v, const JSON::ConstValue &id) {
-	IExecutor &executor = request.getIfc<IServerSvcs>().getExecutor();
-
-
-	executor.execute(Action(*this,v,id));
-}
-
-
-void HttpHandler::RpcContext::onResultAttached(const Response &v, const JSON::ConstValue &id) {
 	if (id != null && !id->isNull()) {
-		try {
-			JSON::Builder::CObject response = owner.json("id",id)
-				("error",null)
-				("result",v.result);
-			if (v.context) response("context",v.context);
-
-			SeqFileOutput output(&request);
-			owner.json.factory->toStream(*response,output);
-		} catch (...) {
-			//failed to deliver response, ignore exeception
-		}
+		JSON::Builder::CObject response = owner.json("id",id)
+			("error",null)
+			("result",v.result);
+		if (v.context) response("context",v.context);
+		sendOnWakeUp = response;
+		request.wakeUp(0);
 	}
-
 }
 
-natural HttpHandler::RpcContext::onError(const PException& e, const JSON::ConstValue &id) {
+void HttpHandler::RpcContext::onError(const PException& e, const JSON::ConstValue &id) {
 
 	const RpcException *rpce = dynamic_cast<const RpcException *>(e.get());
 	if (rpce == 0) {
@@ -195,9 +161,8 @@ natural HttpHandler::RpcContext::onError(const PException& e, const JSON::ConstV
 		JSON::ConstValue response = owner.json("id",id)
 			("error",rpce->getJSON(owner.json))
 			("result",null);
-		SeqFileOutput output(&request);
-		owner.json.factory->toStream(*response,output);
-		return 0;
+		sendOnWakeUp = response;
+		request.wakeUp(0);
 	}
 }
 

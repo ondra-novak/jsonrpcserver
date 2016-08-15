@@ -107,8 +107,7 @@ HttpReqImpl::HttpReqImpl(ConstStrA serverIdent, Semaphore &busySemaphore)
 ,busySemaphore(busySemaphore)
 ,busyLockStatus(1)
 ,postBodyLimit(naturalNull)
-,attachStatus(IHttpHandler::stReject)
-	{
+{
 
 }
 
@@ -712,17 +711,17 @@ bool HttpReqImpl::isInputAvailable() const {
 
 ITCPServerConnHandler::Command HttpReqImpl::onUserWakeup()
 {
-	if (attachStatus == IHttpHandler::stReject) return ITCPServerConnHandler::cmdWaitUserWakeup;	
-	return processHandlerResponse(attachStatus);
+	//no handler expect this state - so close connection unconditionaly
+	if (curHandler == null) return ITCPServerConnHandler::cmdRemove;
+	//call onData and process its response
+	return processHandlerResponse(curHandler->onData(*this));
 }
 
 ITCPServerConnHandler::Command  HttpReqImpl::processHandlerResponse(natural res) {
 	//stDetach causes waiting for user wakeup.
-	if (res == IHttpHandler::stDetach) {
+	if (res == IHttpHandler::stSleep) {
 		return ITCPServerConnHandler::cmdWaitUserWakeup;
 	}
-	//this clears any registered userWakeup. Any future stDetach cannot cause unexpected interrupt
-	attachStatus = IHttpHandler::stReject;
 	//depend on whether headers has been sent
 	if (bHeaderSent) {
 		//in case of 100 response, keep connection on-line
@@ -867,9 +866,8 @@ void HttpReqImpl::setMaxPostSize(natural bytes) {
 
 }
 
-void HttpReqImpl::attachThread( natural status )
+void HttpReqImpl::wakeUp(natural reason) throw()
 {
-	attachStatus = status;
 	ITCPServerConnControl &control = getIfc<ITCPServerConnControl>();
 	control.getUserSleeper()->wakeUp(0);
 }

@@ -149,6 +149,8 @@ public:
      *  pass the ID to the result handler.
      */
     virtual JSON::ConstValue dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural version, const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request, Promise<Response> result) throw()= 0;
+
+
 };
 
 
@@ -198,6 +200,8 @@ public:
     virtual void regStatsHandler(ConstStrA name, IMethod *fn, natural untilVer=naturalNull) = 0;
     ///Unregister the stat handler.
     virtual void unregStats(ConstStrA name, natural ver=naturalNull) = 0;
+
+    virtual PException setExceptionHandler(const std::exception &e) = 0;
 
     class IMethodEnum {
     public:

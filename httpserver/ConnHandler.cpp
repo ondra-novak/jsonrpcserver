@@ -187,7 +187,7 @@ const void* ConnHandler::proxyInterface(const IInterfaceRequest& p) const {
 	return IHttpMapper::proxyInterface(p);
 }
 
-ConnHandler::Command ConnHandler::onUserWakeup( const PNetworkStream &, ITCPServerContext *context ) throw()
+ConnHandler::Command ConnHandler::onUserWakeup( const PNetworkStream &, ITCPServerContext *context, natural ) throw()
 {
 	try {
 		Synchronized<Semaphore> _(busySemaphore);

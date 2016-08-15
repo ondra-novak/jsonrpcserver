@@ -61,7 +61,7 @@ natural HelloWorldHandler::onRequest( IHttpRequest &request, ConstStrA vpath )
 		//
 		//once the long operation is finished, request will be attached back
 		//to a thread and onData event will be called
-		return stDetach;
+		return stSleep;
 	}
 }
 natural HelloWorldHandler::onData( IHttpRequest &request )
@@ -78,45 +78,37 @@ void HelloWorldContext::runLongOperation( IHttpRequest *r )
 
 void HelloWorldContext::worker( IHttpRequest *r ) {
 	
-	natural status = IHttpHandler::stInternalError;
-	try {
-		//example of long operation
-		Thread::deepSleep(5000);
-		
-		//continue in request in the current thread
+	//example of long operation
+	Thread::deepSleep(5000);
 
-		//set content type
-		r->header(IHttpRequest::fldContentType,"text/html;charset=UTF-8");
+	//continue in request in the current thread
 
-		//output only when not HEAD
-		//this is not handled in non-server thread
-		if (r->getMethod() != "HEAD") 
-		{
-			SeqFileOutput output(r);
-			PrintTextA print(output);
+	//set content type
+	r->header(IHttpRequest::fldContentType,"text/html;charset=UTF-8");
 
-			//print to output - headers are sent automatically
-			print("<!DOCTYPE html>");
-			print("<html><head><title>Hello, World!</title></head>");
-			print("<body><h1>Hello, World!</h1></body>");
-			print("</html>");
+	r->status(200);
+	//output only when not HEAD
+	//this is not handled in non-server thread
+	if (r->getMethod() != "HEAD")
+	{
+		SeqFileOutput output(r);
+		PrintTextA print(output);
 
-			//we cannot return value, because we are not in server thread.
-			//return stOK;
+		//print to output - headers are sent automatically
+		print("<!DOCTYPE html>");
+		print("<html><head><title>Hello, World!</title></head>");
+		print("<body><h1>Hello, World!</h1></body>");
+		print("</html>");
 
-			//we have to attach the request back to server's thread and set status code
-		}
-		
-		//set status
-		status = IHttpHandler::stOK;
-		//now thread will finish the request
-	} catch (std::exception &e) {
-		//catch exception, and attach thread back
-		//otherwise leak can happen
-		LS_LOG.error("Exception in thread: %1") << e.what();
+		//we cannot return value, because we are not in server thread.
+		//return stOK;
+
 	}
-	//always attach thread with status
-	r->attachThread(status);
+
+	//onData will be called, which returns stOK
+	r->wakeUp();
+	//request is finished
+	//(at this point, r is no longer valid)
 
 
 }

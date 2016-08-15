@@ -9,9 +9,5 @@
 
 namespace jsonrpc {
 
-Server::Server():HttpHandler(static_cast<IDispatcher &>(*this)) {
-	// TODO Auto-generated constructor stub
-
-}
 
 } /* namespace jsonrpc */

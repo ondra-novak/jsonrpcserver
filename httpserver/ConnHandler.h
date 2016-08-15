@@ -36,7 +36,7 @@ public:
 	virtual Command onDataReady(const PNetworkStream &stream, ITCPServerContext *context) throw();
 	virtual Command onWriteReady(const PNetworkStream &stream, ITCPServerContext *context) throw();
 	virtual Command onTimeout(const PNetworkStream &stream, ITCPServerContext *context) throw ();
-	virtual Command onUserWakeup(const PNetworkStream &stream, ITCPServerContext *context) throw();
+	virtual Command onUserWakeup(const PNetworkStream &stream, ITCPServerContext *context, natural reason) throw();
 	virtual void onDisconnectByPeer(ITCPServerContext *context) throw ();
 	virtual ITCPServerContext *onIncome(const NetworkAddress &addr) throw();
 	virtual Command onAccept(ITCPServerConnControl *controlObject, ITCPServerContext *context);

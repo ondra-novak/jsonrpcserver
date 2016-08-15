@@ -89,7 +89,7 @@ public:
 
 
 	virtual void setMaxPostSize(natural bytes) ;
-	virtual void attachThread(natural status);
+	virtual void wakeUp(natural reason = 0) throw();
 	///converts host and path to the vpath
 	/**
 	 @param host host read from the request
@@ -164,7 +164,6 @@ protected:
 	Semaphore &busySemaphore;
 	natural busyLockStatus;
 	mutable natural postBodyLimit;
-	natural attachStatus;
 
 	HdrStr requestName;
 
