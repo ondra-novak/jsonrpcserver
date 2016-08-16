@@ -108,11 +108,11 @@ natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 
 	JSON::ConstValue id;
 	Future<Response> futureresult;
-	id = owner.dispatcher.dispatchMessage(val,version,owner.json,&request,futureresult.getPromise());
+/*	id = owner.dispatcher.dispatchMessage(val,version,owner.json,&request,futureresult.getPromise());
 	//this will carried instantly when function resolves the promise during its run
 	futureresult.thenCall(Message<void, JSON::ConstValue>::create(this,&HttpHandler::RpcContext::onResult,id),
 					Message<void, PException>::create(this,&HttpHandler::RpcContext::onError,id));
-	//moves execution back to the top of the function
+	//moves execution back to the top of the function */
 	return stSleep;
 
 }

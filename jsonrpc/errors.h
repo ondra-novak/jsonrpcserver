@@ -73,10 +73,10 @@ using namespace LightSpeed;
 	public:
 		LIGHTSPEED_EXCEPTIONFINAL;
 		UncauchException(const ProgramLocation &loc, const Exception &e);
+		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const;
 
 	protected:
 
-		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const;
 		TypeInfo type;
 
 	};

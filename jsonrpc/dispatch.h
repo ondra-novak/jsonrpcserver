@@ -43,7 +43,10 @@ public:
     virtual void unregStats(ConstStrA name, natural ver=naturalNull);
     virtual void setLogObject(ILog *logObject);
     virtual void callMethod(const Request &req, Promise<Response> result) throw();
-    virtual JSON::ConstValue dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural version, const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request, Promise<Response> result) throw();
+    virtual void dispatchException(const Request &req, const PException &exception, Promise<Response> result) throw();
+    virtual void dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural version,
+    		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request,
+			Promise<JSON::ConstValue> result) throw();
 
     ILog *getLogObject() const;
 
@@ -115,6 +118,9 @@ protected:
     template<typename Container>
     static void createPrototype(ConstStrA methodName, JSON::ConstValue params, Container &container);
     PHandler findMethod(ConstStrA prototype, natural version);
+
+    class ResultObserver;
+    class ExceptionTranslateObserver;
 };
 
 

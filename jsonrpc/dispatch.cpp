@@ -141,10 +141,82 @@ bool Dispatcher::CmpMethodPrototype::operator ()(const Key &sa, const Key &sb) c
 	return sa.second < sb.second;
 }
 
-JSON::ConstValue Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-	natural version, const JSON::Builder& json,
-	BredyHttpSrv::IHttpRequestInfo* request,
-	Promise<Response> result) throw () {
+class Dispatcher::ResultObserver: public Future<Response>::IObserver, public Request {
+public:
+	ResultObserver(Promise<JSON::ConstValue> result, ILog *logService):outres(result),logService(logService) {}
+	virtual void resolve(const Response &result) throw() {
+		try {
+			JSON::Builder::CObject r = json("id",this->id)
+					("result",result.result)
+					("error",JSON::getConstant(JSON::constNull));
+			if (result.context != null) {
+				r("context",result.context);
+			}
+			if (result.logOutput != null ) {
+				logService->logMethod(*this->httpRequest,this->methodName,this->params,this->context,result.logOutput);
+			}
+			outres.resolve(r);
+		} catch (...) {
+			outres.rejectInCatch();
+		}
+		delete this;
+	}
+	virtual void resolve(const PException &e) throw() {
+		try {
+			JSON::ConstValue exceptionObj;
+			RpcException *rpce = dynamic_cast<RpcException *>(e.get());
+			if (rpce) {
+				exceptionObj = rpce->getJSON(json);
+			} else {
+				exceptionObj = UncauchException(THISLOCATION,*e).getJSON(json);
+			}
+
+			JSON::Builder::CObject r = json("id",this->id)
+					("error",exceptionObj)
+					("result",JSON::getConstant(JSON::constNull));
+			logService->logMethod(*this->httpRequest,this->methodName,this->params,this->context,exceptionObj);
+
+			outres.resolve(r);
+		} catch (...) {
+			outres.rejectInCatch();
+		}
+		delete this;
+	}
+
+protected:
+	Promise<JSON::ConstValue> outres;
+	ILog *logService;
+
+};
+
+class Dispatcher::ExceptionTranslateObserver: public Future<Response>::IObserver {
+public:
+	ExceptionTranslateObserver(Request *r, Promise<Response> result)
+		:r(r),outres(result) {}
+	virtual void resolve(const Response &result) throw() {
+		outres.resolve(result);
+		delete this;
+	}
+	virtual void resolve(const PException &e) throw() {
+		r->dispatcher->dispatchException(*r, e, outres);
+		delete this;
+	}
+
+protected:
+	Request *r;
+	Promise<Response> outres;
+	IDispatcher *dispatch;
+
+};
+
+void Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural version,
+		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request,
+		Promise<JSON::ConstValue> result) throw()
+ {
+
+	//we will store response here - we will also use this object to store exception during dispatching
+	Future<Response> respf;
+	Promise<Response> respp = respf.getPromise();
 
 	JSON::ConstValue id = jsonrpcmsg["id"];
 	JSON::ConstValue method = jsonrpcmsg["method"];
@@ -152,31 +224,32 @@ JSON::ConstValue Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg,
 	JSON::ConstValue context = jsonrpcmsg["context"];
 
 	if (method == null) {
-		result.reject(ParseException(THISLOCATION,"Missing 'method'"));
-		return id;
+		respp.reject(ParseException(THISLOCATION,"Missing 'method'"));
 	} else if (!method->isString()) {
-		result.reject(ParseException(THISLOCATION,"Method must be string"));
-		return id;
+		respp.reject(ParseException(THISLOCATION,"Method must be string"));
 	} else if (params == null) {
-		result.reject(ParseException(THISLOCATION, "Missing 'params'"));
-		return id;
-	} else if (!params->isArray()) {
-		params = json << params;
+		respp.reject(ParseException(THISLOCATION, "Missing 'params'"));
+	} else {
+		if (!params->isArray()) {
+			params = json << params;
+		}
+
+		AllocPointer<ResultObserver> r = new ResultObserver(result, getLogObject());
+		r->context = context;
+		r->dispatcher = Pointer<IDispatcher>(this);
+		r->httpRequest = request;
+		r->id = id;
+		r->isNotification = id == null || id->isNull();
+		r->json = json;
+		r->methodName = method.getStringA();
+		r->params = params;
+		r->version = version;
+
+		callMethod(*r,respp);
+		Future<Response> respf2;
+		respf.addObserver(new ExceptionTranslateObserver(r,respf2.getPromise()));
+		respf2.addObserver(r.detach());
 	}
-
-	Request r;
-	r.context = context;
-	r.dispatcher = Pointer<IDispatcher>(this);
-	r.httpRequest = request;
-	r.id = id;
-	r.isNotification = id == null || id->isNull();
-	r.json = json;
-	r.methodName = method.getStringA();
-	r.params = params;
-	r.version = version;
-
-	callMethod(r,result);
-	return id;
 }
 
 void Dispatcher::registerServerMethods(natural) {}
