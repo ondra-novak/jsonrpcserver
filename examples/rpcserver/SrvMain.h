@@ -12,7 +12,7 @@
 #include "httpserver/serverMain.h"
 #include "httpserver/simpleWebSite.h"
 #include "jsonrpc/jsonRpcServer.h"
-#include "jsonrpc/jsonRpcWebsockets.h"
+#include "jsonrpc/server.h"
 
 
 namespace httpexample {
@@ -30,8 +30,7 @@ public:
 	virtual natural onStartServer(IHttpMapper &httpMapper);
 	virtual void onLogRotate();
 
-	AllocPointer<JsonRpcServer> rpc;
-	AllocPointer<JsonRpcWebsockets> wsrpc;
+	AllocPointer<jsonrpc::Server> rpc;
 
 	JSON::PNode rpcHelloWorld(RpcRequest *r);
 	JSON::PNode rpcNumberSum(RpcRequest *r);

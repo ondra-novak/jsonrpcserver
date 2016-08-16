@@ -33,6 +33,10 @@ protected:
 	virtual natural onPOST(BredyHttpSrv::IHttpRequest& , ConstStrA );
 	virtual natural onOtherMethod(BredyHttpSrv::IHttpRequest& , ConstStrA ) {return 403;}
 
+//	natural dumpMethods(ConstStrA name, BredyHttpSrv::IHttpRequest& request);
+	natural sendClientJs(BredyHttpSrv::IHttpRequest& request);
+	natural sendWsClientJs(BredyHttpSrv::IHttpRequest& request);
+
 	class IRequestContext: public BredyHttpSrv::IHttpHandlerContext {
 	public:
 		virtual natural onData(BredyHttpSrv::IHttpRequest& request) = 0;
@@ -44,6 +48,7 @@ protected:
 
 	class RpcContext;
 	AllocPointer<BredyHttpSrv::IHttpHandler> webClient;
+	StringA methodListTag;
 
 
 

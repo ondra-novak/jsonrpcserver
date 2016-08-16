@@ -27,9 +27,9 @@ natural SrvMain::onInitServer(const Args& args, SeqFileOutput serr,
 	FilePath root (getAppPathname());
 	IniConfig::Section rpccfg = config.openSection("rpc");
 
-	rpc = new JsonRpcServer;
-	rpc->init(rpccfg);
-	wsrpc = new JsonRpcWebsockets(*rpc);
+	rpc = new jsonrpc::Server(rpccfg);
+//	rpc->init(rpccfg);
+//	wsrpc = new JsonRpcWebsockets(*rpc);
 
 
 	return 0;

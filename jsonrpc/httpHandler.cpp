@@ -16,6 +16,9 @@
 #include "lightspeed/base/text/textParser.tcc"
 #include "../httpserver/simpleWebSite.h"
 #include "errors.h"
+#include "rpc.js.h"
+#include "lightspeed/base/text/toString.tcc"
+
 
 using LightSpeed::parseUnsignedNumber;
 namespace jsonrpc {
@@ -29,19 +32,11 @@ public:
 
 	virtual natural onData(IHttpRequest &request);
 
-	void onResult(const Response &v, const JSON::ConstValue &id);
-	void onError(const PException& e, const JSON::ConstValue &id);
-
-	class Action;
-
 protected:
 	natural version;
 	IHttpRequest &request;
 	HttpHandler &owner;
-	//result is stored here before it is send to the caller
-	//it can be created in another thread
-	//once connection is wakenUo, the value is grabbed and serialized to the output
-	JSON::ConstValue sendOnWakeUp;
+	Future<JSON::ConstValue> result;
 
 
 };
@@ -90,29 +85,26 @@ natural HttpHandler::onPOST(IHttpRequest& request, ConstStrA vpath) {
 
 natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 
-	if (sendOnWakeUp != null) {
+	const JSON::ConstValue *res = result.tryGetValue();
+	if (res) {
 		SeqFileOutput output(&request);
-		owner.json.factory->toStream(*sendOnWakeUp,output);
-		sendOnWakeUp = null;
+		owner.json.factory->toStream(*(*res),output);
+		result.clear();
 		return stContinue;
 	}
 
 	if (!request.canRead()) return 0;
 
-	JSON::ConstValue val; try {
+	JSON::ConstValue val;
+	try {
 		SeqFileInput input(&request);
 		val = owner.json.factory->fromStream(input);
 	} catch (std::exception &e) {
 		request.errorPage(400,ConstStrA(),e.what());
 	}
 
-	JSON::ConstValue id;
-	Future<Response> futureresult;
-/*	id = owner.dispatcher.dispatchMessage(val,version,owner.json,&request,futureresult.getPromise());
-	//this will carried instantly when function resolves the promise during its run
-	futureresult.thenCall(Message<void, JSON::ConstValue>::create(this,&HttpHandler::RpcContext::onResult,id),
-					Message<void, PException>::create(this,&HttpHandler::RpcContext::onError,id));
-	//moves execution back to the top of the function */
+	owner.dispatcher.dispatchMessage(val,version,owner.json,&request,result.getPromise());
+	result.thenWake(request);
 	return stSleep;
 
 }
@@ -126,6 +118,16 @@ void HttpHandler::unsetClientPage() {
 
 
 natural HttpHandler::onGET(BredyHttpSrv::IHttpRequest&r, ConstStrA vpath) {
+
+/*	if (vpath.head(9)==ConstStrA("/methods/")) {
+		return dumpMethods(vpath.offset(9),r);
+	} else */
+	if (vpath == ConstStrA("/client.js")) {
+		return sendClientJs(r);
+	} else if (vpath == ConstStrA("/ws_client.js")) {
+		return sendWsClientJs(r);
+	}
+
 	if (vpath.empty()) {
 		r.redirect("+/",303);return 0;
 	}
@@ -136,35 +138,71 @@ natural HttpHandler::onGET(BredyHttpSrv::IHttpRequest&r, ConstStrA vpath) {
 	} else {
 		return r.forwardRequestTo(webClient,vpath.offset(1));
 	}
-
-
 }
 
-void HttpHandler::RpcContext::onResult(const Response &v, const JSON::ConstValue &id) {
+/*
+natural HttpHandler::dumpMethods(ConstStrA name, IHttpRequest& request) {
 
-	if (id != null && !id->isNull()) {
-		JSON::Builder::CObject response = owner.json("id",id)
-			("error",null)
-			("result",v.result);
-		if (v.context) response("context",v.context);
-		sendOnWakeUp = response;
-		request.wakeUp(0);
+	if (name.tail(3) != ConstStrA(".js")) return 404;
+	ConstStrA varname = name.crop(0,3);
+
+	HeaderValue income_etag = request.getHeaderField(IHttpRequest::fldIfNoneMatch);
+	if (income_etag.defined) {
+		StringA chkTag = varname+methodListTag;
+		if (income_etag == chkTag) return stNotModified;
 	}
-}
 
-void HttpHandler::RpcContext::onError(const PException& e, const JSON::ConstValue &id) {
 
-	const RpcException *rpce = dynamic_cast<const RpcException *>(e.get());
-	if (rpce == 0) {
-		return onError(UncauchException(THISLOCATION,*e).clone(),id);
-	} else {
-		JSON::ConstValue response = owner.json("id",id)
-			("error",rpce->getJSON(owner.json))
-			("result",null);
-		sendOnWakeUp = response;
-		request.wakeUp(0);
+	JSON::PFactory fact = JSON::create();
+	JSON::PNode arr = fact->array();
+	ConstStrA prevMethod;
+	for (HandlerMap::Iterator iter = methodMap.getFwIter(); iter.hasItems(); ) {
+		const HandlerMap::Entity &e = iter.getNext();
+		natural dots = e.key.find(':');
+		ConstStrA mname;
+		if (dots == naturalNull) mname = e.key;
+		else mname = e.key.head(dots);
+		if (mname != prevMethod) {
+			arr->add(fact->newValue(mname));
+			prevMethod = mname;
+		}
 	}
+	ConstStrA jsonstr = fact->toString(*arr);
+	HashMD5<char> hash;
+	hash.blockWrite(jsonstr,true);
+	hash.finish();
+	StringA digest = hash.hexdigest();
+	methodListTag = digest.getMT();
+	StringA etag = varname+methodListTag;
+	StringA result = ConstStrA("var ") + varname + ConstStrA("=") + jsonstr + ConstStrA(";\r\n");
+
+	request.header(IHttpRequest::fldContentType,"application/javascript");
+	request.header(IHttpRequest::fldContentLength,ToString<natural>(result.length()));
+	request.header(IHttpRequest::fldETag,etag);
+	request.writeAll(result.data(),result.length());
+
+	return stOK;
 }
+*/
+
+natural HttpHandler::sendClientJs(IHttpRequest& request) {
+	ConstBin data(reinterpret_cast<const byte *>(jsonrpcserver_rpc_js),jsonrpcserver_rpc_js_length);
+	request.header(IHttpRequest::fldContentType,"application/javascript");
+	request.header(IHttpRequest::fldContentLength,ToString<natural>(data.length()));
+	request.header(IHttpRequest::fldCacheControl,"max-age=31556926");
+	request.writeAll(data.data(),data.length());
+	return stOK;
+}
+
+natural HttpHandler::sendWsClientJs(IHttpRequest& request) {
+	ConstBin data(reinterpret_cast<const byte *>(jsonrpcserver_wsrpc_js),jsonrpcserver_wsrpc_js_length);
+	request.header(IHttpRequest::fldContentType,"application/javascript");
+	request.header(IHttpRequest::fldContentLength,ToString<natural>(data.length()));
+	request.header(IHttpRequest::fldCacheControl,"max-age=31556926");
+	request.writeAll(data.data(),data.length());
+	return stOK;
+}
+
 
 } /* namespace jsonrpc */
 
