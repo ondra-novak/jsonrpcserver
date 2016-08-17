@@ -7,9 +7,9 @@
 
 #ifndef JSONRPCSERVER_JSONRPC_932eijwo39r_LOGSERVICE_H_
 #define JSONRPCSERVER_JSONRPC_932eijwo39r_LOGSERVICE_H_
-#include <lightspeed/base/debug/dbglog_internals.h>
 
 #include "idispatch.h"
+#include "lightspeed/base/debug/LogProvider.h"
 
 namespace jsonrpc {
 
@@ -24,13 +24,13 @@ public:
 	void setFile(String fname);
 	///Redirects output to the standard log output
 	/**
-	 * @param lvlog pointer to ILogOutput instance
+	 * @param lvlog pointer to Std instance
 	 * @param type records from RPC trafic are logged under same log level. Specify the log level here
 	 *
 	 * @note - LogService sends formatted output directly to the log instance, bypassing any formatting. If you
 	 *  mix it with standard log output, you should adjust the format;
 	 */
-	void setLogOutput(ILogOutput *lvlog, ILogOutput::LogType type);
+	void setLogOutput(AbstractLogProvider *lvlog);
 
 protected:
 
@@ -40,7 +40,7 @@ protected:
 	POutputStream logfile;
 	volatile atomic logRotateCounter;
 	mutable FastLock lock;
-	Pointer<ILogOutput> lvlog;
+	Pointer<AbstractLogProvider> lvlog;
 	void logRotate();
 
 

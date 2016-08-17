@@ -36,7 +36,9 @@ void LogService::logMethod(ConstStrA source, ConstStrA methodName,
 		const JSON::ConstValue& params, const JSON::ConstValue& context,
 		const JSON::ConstValue& logOutput) {
 
-	if (logfile == nil && lvlog == nil) return;
+	POutputStream lgf = logfile;
+
+	if (lgf == nil && lvlog == nil) return;
 
 	if (logRotateCounter != DbgLog::rotateCounter) {
 		if (DbgLog::needRotateLogs(logRotateCounter)) {
@@ -70,17 +72,41 @@ void LogService::logMethod(ConstStrA source, ConstStrA methodName,
 	stream.write('[');
 	print("]\n");
 
+	if (lgf != null) {
+		Synchronized<FastLock> _(lock);
+		lgf->writeAll(stream.data(),stream.length());
+		lgf->flush();
+	}
+	if (lvlog != null) {
+		lvlog->logLine(stream.getArray(), ILogOutput::logProgress,1);
+	}
 
 }
 
 void LogService::setFile(String fname) {
+	logFileName = fname;
+	logfile = null;
+	openLog();
 }
 
-void LogService::setLogOutput(ILogOutput* lvlog, ILogOutput::LogType type) {
+void LogService::setLogOutput(AbstractLogProvider* lvlog) {
+	this->lvlog = lvlog;
 }
-
 
 void LogService::openLog() {
+	if (logFileName.empty()) return;
+	Synchronized<FastLock> _(lock);
+	try {
+		IFileIOServices &svc = IFileIOServices::getIOServices();
+		logfile = svc.openSeqFile(logFileName,IFileIOServices::fileOpenWrite,OpenFlags::append|OpenFlags::create|OpenFlags::shareDelete|OpenFlags::shareRead|OpenFlags::shareWrite).get();
+		logfile->enableMTAccess();
+	} catch (...) {
+
+	}
+}
+
+void LogService::logRotate() {
+	openLog();
 }
 
 } /* namespace jsonrpc */

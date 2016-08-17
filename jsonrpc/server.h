@@ -15,9 +15,11 @@
 #include "serverMethods.h"
 
 #include "lightspeed/base/streams/fileio.h"
+
+#include "logService.h"
 namespace jsonrpc {
 
-class Server: public ServerMethods, public Dispatcher, public HttpHandler, public ILog {
+class Server: public ServerMethods, public Dispatcher, public HttpHandler, public LogService {
 public:
 	Server(const IniConfig::Section &cfg);
 
@@ -46,8 +48,6 @@ public:
 
 	virtual natural onRequest(BredyHttpSrv::IHttpRequest& request, ConstStrA vpath);
 
-	virtual void logMethod(BredyHttpSrv::IHttpRequestInfo &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput) ;
-	virtual void logMethod(ConstStrA source, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput) ;
 
 
 
@@ -89,13 +89,6 @@ public:
 protected:
 	void loadConfig(const Config &cfg);
 	void loadConfig(const IniConfig::Section &cfg);
-
-	void openLog();
-
-	String logFileName;
-	POutputStream logfile;
-	volatile atomic logRotateCounter;
-	mutable FastLock lock;
 };
 
 } /* namespace jsonrpc */

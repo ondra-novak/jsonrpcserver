@@ -28,8 +28,6 @@ namespace jsonrpc {
 Server::Server(const IniConfig::Section& cfg)
 	:HttpHandler(static_cast<IDispatcher &>(*this))
 	,oldAPI(*this)
-	,logfile(null)
-,logRotateCounter(0)
 
 {
 	setLogObject(this);
@@ -39,8 +37,6 @@ Server::Server(const IniConfig::Section& cfg)
 Server::Server(const Config& config)
 	:HttpHandler(static_cast<IDispatcher &>(*this))
 	,oldAPI(*this)
-	,logfile(null)
-,logRotateCounter(0)
 
 {
 	setLogObject(this);
@@ -146,75 +142,6 @@ void Server::loadConfig(const IniConfig::Section& sect) {
 	loadConfig(cfg);
 
 }
-
-void Server::logMethod(BredyHttpSrv::IHttpRequestInfo& invoker,
-		ConstStrA methodName, const JSON::ConstValue& params,
-		const JSON::ConstValue& context, const JSON::ConstValue& logOutput) {
-	IHttpPeerInfo &pinfo = invoker.getIfc<IHttpPeerInfo>();
-	ConstStrA peerAddr = pinfo.getPeerRealAddr();
-	logMethod(peerAddr,methodName,params,context,logOutput);
-
-}
-
-void Server::logMethod(ConstStrA source, ConstStrA methodName,
-		const JSON::ConstValue& params, const JSON::ConstValue& context,
-		const JSON::ConstValue& logOutput) {
-
-	if (logfile == nil) return;
-	if (logRotateCounter != DbgLog::rotateCounter) {
-		if (DbgLog::needRotateLogs(logRotateCounter)) {
-			logRotate();
-		}
-	}
-
-	StringPool<char, SmallAlloc<4096> > buffer;
-	typedef typename StringPool<char, SmallAlloc<4096> >::Str Str;
-	typedef typename StringPool<char, SmallAlloc<4096> >::WriteIterator WrItr;
-
-	WrItr writr = buffer.getWriteIterator();
-	if (params == 0)
-		JSON::serialize(JSON::getConstant(JSON::constNull),writr,false);
-	else
-		JSON::serialize(params,writr,false);
-
-	Str strparams = writr.finish();
-
-	if (context == 0)
-		JSON::serialize(JSON::getConstant(JSON::constNull),writr,false);
-	else
-		JSON::serialize(context,writr,false);
-
-	Str strcontext = writr.finish();
-
-	if (logOutput == 0)
-		JSON::serialize(JSON::getConstant(JSON::constNull),writr,false);
-	else
-		JSON::serialize(logOutput,writr,false);;
-
-	Str stroutput = writr.finish();
-
-
-	LogObject lg(THISLOCATION);
-/*
-	ConstStrA resparamstr(buffers.strparams.getArray());
-	ConstStrA rescontextptr(buffers.strcontext.getArray());
-	ConstStrA resoutputptr(buffers.stroutput.getArray());
-	Synchronized<FastLock> _(lock);
-	PrintTextA pr(*logfile);
-	AbstractLogProvider::LogTimestamp tms;
-
-
-	pr("%{04}1/%{02}2/%{02}3 %{02}4:%{02}5:%{02}6 - [\"%7\",\"%8\",%9,%10,%11]\n")
-		<< tms.year << tms.month << tms.day
-		<< tms.hour << tms.min << tms.sec
-		<< source << methodName << resparamstr << rescontextptr << resoutputptr;
-	logfile->flush();*/
-}
-
-void Server::openLog() {
-}
-
-
 
 class OldFunctionStub: public IMethod {
 public:
