@@ -54,7 +54,7 @@ public:
 	 * You can open batch any time, even if client currently processing a request. The last closeBatch will wait
 	 * until current request is finished. During waiting it is still possible to collect other requests and also
 	 * reopen a close batch. The batch is finally closed by sending and processing the request. The thread which
-	 * finally closed the batch will handle all collected requests
+z	 * finally closed the batch will handle all collected requests
 	 *
 	 * @note when batch is opened, you have to use callAsync, because call() will block. You should also avoid waiting
 	 * for the Future until the batch is opened

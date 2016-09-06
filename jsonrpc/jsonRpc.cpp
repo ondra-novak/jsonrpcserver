@@ -30,6 +30,8 @@
 #include "jsonRpcWebsockets.h"
 #include "rpc.js.h"
 #include "lightspeed/base/containers/map.tcc"
+#include "lightspeed/base/interface.tcc"
+
 
 using LightSpeed::IInterface;
 using LightSpeed::StaticAlloc;

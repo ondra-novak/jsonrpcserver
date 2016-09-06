@@ -8,6 +8,8 @@
 #include "clientWS.h"
 
 #include <lightspeed/base/actions/executor.h>
+#include <lightspeed/base/interface.tcc>
+
 #include "../httpclient/httpClient.h"
 #include "../httpserver/abstractWebSockets.tcc"
 #include "lightspeed/base/exceptions/httpStatusException.h"
