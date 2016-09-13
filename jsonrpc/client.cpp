@@ -27,6 +27,7 @@ Future<Client::Result> Client::callAsync(ConstStrA method, JSON::ConstValue para
 
 	//build request
 	JSON::Builder::CObject obj = json("id", preparedList.length())
+			.container()
 			("method",method)
 			("params",params);
 	//if context is set, add to request

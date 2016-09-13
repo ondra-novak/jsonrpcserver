@@ -117,6 +117,7 @@ Future<IClient::Result> ClientWS::callAsync(ConstStrA method, JSON::ConstValue p
 	JSON::Builder bld(jsonFactory);
 	natural thisid = idcounter++;
 	JSON::Builder::CObject req = bld("id",thisid)
+			.container()
 			("method",method)
 			("params",params);
 	if (context != null) {

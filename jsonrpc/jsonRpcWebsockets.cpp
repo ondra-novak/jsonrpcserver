@@ -84,7 +84,7 @@ void JsonRpcWebsocketsConnection::sendNotification(ConstStrA name, JSON::ConstVa
 Future<JsonRpcWebsocketsConnection::Result> JsonRpcWebsocketsConnection::callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context) {
 	Synchronized<FastLockR> _(lock);
 	natural promiseId = nextPromiseId++;
-	JSON::Builder::CObject req = json("method",method)
+	JSON::Builder::CObject req = json.container("method",method)
 			("params",params)
 			("id",promiseId);
 
