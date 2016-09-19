@@ -15,11 +15,11 @@
 
 namespace jsonsrv {
 
-class JsonRpcWebsocketsConnection::HttpRequestWrapper: public BredyHttpSrv::IHttpRequestInfo {
+class JsonRpcWebsocketsConnection::HttpRequestWrapper: public BredyHttpSrv::IHttpContextControl {
 public:
-	HttpRequestWrapper(BredyHttpSrv::IHttpRequestInfo *r, JsonRpcWebsocketsConnection *owner):r(r),owner(owner) {}
+	HttpRequestWrapper(BredyHttpSrv::IHttpContextControl *r, JsonRpcWebsocketsConnection *owner):r(r),owner(owner) {}
 
-	BredyHttpSrv::IHttpRequestInfo  * const r;
+	BredyHttpSrv::IHttpContextControl  * const r;
 	JsonRpcWebsocketsConnection * const owner;
 
 protected:
@@ -37,16 +37,32 @@ protected:
 	virtual void *proxyInterface(IInterfaceRequest &p) {
 		void *x = IInterface::proxyInterface(p);
 		if (!x) x = r->proxyInterface(p);
+		//protect underlying connection
 		return x;
 	}
 	virtual const void *proxyInterface(const IInterfaceRequest &p) const {
 		const void *x = IInterface::proxyInterface(p);
 		if (!x) x = r->proxyInterface(p);
+		//protect underlying connection
 		return x;
 	}
 
 	virtual StringA getAbsoluteUrl() const { return r->getAbsoluteUrl(); }
 	virtual StringA getAbsoluteUrl(ConstStrA relpath) const { return r->getAbsoluteUrl(relpath); }
+
+	virtual void setRequestContext(IHttpHandlerContext *context) {
+		r->setRequestContext(context);
+	}
+	virtual void setConnectionContext(IHttpHandlerContext *context) {
+		owner->setContext(context);
+	}
+	virtual IHttpHandlerContext *getRequestContext() const {
+		return r->getRequestContext();
+	}
+	virtual IHttpHandlerContext *getConnectionContext() const {
+		return owner->getContext();
+	}
+
 
 
 };

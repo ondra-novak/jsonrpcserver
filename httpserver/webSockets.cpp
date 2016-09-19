@@ -39,7 +39,7 @@ natural AbstractWebSocketsHandler::onRequest(IHttpRequest& request,
 	if (websoc == 0)
 		return stReject;
 
-	request.setRequestContext(websoc);
+	request.setConnectionContext(websoc);
 
 	request.status(101, "Switching Protocols");
 	request.header(IHttpRequest::fldUpgrade, upgrade);
@@ -71,7 +71,7 @@ natural AbstractWebSocketsHandler::onRequest(IHttpRequest& request,
 
 natural AbstractWebSocketsHandler::onData(IHttpRequest& request) {
 	WebSocketConnection *handler =
-			dynamic_cast<WebSocketConnection *>(request.getRequestContext());
+			dynamic_cast<WebSocketConnection *>(request.getConnectionContext());
 	if (handler) {
 		try {
 			if (handler->onRawDataIncome())
@@ -79,8 +79,8 @@ natural AbstractWebSocketsHandler::onData(IHttpRequest& request) {
 		} catch (std::exception &e) {
 			handler->closeConnection(WebSocketsConstants::closeInternalServerError);
 			LS_LOG.error("Unhandled exception in websocket handler: %1") << e.what();
-			return stOK;
 		}
+		request.setConnectionContext(0);
 	}
 	return stOK;
 }

@@ -31,7 +31,7 @@ ServiceContext::Connection::Connection(ServiceContext* owner)
 
 }
 
-ServiceContext::Connection* ServiceContext::getContext(BredyHttpSrv::IHttpRequest* request) {
+ServiceContext::Connection* ServiceContext::getContext(BredyHttpSrv::IHttpContextControl* request) {
 	BredyHttpSrv::IHttpHandlerContext* ctx = request->getRequestContext();
 	if (ctx != 0) {
 		Connection* c = dynamic_cast<Connection*>(ctx);
@@ -49,7 +49,7 @@ ServiceContext::Connection *ServiceContext::createContext() {
 
 ServiceContext::Connection* ServiceContext::getContext( jsonsrv::RpcRequest* r) {
 	//NOTE - can throw exception
-	IHttpRequest &rq = r->httpRequest->getIfc<IHttpRequest>();
+	IHttpContextControl &rq = r->httpRequest->getIfc<IHttpContextControl>();
 	return getContext(&rq);
 }
 

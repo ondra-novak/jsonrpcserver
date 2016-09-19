@@ -42,7 +42,7 @@ public:
 
 	};
 
-	Connection *getContext( BredyHttpSrv::IHttpRequest *request);
+	Connection *getContext( BredyHttpSrv::IHttpContextControl *request);
 	Connection *getContext( jsonsrv::RpcRequest *r);
 	Connection *createContext();
 

@@ -199,6 +199,38 @@ using namespace LightSpeed;
 		};
     };
 
+    ///Interface control connection and request context
+    /** The interface is separated to easy build a proxy for these functions, for
+     * example if implementing object requires to control request context and need to
+     * emulate this feature outside.
+     */
+    class IHttpContextControl: public IHttpRequestInfo {
+    public:
+
+		///sets context for this request
+		/**
+		 * @param context pointer to context. Context is cleared when request is finished
+		 *
+		 * @note to optimize context allocation, use getContextAllocator()
+		 */
+		virtual void setRequestContext(IHttpHandlerContext *context) = 0;
+		///sets context for this connection
+		/**
+		 * @param context pointer to context. Context is destroyed when connection closes. You must be careful while reading context, because
+		 * it can belongs to different handler.
+		 *
+		 * @note to optimize context allocation, use getContextAllocator()
+		 */
+		virtual void setConnectionContext(IHttpHandlerContext *context) = 0;
+
+		///Retrieves context associated with this request
+		virtual IHttpHandlerContext *getRequestContext() const = 0;
+
+		///Retrieves context associated with this connection
+		virtual IHttpHandlerContext *getConnectionContext() const = 0;
+
+    };
+
     ///Request object represents state of server for current request
     /** The object contains information about single request. But you can receive more information
      * from the object using Interface::getIfc() method. Object implements following additional interfaces:
@@ -207,7 +239,7 @@ using namespace LightSpeed;
      *
 
      */
-	class IHttpRequest: public IInOutStream, public IHttpRequestInfo, public ISleepingObject {
+	class IHttpRequest: public IInOutStream, public IHttpContextControl, public ISleepingObject {
 
 	public:
 
@@ -438,28 +470,6 @@ using namespace LightSpeed;
 		 */
 		virtual PNetworkStream getConnection() = 0;
 
-
-		///sets context for this request
-		/**
-		 * @param context pointer to context. Context is cleared when request is finished
-		 *
-		 * @note to optimize context allocation, use getContextAllocator()
-		 */
-		virtual void setRequestContext(IHttpHandlerContext *context) = 0;
-		///sets context for this connection
-		/**
-		 * @param context pointer to context. Context is destroyed when connection closes. You must be careful while reading context, because
-		 * it can belongs to different handler.
-		 *
-		 * @note to optimize context allocation, use getContextAllocator()
-		 */
-		virtual void setConnectionContext(IHttpHandlerContext *context) = 0;
-
-		///Retrieves context associated with this request
-		virtual IHttpHandlerContext *getRequestContext() const = 0;
-
-		///Retrieves context associated with this connection
-		virtual IHttpHandlerContext *getConnectionContext() const = 0;
 
 
 		///Retrieves size of POST body
