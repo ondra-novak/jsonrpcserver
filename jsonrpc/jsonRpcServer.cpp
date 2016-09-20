@@ -1,7 +1,8 @@
 #include "jsonRpcServer.h"
+
+#include <lightspeed/utils/json/jsonserializer.tcc>
 #include "lightspeed/base/framework/app.h"
 #include "lightspeed/base/debug/dbglog.h"
-#include "lightspeed/utils/json/jsonfast.tcc"
 #include "lightspeed/base/debug/LogProvider.h"
 #include "../httpserver/serverStats.h"
 #include "../httpserver/httpServer.h"

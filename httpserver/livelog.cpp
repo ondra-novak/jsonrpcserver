@@ -1,11 +1,14 @@
 #include "livelog.h"
+
 #include "lightspeed/base/exceptions/netExceptions.h"
-#include "lightspeed/utils/json/jsonfast.tcc"
 #include "lightspeed/base/text/textstream.tcc"
 #include "queryParser.h"
 #include "lightspeed/base/containers/convertString.tcc"
 #include "lightspeed/utils/base64.h"
 #include "lightspeed/base/namedEnum.tcc"
+#include "lightspeed/utils/json/jsonparser.tcc"
+#include <lightspeed/base/interface.tcc>
+
 
 namespace BredyHttpSrv {
 
@@ -104,7 +107,7 @@ namespace BredyHttpSrv {
 			char c = fiter.peek();
 			if (!isspace(c)) {
 				if (c == '"') {
-					JSON::PNode nd = JSON::parseFast(fiter);
+					JSON::Value nd = JSON::parse(fiter, JSON::create());
 					iskw = false;
 					return nd->getStringUtf8();
 				} else {

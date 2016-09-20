@@ -17,7 +17,6 @@
 #include "../httpserver/IJobScheduler.h"
 #include "lightspeed/base/containers/stringpool.tcc"
 #include "lightspeed/base/debug/dbglog.h"
-#include "lightspeed/utils/json/jsonfast.tcc"
 #include "lightspeed/mt/exceptions/timeoutException.h"
 #include "lightspeed/base/interface.tcc"
 #include "lightspeed/base/containers/map.tcc"
@@ -32,8 +31,10 @@
 #include "lightspeed/base/containers/map.tcc"
 #include "lightspeed/base/interface.tcc"
 
+#include "lightspeed/utils/json/jsonparser.tcc"
 
 using LightSpeed::IInterface;
+using LightSpeed::JSON::Parser;
 using LightSpeed::StaticAlloc;
 
 namespace jsonsrv {
@@ -218,7 +219,7 @@ JSON::ConstValue JsonRpc::parseRequest(IHttpRequest& request, JSON::IFactory *f)
 	jsonreq = f->fromStream(indata);
 	*/
 	SeqTextInA intext(indata);
-	jsonreq = JSON::parseFast(intext,*(f->getAllocator()));
+	jsonreq = JSON::parse(intext,f);
 
 	if (jsonreq ==nil) return nil;
 
