@@ -48,7 +48,7 @@ void Server::regMethodHandler(ConstStrA method, IMethod* fn, natural untilVer) {
 		LS_LOG.info("(jsonrpc) add method: %1 ( <= %2)") << method << untilVer;
 	else
 		LS_LOG.info("(jsonrpc) add method: %1") << method;
-	Server::regMethodHandler(method,fn,untilVer);
+	Dispatcher::regMethodHandler(method,fn,untilVer);
 }
 
 void Server::unregMethod(ConstStrA method, natural ver) {
@@ -56,15 +56,15 @@ void Server::unregMethod(ConstStrA method, natural ver) {
 		LS_LOG.info("(jsonrpc) remove method: %1 ( <= %2)") << method << ver;
 	else
 		LS_LOG.info("(jsonrpc) remove method: %1") << method;
-	Server::unregMethod(method,ver);
+	Dispatcher::unregMethod(method,ver);
 }
 
 void Server::regStatsHandler(ConstStrA name, IMethod* fn,	natural untilVer) {
-	if (untilVer != naturalNull)
+/*	if (untilVer != naturalNull)
 		LS_LOG.info("(jsonrpc) add stat.handler: %1 ( <= %2)") << name << untilVer;
 	else
 		LS_LOG.info("(jsonrpc) add stat.handler: %1") << name;
-	Server::regStatsHandler(name,fn,untilVer);
+	Dispatcher::regStatsHandler(name,fn,untilVer);*/
 
 }
 
