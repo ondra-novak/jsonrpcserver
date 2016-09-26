@@ -17,26 +17,28 @@
 #include "lightspeed/base/memory/sharedPtr.h"
 
 #include "lightspeed/mt/rwlock.h"
+
+#include "methodreg.h"
 namespace jsonrpc {
 
 using namespace LightSpeed;
 
 
-class Dispatcher: public IDispatcher, public IMethodRegister, public IInterface {
+class Dispatcher: public IDispatcher, public IMethodRegister {
 public:
 
 	Dispatcher();
 
-	virtual void regMethodHandler(ConstStrA method, IMethod *fn, natural untilVer=naturalNull);
-	virtual void unregMethod(ConstStrA method, natural ver=naturalNull);
+	virtual void regMethodHandler(ConstStrA method, IMethod *fn);
+	virtual void unregMethod(ConstStrA method);
     virtual void setLogObject(ILog *logObject);
     virtual void callMethod(const Request &req, Promise<Response> result) throw();
     virtual void dispatchException(const Request &req, const PException &exception, Promise<Response> result) throw();
-    virtual void dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural version,
+    virtual void dispatchMessage(const JSON::ConstValue jsonrpcmsg,
     		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request,
 			Promise<JSON::ConstValue> result) throw();
-	virtual void regExceptionHandler(ConstStrA name, IExceptionHandler *fn, natural untilVer);
-	virtual void unregExceptionHandler(ConstStrA name, natural ver);
+	virtual void regExceptionHandler(ConstStrA name, IExceptionHandler *fn);
+	virtual void unregExceptionHandler(ConstStrA name);
 
 
 
@@ -52,7 +54,7 @@ protected:
 
 
 	typedef StringKey<StringA> StrKey;
-	typedef std::pair<StrKey, natural> Key;
+	typedef StrKey Key;
 
 	struct CmpMethodPrototype {
 		bool operator()(const Key &a, const Key &b) const;
@@ -72,7 +74,7 @@ protected:
 
     template<typename Container>
     static void createPrototype(ConstStrA methodName, JSON::ConstValue params, Container &container);
-    PMethodHandler findMethod(ConstStrA prototype, natural version);
+    PMethodHandler findMethod(ConstStrA prototype);
 
     class ResultObserver;
     class ExceptionTranslateObserver;

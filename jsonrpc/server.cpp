@@ -7,18 +7,15 @@
 
 #include <lightspeed/utils/json/jsonserializer.h>
 #include "server.h"
-
 #include "lightspeed/base/debug/dbglog.h"
-
 #include "errors.h"
-
 #include "lightspeed/base/framework/app.h"
-
 #include "../httpserver/httprequest.h"
-
 #include "lightspeed/base/memory/smallAlloc.h"
-
 #include "lightspeed/base/containers/stringpool.h"
+#include "lightspeed/base/interface.tcc"
+#include "lightspeed/base/actions/promise.tcc"
+
 using BredyHttpSrv::IHttpPeerInfo;
 using LightSpeed::DbgLog::needRotateLogs;
 using LightSpeed::JSON::serialize;
@@ -43,23 +40,17 @@ Server::Server(const Config& config)
 	loadConfig(config);
 }
 
-void Server::regMethodHandler(ConstStrA method, IMethod* fn, natural untilVer) {
-	if (untilVer != naturalNull)
-		LS_LOG.info("(jsonrpc) add method: %1 ( <= %2)") << method << untilVer;
-	else
-		LS_LOG.info("(jsonrpc) add method: %1") << method;
-	Dispatcher::regMethodHandler(method,fn,untilVer);
+void Server::regMethodHandler(ConstStrA method, IMethod* fn) {
+	LS_LOG.info("(jsonrpc) add method: %1") << method;
+	Dispatcher::regMethodHandler(method,fn);
 }
 
-void Server::unregMethod(ConstStrA method, natural ver) {
-	if (ver != naturalNull)
-		LS_LOG.info("(jsonrpc) remove method: %1 ( <= %2)") << method << ver;
-	else
-		LS_LOG.info("(jsonrpc) remove method: %1") << method;
-	Dispatcher::unregMethod(method,ver);
+void Server::unregMethod(ConstStrA method) {
+	LS_LOG.info("(jsonrpc) remove method: %1") << method;
+	Dispatcher::unregMethod(method);
 }
 
-void Server::regStatsHandler(ConstStrA name, IMethod* fn,	natural untilVer) {
+void Server::regStatsHandler(ConstStrA name, IMethod* fn) {
 /*	if (untilVer != naturalNull)
 		LS_LOG.info("(jsonrpc) add stat.handler: %1 ( <= %2)") << name << untilVer;
 	else
@@ -68,12 +59,12 @@ void Server::regStatsHandler(ConstStrA name, IMethod* fn,	natural untilVer) {
 
 }
 
-void Server::unregStats(ConstStrA name, natural ver) {
+void Server::unregStats(ConstStrA name) {
 }
 
-natural Server::onRequest(BredyHttpSrv::IHttpRequest& request,
+/*natural Server::onRequest(BredyHttpSrv::IHttpRequest& request,
 		ConstStrA vpath) {
-}
+}*/
 
 void Server::loadConfig(const Config& cfg) {
 	LogObject lg(THISLOCATION);
@@ -201,7 +192,6 @@ Server::OldAPI::CallResult Server::OldAPI::callMethod(BredyHttpSrv::IHttpRequest
 	req.id = id;
 	req.methodName = methodName;
 	req.isNotification = false;
-	req.version = 1;
 	req.dispatcher = &owner;
 	req.httpRequest = httpRequest;
 	req.json = json.factory;

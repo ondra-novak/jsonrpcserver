@@ -48,7 +48,10 @@ protected:
 
 	class RpcContext;
 	AllocPointer<BredyHttpSrv::IHttpHandler> webClient;
+	StringA clientFile;
 	StringA methodListTag;
+
+	natural dumpMethods(ConstStrA name, BredyHttpSrv::IHttpRequest& request);
 
 
 

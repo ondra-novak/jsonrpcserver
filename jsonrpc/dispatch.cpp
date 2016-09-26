@@ -10,7 +10,9 @@
 #include "errors.h"
 
 #include "lightspeed/base/containers/map.tcc"
-#include "idispatch.tcc"
+
+#include "lightspeed/base/actions/promise.tcc"
+#include "methodreg.tcc"
 namespace jsonrpc {
 
 using namespace LightSpeed;
@@ -54,9 +56,9 @@ void Dispatcher::callMethod(const Request& req, Promise<Response> result) throw(
 	AutoArray<char, SmallAlloc<256> > prototype;
 
 	createPrototype(req.methodName,req.params,prototype);
-	PMethodHandler m1 = findMethod(prototype, req.version);
+	PMethodHandler m1 = findMethod(prototype);
 	if (m1 == null) {
-		m1 = findMethod(req.methodName, req.version);
+		m1 = findMethod(req.methodName);
 		if (m1 == null) {
 			throw LookupException(THISLOCATION,prototype);
 		}
@@ -75,23 +77,28 @@ void Dispatcher::callMethod(const Request& req, Promise<Response> result) throw(
 
 }
 
-Dispatcher::PMethodHandler Dispatcher::findMethod(ConstStrA prototype, natural version) {
+Dispatcher::PMethodHandler Dispatcher::findMethod(ConstStrA prototype) {
 	Synchronized<RWLock::ReadLock> _(mapLock);
 
+	const  PMethodHandler *h = methodMap.find(StrKey(prototype));
+	if (h == 0) return null;
+	else {
+		return *h;
+	}
 
-	MethodMap::Iterator iter = methodMap.seek(Key(StrKey(ConstStrA(prototype)),version+1));
+/*	MethodMap::Iterator iter = methodMap.seek(Key(StrKey(ConstStrA(prototype))));
 	if (iter.hasItems()) {
 		const MethodMap::KeyValue &kv = iter.getNext();
 		if (kv.key.first == prototype && kv.key.second > version) return kv.value;
 	}
 	return null;
-
+*/
 
 }
 
 bool Dispatcher::CmpMethodPrototype::operator ()(const Key &sa, const Key &sb) const {
-	ConstStrA a(sa.first);
-	ConstStrA b(sb.first);
+	ConstStrA a(sa);
+	ConstStrA b(sb);
 
 	natural l1 = a.length();
 	natural l2 = b.length();
@@ -138,7 +145,7 @@ bool Dispatcher::CmpMethodPrototype::operator ()(const Key &sa, const Key &sb) c
 
 	if (p1 < l1 && a[p1] != '*') return true;
 	if (p2 < l2 && b[p2] != '*') return false;
-	return sa.second < sb.second;
+	return false;
 }
 
 class Dispatcher::ResultObserver: public Future<Response>::IObserver, public Request {
@@ -209,7 +216,7 @@ protected:
 
 };
 
-void Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural version,
+void Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg,
 		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request,
 		Promise<JSON::ConstValue> result) throw()
  {
@@ -243,7 +250,6 @@ void Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural vers
 		r->json = json;
 		r->methodName = method.getStringA();
 		r->params = params;
-		r->version = version;
 
 		callMethod(*r,respp);
 		Future<Response> respf2;
@@ -252,15 +258,15 @@ void Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg, natural vers
 	}
 }
 
-void Dispatcher::regMethodHandler(ConstStrA method, IMethod* fn, natural untilVer) {
+void Dispatcher::regMethodHandler(ConstStrA method, IMethod* fn) {
 	Synchronized<RWLock::WriteLock> _(mapLock);
 	fn->enableMTAccess();
-	methodMap.insert(Key(StrKey(StringA(method)),untilVer),fn);
+	methodMap.insert(StrKey(StringA(method)),fn);
 }
 
-void Dispatcher::unregMethod(ConstStrA method, natural ver) {
+void Dispatcher::unregMethod(ConstStrA method) {
 	Synchronized<RWLock::WriteLock> _(mapLock);
-	methodMap.erase(Key(StrKey(method),ver));
+	methodMap.erase(StrKey(method));
 
 }
 
@@ -294,22 +300,22 @@ void Dispatcher::dispatchException(const Request& req, const PException& excepti
 }
 
 
-void Dispatcher::regExceptionHandler(ConstStrA name, IExceptionHandler* fn, natural untilVer) {
+void Dispatcher::regExceptionHandler(ConstStrA name, IExceptionHandler* fn) {
 	Synchronized<RWLock::WriteLock> _(mapLock);
 	fn->enableMTAccess();
-	exceptionMap.insert(Key(StrKey(StringA(name)),untilVer),fn);
+	exceptionMap.insert(StrKey(StringA(name)),fn);
 }
 
-void Dispatcher::unregExceptionHandler(ConstStrA name, natural ver) {
+void Dispatcher::unregExceptionHandler(ConstStrA name) {
 	Synchronized<RWLock::WriteLock> _(mapLock);
-	exceptionMap.erase(Key(StrKey(name),ver));
+	exceptionMap.erase(StrKey(name));
 }
 
 void Dispatcher::enumMethods(const IMethodEnum& enm) const {
 	Synchronized<RWLock::ReadLock> _(mapLock);
 	for (MethodMap::Iterator iter = methodMap.getFwIter(); iter.hasItems();) {
 		const Key &key = iter.getNext().key;
-		enm(key.first, key.second);
+		enm(key);
 	}
 }
 

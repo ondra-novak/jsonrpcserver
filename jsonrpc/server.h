@@ -41,12 +41,12 @@ public:
 	///Perform logRotate of the rpclog
 	void logRotate() {openLog();}
 
-	virtual void regMethodHandler(ConstStrA method, IMethod *fn, natural untilVer=naturalNull);
-	virtual void unregMethod(ConstStrA method, natural ver=naturalNull);
-    virtual void regStatsHandler(ConstStrA name, IMethod *fn, natural untilVer=naturalNull);
-    virtual void unregStats(ConstStrA name, natural ver=naturalNull);
+	virtual void regMethodHandler(ConstStrA method, IMethod *fn);
+	virtual void unregMethod(ConstStrA method);
+    virtual void regStatsHandler(ConstStrA name, IMethod *fn);
+    virtual void unregStats(ConstStrA name);
 
-	virtual natural onRequest(BredyHttpSrv::IHttpRequest& request, ConstStrA vpath);
+//	virtual natural onRequest(BredyHttpSrv::IHttpRequest& request, ConstStrA vpath);
 
 
 

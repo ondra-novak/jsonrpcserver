@@ -10,7 +10,7 @@
 #include <lightspeed/base/actions/executor.h>
 #include "lightspeed/base/streams/fileio.h"
 
-#include "lightspeed/base/actions/promise.h"
+#include "lightspeed/base/actions/promise.tcc"
 
 #include "../httpserver/queryParser.h"
 #include "lightspeed/base/text/textParser.tcc"
@@ -19,7 +19,10 @@
 #include "rpc.js.h"
 #include "lightspeed/base/text/toString.tcc"
 
+#include "lightspeed/utils/md5iter.h"
 
+#include "lightspeed/base/interface.tcc"
+#include "methodreg.h"
 using LightSpeed::parseUnsignedNumber;
 namespace jsonrpc {
 
@@ -27,13 +30,12 @@ using namespace BredyHttpSrv;
 
 class HttpHandler::RpcContext: public HttpHandler::IRequestContext {
 public:
-	RpcContext(natural version, IHttpRequest &request, HttpHandler &owner)
-		:version(version),request(request),owner(owner) {}
+	RpcContext(IHttpRequest &request, HttpHandler &owner)
+		:request(request),owner(owner) {}
 
 	virtual natural onData(IHttpRequest &request);
 
 protected:
-	natural version;
 	IHttpRequest &request;
 	HttpHandler &owner;
 	Future<JSON::ConstValue> result;
@@ -65,17 +67,7 @@ natural HttpHandler::onData(IHttpRequest& request) {
 
 natural HttpHandler::onPOST(IHttpRequest& request, ConstStrA vpath) {
 	request.header(IHttpRequest::fldContentType,"application/json");
-	natural version = 1;
-
-	QueryParser qp(vpath);
-	while (qp.hasItems()) {
-		const QueryField &qf = qp.getNext();
-		if (qf.name == ConstStrA("ver")) {
-			parseUnsignedNumber(qf.value.getFwIter(),version,10);
-		}
-	}
-
-	RpcContext *ctx = new RpcContext(version,request,*this);
+	RpcContext *ctx = new RpcContext(request,*this);
 	request.setRequestContext(ctx);
 
 	return stContinue;
@@ -103,14 +95,15 @@ natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 		request.errorPage(400,ConstStrA(),e.what());
 	}
 
-	owner.dispatcher.dispatchMessage(val,version,owner.json,&request,result.getPromise());
+	owner.dispatcher.dispatchMessage(val,owner.json,&request,result.getPromise());
 	result.thenWake(request);
 	return stSleep;
 
 }
 
 void HttpHandler::setClientPage(const FilePath& path) {
-	webClient = new BredyHttpSrv::SimpleWebSite(path,0);
+	webClient = new BredyHttpSrv::SimpleWebSite(FilePath(path.getPath()),0);
+	clientFile = String::getUtf8(path.getFilename());
 }
 void HttpHandler::unsetClientPage() {
 	webClient = null;
@@ -119,28 +112,25 @@ void HttpHandler::unsetClientPage() {
 
 natural HttpHandler::onGET(BredyHttpSrv::IHttpRequest&r, ConstStrA vpath) {
 
-/*	if (vpath.head(9)==ConstStrA("/methods/")) {
+	if (vpath.head(9)==ConstStrA("/methods/")) {
 		return dumpMethods(vpath.offset(9),r);
-	} else */
+	} else
 	if (vpath == ConstStrA("/client.js")) {
 		return sendClientJs(r);
 	} else if (vpath == ConstStrA("/ws_client.js")) {
 		return sendWsClientJs(r);
 	}
 
-	if (vpath.empty()) {
-		r.redirect("+/",303);return 0;
-	}
-	if (vpath[0] != '/') return stNotFound;
 	if (webClient == null) {
 		r.header(r.fldAllow,"POST, OPTIONS");
 		return stMethodNotAllowed;
 	} else {
-		return r.forwardRequestTo(webClient,vpath.offset(1));
+		if (vpath.empty()) vpath = clientFile;
+		return r.forwardRequestTo(webClient,vpath);
 	}
 }
 
-/*
+
 natural HttpHandler::dumpMethods(ConstStrA name, IHttpRequest& request) {
 
 	if (name.tail(3) != ConstStrA(".js")) return 404;
@@ -148,32 +138,40 @@ natural HttpHandler::dumpMethods(ConstStrA name, IHttpRequest& request) {
 
 	HeaderValue income_etag = request.getHeaderField(IHttpRequest::fldIfNoneMatch);
 	if (income_etag.defined) {
-		StringA chkTag = varname+methodListTag;
+		StringA chkTag = methodListTag;
 		if (income_etag == chkTag) return stNotModified;
 	}
 
 
 	JSON::PFactory fact = JSON::create();
-	JSON::PNode arr = fact->array();
+	JSON::Value arr = fact->array();
 	ConstStrA prevMethod;
-	for (HandlerMap::Iterator iter = methodMap.getFwIter(); iter.hasItems(); ) {
-		const HandlerMap::Entity &e = iter.getNext();
-		natural dots = e.key.find(':');
-		ConstStrA mname;
-		if (dots == naturalNull) mname = e.key;
-		else mname = e.key.head(dots);
-		if (mname != prevMethod) {
-			arr->add(fact->newValue(mname));
-			prevMethod = mname;
+
+	IMethodRegister &mreg = dispatcher.getIfc<IMethodRegister>();
+
+	class MethodReceiver: public IMethodRegister::IMethodEnum {
+	public:
+		MethodReceiver(JSON::Value &arr, JSON::PFactory &fact):arr(arr),fact(fact) {}
+		virtual void operator()(ConstStrA prototype) const {
+			ConstStrA baseName = prototype.split(':').getNext();
+			if (baseName == prevMethod) return;
+			arr->add(fact->newValue(baseName));
 		}
-	}
+
+		JSON::Value &arr;
+		JSON::PFactory &fact;
+		ConstStrA prevMethod;
+	};
+
+	mreg.enumMethods(MethodReceiver(arr,fact));
+
 	ConstStrA jsonstr = fact->toString(*arr);
 	HashMD5<char> hash;
 	hash.blockWrite(jsonstr,true);
 	hash.finish();
 	StringA digest = hash.hexdigest();
 	methodListTag = digest.getMT();
-	StringA etag = varname+methodListTag;
+	StringA etag = methodListTag;
 	StringA result = ConstStrA("var ") + varname + ConstStrA("=") + jsonstr + ConstStrA(";\r\n");
 
 	request.header(IHttpRequest::fldContentType,"application/javascript");
@@ -183,7 +181,7 @@ natural HttpHandler::dumpMethods(ConstStrA name, IHttpRequest& request) {
 
 	return stOK;
 }
-*/
+
 
 natural HttpHandler::sendClientJs(IHttpRequest& request) {
 	ConstBin data(reinterpret_cast<const byte *>(jsonrpcserver_rpc_js),jsonrpcserver_rpc_js_length);

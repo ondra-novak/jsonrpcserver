@@ -15,6 +15,8 @@ namespace jsonrpc {
 
 using namespace LightSpeed;
 
+class IMethodRegister;
+
 class ServerMethods {
 public:
 
@@ -27,7 +29,6 @@ public:
 
 
 	JSON::ConstValue rpcListMethods(const Request &r);
-	JSON::ConstValue rpcListMethodsDetailed(const Request &r);
 	JSON::ConstValue rpcMulticall(const Request &r);
 	JSON::ConstValue rpcStats(const Request &r);
 	JSON::ConstValue rpcCrash(const Request &r);

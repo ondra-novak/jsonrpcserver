@@ -7,6 +7,8 @@
 
 #include "SrvMain.h"
 #include <lightspeed/base/containers/autoArray.tcc>
+#include "jsonrpc/methodreg.tcc"
+
 
 namespace httpexample {
 
@@ -38,9 +40,9 @@ natural SrvMain::onInitServer(const Args& args, SeqFileOutput serr,
 
 natural SrvMain::onStartServer(BredyHttpSrv::IHttpMapper& httpMapper) {
 
-	rpc->registerMethod("helloWorld:",RpcCall::create(this,&SrvMain::rpcHelloWorld));
-	rpc->registerMethod("sumNumbers",RpcCall::create(this,&SrvMain::rpcNumberSum));
-	rpc->registerMethod("reverse:s",RpcCall::create(this,&SrvMain::rpcReverse));
+	rpc->regMethod("helloWorld:",this,&SrvMain::rpcHelloWorld);
+	rpc->regMethod("sumNumbers",this,&SrvMain::rpcNumberSum);
+	rpc->regMethod("reverse:s",this,&SrvMain::rpcReverse);
 
 
 	httpMapper.addSite("/RPC",rpc);
@@ -56,30 +58,30 @@ void SrvMain::onLogRotate()
 	rpc->logRotate();
 }
 
-JSON::PNode SrvMain::rpcHelloWorld( RpcRequest *r )
+JSON::Value SrvMain::rpcHelloWorld( const Request &r )
 {
-	return r->jsonFactory->newValue("Hello, World!");
+	return r.json("Hello, World!");
 }
 
-JSON::PNode SrvMain::rpcNumberSum( RpcRequest *r )
+JSON::Value SrvMain::rpcNumberSum(const Request &r )
 {
 	double sum = 0;
 	natural count = 0;
-	JSON::Iterator iter = r->args->getFwIter();
+	JSON::ConstIterator iter = r.params->getFwIter();
 	while (iter.hasItems()) {
-		double c = iter.getNext().node->getFloat();
+		double c = iter.getNext().getNumber();
 		sum += c;
 		count++;
 	}
-	return r->object()
+	return r.json
 		("sum",sum)
 		("avg",sum/count);
 }
 
-JSON::PNode SrvMain::rpcReverse( RpcRequest *r )
+JSON::Value SrvMain::rpcReverse(const Request &r )
 {
-	ConstStrA txt = r->argStrA(0);
-	return r->jsonFactory->newValue(StringA(txt.reverse()));
+	ConstStrA txt = r.params[0].getStringA();
+	return r.json(StringA(txt.reverse()));
 }
 
 } /* namespace qrpass */

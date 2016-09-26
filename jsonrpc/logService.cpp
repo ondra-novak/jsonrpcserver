@@ -7,10 +7,12 @@
 
 #include "logService.h"
 
-#include <lightspeed/base/text/textOut.h>
-#include <lightspeed/utils/json/jsonserializer.h>
+#include <lightspeed/base/streams/standardIO.h>
+#include <lightspeed/base/text/textOut.tcc>
+#include <lightspeed/utils/json/jsonserializer.tcc>
 
 #include "lightspeed/base/debug/LogProvider.h"
+
 namespace jsonrpc {
 
 

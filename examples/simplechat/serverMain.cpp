@@ -8,6 +8,8 @@
 #include "serverMain.h"
 #include "lightspeed/utils/FilePath.h"
 #include "lightspeed/base/debug/dbglog.h"
+#include "lightspeed/base/containers/set.tcc"
+
 
 using LightSpeed::FilePath;
 

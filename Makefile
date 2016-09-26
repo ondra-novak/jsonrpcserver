@@ -31,6 +31,6 @@ $(CONFIG): testheader Makefile
 EXAMPLES += $(wildcard examples/*)
 
 examples: $(LIBFULLNAME)
-	for I in $(EXAMPLES); do $(MAKE) -C $$I; done
+	for I in $(EXAMPLES); do $(MAKE) -C $$I& done
 	
 	

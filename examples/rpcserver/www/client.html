@@ -567,16 +567,38 @@ function initQuickHelp() {
 	
 }
 
+function extractArgs(args) {
+	var ret = "";
+	for (var i = 0; i < args.length; i++) {
+		if (i) 	ret = ret + ", ";
+		var z = args[i];
+		switch (z) {
+		case "s": ret = ret + "\"string\"";break;
+		case "n": ret = ret + "<number>";break;
+		case "b": ret = ret + "true/false";break;
+		case "c": ret = ret + "{...}";break;
+		case "a": ret = ret + "[...]";break;
+		case "x": ret = ret + "null";break;
+		case "d": ret = ret + "<datetime>";break;
+		case "?": ret = ret + "<any>";break;
+		case "*": ret = ret + "...";break;
+		default: ret = ret + "?";break;
+		}
+ 
+	}	
+	return ret;
+}
+
 function showMethodQuickHelp(method) {
 	var varmethod = method;
-	var parammethod = method+" ";
+	var parammethod = method+":";
 	var element = document.getElementById("quickhelp");
 	var eltext = document.getElementById("quickhelptext");
 	var s = "";
 	for (var i = 0; i < methods_quickhelp.length; i++) {
 		var m = methods_quickhelp[i];
 		if (m.substr(0,parammethod.length) == parammethod) {
-			s = s + m + "<br>";
+			s = s + method + " [" + extractArgs(m.substr(parammethod.length)) + "]" + "<br>";
 		} else if (m == varmethod) {
 			s = s + m + " [...]<br>";
 		}

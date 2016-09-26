@@ -7,12 +7,13 @@
 
 #include "serverMethods.h"
 
+#include "methodreg.h"
+#include "methodreg.tcc"
 namespace jsonrpc {
 
 void ServerMethods::registerServerMethods(IMethodRegister &reg, natural flags) {
 	if (flags & flagEnableListMethods) {
 		reg.regMethod("Server.listMethods:", this, &ServerMethods::rpcListMethods);
-		reg.regMethod("Server.listMethodsDetailed:", this, &ServerMethods::rpcListMethodsDetailed);
 	}
 	if (flags & flagEnableMulticall) {
 		reg.regMethod("Server.multicall", this, &ServerMethods::rpcMulticall);
@@ -40,45 +41,19 @@ JSON::ConstValue ServerMethods::rpcListMethods(const Request& r) {
 		mutable JSON::Builder::Array result;
 		mutable ConstStrA prevPrototype;
 		natural limitVersion;
-		Enum(JSON::Builder::Array result,natural limitVersion):result(result),limitVersion(limitVersion) {}
-		virtual void operator()(ConstStrA prototype, natural version) const {
+		Enum(JSON::Builder::Array result):result(result) {}
+		virtual void operator()(ConstStrA prototype) const {
 			if (prototype == prevPrototype) return;
-			if (version < limitVersion) {
-				prevPrototype = prototype;
-				result << prototype;
-			}
+			prevPrototype = prototype;
+			result << prototype;
 		}
 
 	};
 	JSON::Builder::Array result = r.json.array();
-	reg.enumMethods(Enum(result,r.version));
-	return result;
-}
-
-JSON::ConstValue ServerMethods::rpcListMethodsDetailed(const Request& r) {
-	IDispatcher *disp = r.dispatcher;
-	IMethodRegister &reg = disp->getIfc<IMethodRegister>();
-
-	class Enum: public IMethodRegister::IMethodEnum {
-	public:
-		mutable JSON::Builder::Object result;
-		Enum(JSON::Builder::Object result):result(result) {}
-		virtual void operator()(ConstStrA prototype, natural version) const {
-				JSON::Builder json(result.factory);
-				JSON::Value cv = result[prototype];
-				JSON::Value ver;
-				if (version == naturalNull) ver = json(null);
-				else ver = json(version);
-				if (result[prototype] == null)
-					result(prototype,json << ver);
-				else
-					json.array(result[prototype]) << ver;
-		}
-	};
-	JSON::Builder::Object result = r.json.object();
 	reg.enumMethods(Enum(result));
 	return result;
 }
+
 
 JSON::ConstValue ServerMethods::rpcMulticall(const Request& r) {
 }

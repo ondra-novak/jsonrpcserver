@@ -19,7 +19,7 @@ namespace httpexample {
 
 using namespace LightSpeed;
 using namespace BredyHttpSrv;
-using namespace jsonsrv;
+using namespace jsonrpc;
 
 
 class SrvMain: public AbstractServerMain {
@@ -30,11 +30,11 @@ public:
 	virtual natural onStartServer(IHttpMapper &httpMapper);
 	virtual void onLogRotate();
 
-	AllocPointer<jsonrpc::Server> rpc;
+	AllocPointer<Server> rpc;
 
-	JSON::PNode rpcHelloWorld(RpcRequest *r);
-	JSON::PNode rpcNumberSum(RpcRequest *r);
-	JSON::PNode rpcReverse(RpcRequest *r);
+	JSON::PNode rpcHelloWorld(const Request &r);
+	JSON::PNode rpcNumberSum(const Request &r);
+	JSON::PNode rpcReverse(const Request &r);
 
 };
 
