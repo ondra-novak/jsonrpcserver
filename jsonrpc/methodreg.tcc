@@ -8,8 +8,37 @@
 #pragma once
 
 #include "methodreg.h"
+#include <lightspeed/base/actions/promise.tcc>
 
 namespace jsonrpc {
+
+static inline Future<Response> returnValueToResponse(const JSON::ConstValue &result) {
+	Future<Response> f;
+	f.getPromise().resolve(result);
+	return f;
+}
+
+static inline Future<Response> returnValueToResponse(const Response &result) {
+	Future<Response> f;
+	f.getPromise().resolve(result);
+	return f;
+}
+
+static inline Future<Response> returnValueToResponse(const Future<JSON::ConstValue> &result) {
+	return Future<Response>::transform(result);
+}
+
+static inline Future<Response> returnValueToResponse(const Future<JSON::Container> &result) {
+	return Future<Response>::transform(result);
+}
+
+static inline Future<Response> returnValueToResponse(const Future<JSON::Value> &result) {
+	return Future<Response>::transform(result);
+}
+
+static inline Future<Response> returnValueToResponse(const Future<Response> &result) {
+	return result;
+}
 
 template<typename Fn>
 void IMethodRegister::regMethod(ConstStrA method,const Fn &fn) {
@@ -21,15 +50,13 @@ void IMethodRegister::regMethod(ConstStrA method,const Fn &fn) {
 	class BoundFunction: public IMethod {
 	public:
 		BoundFunction(const Fn &fn):fn(fn) {}
-		void operator()(const Request &req, Promise<Response> response) const throw() {
+		Future<Response> operator()(const Request &req) const throw() {
 			try {
-				response.resolve(fn(req));
-			} catch (Exception &e) {
-				response.reject(e);
-			} catch (std::exception  &e) {
-				response.reject(StdException(THISLOCATION,e));
+				return returnValueToResponse(fn(req));
 			} catch (...) {
-				response.reject(UnknownException(THISLOCATION));
+				Future<Response> r;
+				r.getPromise().rejectInCatch();
+				return r;
 			}
 		}
 	protected:

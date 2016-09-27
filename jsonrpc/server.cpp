@@ -137,18 +137,24 @@ void Server::loadConfig(const IniConfig::Section& sect) {
 class OldFunctionStub: public IMethod {
 public:
 	OldFunctionStub(const jsonsrv::IRpcCall &method):mptr(method.clone()) {}
-	virtual void operator()(const Request &req, Promise<Response> res) const throw() {
-		jsonsrv::RpcRequest oldreq;
-		oldreq.args = static_cast<const JSON::Value &>(req.params);
-		oldreq.context = static_cast<const JSON::Value &>(req.context);
-		oldreq.functionName = req.methodName;
-		oldreq.httpRequest = req.httpRequest;
-		oldreq.id = req.id.getStringA();
-		oldreq.idnode = static_cast<const JSON::Value &>(req.id);
-		oldreq.jsonFactory = req.json.factory;
-		oldreq.serverStub = req.dispatcher->getIfcPtr<jsonsrv::IJsonRpc>();
-		JSON::Value oldres = (mptr)(&oldreq);
-		res.resolve(Response(oldres,oldreq.contextOut, oldreq.logOutput));
+	virtual Future<Response> operator()(const Request &req) const throw() {
+		Future<Response> out;
+		try {
+			jsonsrv::RpcRequest oldreq;
+			oldreq.args = static_cast<const JSON::Value &>(req.params);
+			oldreq.context = static_cast<const JSON::Value &>(req.context);
+			oldreq.functionName = req.methodName;
+			oldreq.httpRequest = req.httpRequest;
+			oldreq.id = req.id.getStringA();
+			oldreq.idnode = static_cast<const JSON::Value &>(req.id);
+			oldreq.jsonFactory = req.json.factory;
+			oldreq.serverStub = req.dispatcher->getIfcPtr<jsonsrv::IJsonRpc>();
+			JSON::Value oldres = (mptr)(&oldreq);
+			out.getPromise().resolve(Response(oldres, oldreq.contextOut, oldreq.logOutput));
+		} catch (...) {
+			out.getPromise().rejectInCatch();
+		}
+		return out;
 	}
 
 protected:
@@ -195,9 +201,9 @@ Server::OldAPI::CallResult Server::OldAPI::callMethod(BredyHttpSrv::IHttpRequest
 	req.dispatcher = &owner;
 	req.httpRequest = httpRequest;
 	req.json = json.factory;
-	Future<Response> resp;
+
 	CallResult cres;
-	owner.callMethod(req,resp);
+	Future<Response> resp = owner.callMethod(req);
 	cres.id = id;
 	try {
 		const Response &result = resp.getValue();

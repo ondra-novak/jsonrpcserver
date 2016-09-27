@@ -41,17 +41,7 @@ inline void Dispatcher::createPrototype(ConstStrA methodName, JSON::ConstValue p
 	}
 }
 
-void logToRpcLog(const Response &r, const Request &req) {
-
-	Dispatcher *d = static_cast<Dispatcher *>(req.dispatcher.get());
-	ILog *l = d->getLogObject();
-	if (l) {
-		l->logMethod(*req.httpRequest,req.methodName,req.params,req.context,r.logOutput);
-	}
-}
-
-
-void Dispatcher::callMethod(const Request& req, Promise<Response> result) throw() {
+Future<Response> Dispatcher::callMethod(const Request& req) throw() {
 
 	AutoArray<char, SmallAlloc<256> > prototype;
 
@@ -65,15 +55,7 @@ void Dispatcher::callMethod(const Request& req, Promise<Response> result) throw(
 	}
 
 
-	ILog *l = getLogObject();
-	if (l) {
-		Future<Response> newresult;
-		(*m1)(req, newresult.getPromise());
-		newresult.thenCall(Message<void,Response>::create(&logToRpcLog,req));
-		result.resolve(newresult);
-	} else {
-		(*m1)(req, result);
-	}
+	return (*m1)(req);
 
 }
 
@@ -148,7 +130,7 @@ bool Dispatcher::CmpMethodPrototype::operator ()(const Key &sa, const Key &sb) c
 	return false;
 }
 
-class Dispatcher::ResultObserver: public Future<Response>::IObserver, public Request {
+class Dispatcher::ResultObserver: public Future<Response>::IObserver, public Request, public DynObject {
 public:
 	ResultObserver(Promise<JSON::ConstValue> result, ILog *logService):outres(result),logService(logService) {}
 	virtual void resolve(const Response &result) throw() {
@@ -159,7 +141,7 @@ public:
 			if (result.context != null) {
 				r("context",result.context);
 			}
-			if (result.logOutput != null ) {
+			if (logService != 0 ) {
 				logService->logMethod(*this->httpRequest,this->methodName,this->params,this->context,result.logOutput);
 			}
 			outres.resolve(r);
@@ -181,7 +163,8 @@ public:
 			JSON::Builder::CObject r = json("id",this->id)
 					("error",exceptionObj)
 					("result",JSON::getConstant(JSON::constNull));
-			logService->logMethod(*this->httpRequest,this->methodName,this->params,this->context,exceptionObj);
+			if (logService != 0 )
+				logService->logMethod(*this->httpRequest,this->methodName,this->params,this->context,exceptionObj);
 
 			outres.resolve(r);
 		} catch (...) {
@@ -196,7 +179,7 @@ protected:
 
 };
 
-class Dispatcher::ExceptionTranslateObserver: public Future<Response>::IObserver {
+class Dispatcher::ExceptionTranslateObserver: public Future<Response>::IObserver, public DynObject {
 public:
 	ExceptionTranslateObserver(Request *r, Promise<Response> result)
 		:r(r),outres(result) {}
@@ -205,7 +188,7 @@ public:
 		delete this;
 	}
 	virtual void resolve(const PException &e) throw() {
-		r->dispatcher->dispatchException(*r, e, outres);
+		outres.resolve(r->dispatcher->dispatchException(*r, e));
 		delete this;
 	}
 
@@ -216,45 +199,76 @@ protected:
 
 };
 
-void Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request,
-		Promise<JSON::ConstValue> result) throw()
+Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg,
+		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request) throw()
  {
 
-	//we will store response here - we will also use this object to store exception during dispatching
-	Future<Response> respf;
-	Promise<Response> respp = respf.getPromise();
 
 	JSON::ConstValue id = jsonrpcmsg["id"];
 	JSON::ConstValue method = jsonrpcmsg["method"];
 	JSON::ConstValue params = jsonrpcmsg["params"];
 	JSON::ConstValue context = jsonrpcmsg["context"];
 
-	if (method == null) {
-		respp.reject(ParseException(THISLOCATION,"Missing 'method'"));
-	} else if (!method->isString()) {
-		respp.reject(ParseException(THISLOCATION,"Method must be string"));
-	} else if (params == null) {
-		respp.reject(ParseException(THISLOCATION, "Missing 'params'"));
-	} else {
-		if (!params->isArray()) {
-			params = json << params;
+	//Request is initialized as ResultObserver which will later create result JSON
+	Future<JSON::ConstValue> result;
+	AllocPointer<ResultObserver> r = new(IPromiseControl::getAllocator()) ResultObserver(result.getPromise(), getLogObject());
+	r->context = context;
+	r->dispatcher = Pointer<IDispatcher>(this);
+	r->httpRequest = request;
+	r->id = id;
+	r->isNotification = id == null || id->isNull();
+	r->json = json;
+	r->methodName = method.getStringA();
+	r->params = params;
+
+
+	try {
+		if (method == null) {
+			throw ParseException(THISLOCATION,"Missing 'method'");
+		} else if (!method->isString()) {
+			throw ParseException(THISLOCATION,"Method must be string");
+		} else if (params == null) {
+			throw ParseException(THISLOCATION, "Missing 'params'");
+		} else {
+			if (!params->isArray()) {
+				params = json << params;
+			}
+
+
+			//Call method, receive response
+			Future<Response> resp = callMethod(*r);
+
+			//function can return Future(null) to emit "false" as result
+			if (!resp.hasPromise()) {
+				resp.clear();
+				resp.getPromise().resolve(JSON::getConstant(JSON::constFalse));
+			}
+
+			//If value is ready now, we can make shortcut
+			if (resp.tryGetValueNoThrow()) {
+				//directly convert value to JSON.
+				resp.addObserver(r.detach());
+			} else {
+				//create intermediate future
+				Future<Response> resp2;
+				//attach exception conversion observer
+				resp.addObserver(new(IPromiseControl::getAllocator()) ExceptionTranslateObserver(r,resp2.getPromise()));
+				//attach convertor to JSON
+				resp2.addObserver(r.detach());
+			}
+			//return converted value
+			return result;
 		}
+	} catch (...) {
+		//create error response
+		Future<Response> err;
+		//reject response with exception
+		err.getPromise().rejectInCatch();
+		//convert exception to JSON
+		err.addObserver(r.detach());
+		//return the result
+		return result;
 
-		AllocPointer<ResultObserver> r = new ResultObserver(result, getLogObject());
-		r->context = context;
-		r->dispatcher = Pointer<IDispatcher>(this);
-		r->httpRequest = request;
-		r->id = id;
-		r->isNotification = id == null || id->isNull();
-		r->json = json;
-		r->methodName = method.getStringA();
-		r->params = params;
-
-		callMethod(*r,respp);
-		Future<Response> respf2;
-		respf.addObserver(new ExceptionTranslateObserver(r,respf2.getPromise()));
-		respf2.addObserver(r.detach());
 	}
 }
 
@@ -285,18 +299,29 @@ class Dispatcher::ResolveException {
 public:
 	const Request& req;
 	const PException& exception;
-	Promise<Response> &result;
+	Future<Response> &r;
 
-	ResolveException(const Request& req,const PException& exception,Promise<Response> &result)
-		:req(req),exception(exception),result(result) {}
+	ResolveException(const Request& req,const PException& exception,Future<Response> &r)
+		:req(req),exception(exception),r(r) {}
 	bool operator()(const ExceptionMap::KeyValue &kv) const {
-		return  kv.value->operator()(req, exception,result);
+		r = kv.value->operator ()(req, exception);
+		if (r.hasPromise()) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 };
 
-void Dispatcher::dispatchException(const Request& req, const PException& exception, Promise<Response> result) throw () {
+Future<Response> Dispatcher::dispatchException(const Request& req, const PException& exception) throw () {
 	Synchronized<RWLock::ReadLock> _(mapLock);
-	exceptionMap.forEach(ResolveException(req,exception,result), Direction::forward);
+	Future<Response> r(null);
+	exceptionMap.forEach(ResolveException(req,exception,r), Direction::forward);
+	if (!r.hasPromise()) {
+		r.clear();
+		r.getPromise().reject(UncauchException(THISLOCATION,*exception));
+	}
+	return r;
 }
 
 

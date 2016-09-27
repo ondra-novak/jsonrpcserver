@@ -866,7 +866,7 @@ void HttpReqImpl::setMaxPostSize(natural bytes) {
 
 }
 
-void HttpReqImpl::wakeUp(natural reason) throw()
+void HttpReqImpl::wakeUp(natural ) throw()
 {
 	ITCPServerConnControl &control = getIfc<ITCPServerConnControl>();
 	control.getUserSleeper()->wakeUp(0);

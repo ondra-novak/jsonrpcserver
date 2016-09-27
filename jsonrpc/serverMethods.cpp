@@ -7,6 +7,7 @@
 
 #include "serverMethods.h"
 
+#include "../httpserver/IJobScheduler.h"
 #include "methodreg.h"
 #include "methodreg.tcc"
 namespace jsonrpc {
@@ -71,12 +72,23 @@ JSON::ConstValue ServerMethods::rpcHelp(const Request& r) {
 }
 
 JSON::ConstValue ServerMethods::rpcPing(const Request& r) {
+	return r.params;
 }
 
 JSON::ConstValue ServerMethods::rpcPingNotify(const Request& r) {
+
 }
 
-JSON::ConstValue ServerMethods::rpcDelay(const Request& r) {
+void delayedResponse(Promise<JSON::ConstValue> v) {
+	v.resolve(JSON::getConstant(JSON::constTrue));
+}
+
+Future<JSON::ConstValue> ServerMethods::rpcDelay(const Request& r) {
+	BredyHttpSrv::IJobScheduler &sch = r.httpRequest->getIfc<BredyHttpSrv::IJobScheduler>();
+	natural secs = r.params[0].getUInt();
+	Future<JSON::ConstValue> v;
+	sch.schedule(ThreadFunction::create(&delayedResponse, v.getPromise()),secs);
+	return v;
 }
 
 } /* namespace jsonrpc */

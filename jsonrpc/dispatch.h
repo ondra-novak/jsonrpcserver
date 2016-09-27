@@ -32,11 +32,10 @@ public:
 	virtual void regMethodHandler(ConstStrA method, IMethod *fn);
 	virtual void unregMethod(ConstStrA method);
     virtual void setLogObject(ILog *logObject);
-    virtual void callMethod(const Request &req, Promise<Response> result) throw();
-    virtual void dispatchException(const Request &req, const PException &exception, Promise<Response> result) throw();
-    virtual void dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-    		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request,
-			Promise<JSON::ConstValue> result) throw();
+    virtual Future<Response> callMethod(const Request &req) throw();
+    virtual Future<Response> dispatchException(const Request &req, const PException &exception) throw();
+    virtual Future<JSON::ConstValue> dispatchMessage(const JSON::ConstValue jsonrpcmsg,
+        		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request) throw();
 	virtual void regExceptionHandler(ConstStrA name, IExceptionHandler *fn);
 	virtual void unregExceptionHandler(ConstStrA name);
 

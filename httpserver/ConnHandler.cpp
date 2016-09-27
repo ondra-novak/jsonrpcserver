@@ -193,10 +193,12 @@ ConnHandler::Command ConnHandler::onUserWakeup( const PNetworkStream &, ITCPServ
 		Synchronized<Semaphore> _(busySemaphore);
 
 		ConnContext *ctx = static_cast<ConnContext *>(context);
-		DbgLog::setThreadName(ctx->ctxName,false);
 
 		//we need context otherwise close connection
-		if (ctx == 0) return cmdRemove;
+		if (ctx == 0)
+			return cmdRemove;
+
+		DbgLog::setThreadName(ctx->ctxName,false);
 
 		return ctx->onUserWakeup();
 	} catch (std::exception &e) {

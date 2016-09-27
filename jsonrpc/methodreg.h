@@ -13,11 +13,9 @@ public:
 	///Calls the method
 	/**
 	 * @param request request from the client, also contains the parameters
-	 * @param response promise which might be resolved with a result. However it is allowed
-	 * to left promise unresolved and resolve it later. By leaving promise unresolved, the current
-	 * thread is released for other requests waiting in the queue.
+	 * @return future response which might be resolved with a result
 	 */
-	virtual void operator()(const Request &, Promise<Response> ) const throw() = 0;
+	virtual Future<Response> operator()(const Request &) const throw() = 0;
 	virtual ~IMethod() {}
 
 
@@ -34,14 +32,10 @@ public:
 	/**
 	 * @param request pointer to the request
 	 * @param exception pointer to exception
-	 * @param response reference to promise to resolve
-	 * @retval true exception has been resolved. However, the promise can remain unresolved. In such
-	 * case, the dispatcher expect, that the exception will be resolved later.
-	 * @retval false exception has not been resolved. The dispatcher will call other handler
-	 *
-	 * Function can left promise unresolved. In this case, next exception
+	 * @return future response. If handler is unable to handle exception, special object
+	 *  Future(null) have to be returned
 	 */
-	virtual bool operator()(const Request &, const PException &, Promise<Response> ) const throw() = 0;
+	virtual Future<Response> operator()(const Request &, const PException &) const throw() = 0;
 	virtual ~IExceptionHandler() {}
 };
 

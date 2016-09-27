@@ -71,7 +71,6 @@ void LogService::logMethod(ConstStrA source, ConstStrA methodName,
 	if (context!= null) ser.serialize(context);else ser.serialize(JSON::getConstant(JSON::constNull));
 	stream.write(',');
 	if (logOutput!= null) ser.serialize(logOutput);else ser.serialize(JSON::getConstant(JSON::constNull));
-	stream.write('[');
 	print("]\n");
 
 	if (lgf != null) {

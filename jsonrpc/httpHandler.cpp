@@ -31,7 +31,11 @@ using namespace BredyHttpSrv;
 class HttpHandler::RpcContext: public HttpHandler::IRequestContext {
 public:
 	RpcContext(IHttpRequest &request, HttpHandler &owner)
-		:request(request),owner(owner) {}
+		:request(request),owner(owner),result(null) {}
+	~RpcContext() {
+		//if request is being destroyed, we need to cancel the future now.
+		result.cancel();
+	}
 
 	virtual natural onData(IHttpRequest &request);
 
@@ -65,7 +69,7 @@ natural HttpHandler::onData(IHttpRequest& request) {
 	}
 }
 
-natural HttpHandler::onPOST(IHttpRequest& request, ConstStrA vpath) {
+natural HttpHandler::onPOST(IHttpRequest& request, ConstStrA) {
 	request.header(IHttpRequest::fldContentType,"application/json");
 	RpcContext *ctx = new RpcContext(request,*this);
 	request.setRequestContext(ctx);
@@ -77,14 +81,15 @@ natural HttpHandler::onPOST(IHttpRequest& request, ConstStrA vpath) {
 
 natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 
-	const JSON::ConstValue *res = result.tryGetValue();
-	if (res) {
-		SeqFileOutput output(&request);
-		owner.json.factory->toStream(*(*res),output);
-		result.clear();
-		return stContinue;
+	if (result.hasPromise()) {
+		const JSON::ConstValue *res = result.tryGetValue();
+		if (res) {
+			SeqFileOutput output(&request);
+			owner.json.factory->toStream(*(*res),output);
+			result.clear();
+			return stContinue;
+		}
 	}
-
 	if (!request.canRead()) return 0;
 
 	JSON::ConstValue val;
@@ -95,9 +100,13 @@ natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 		request.errorPage(400,ConstStrA(),e.what());
 	}
 
-	owner.dispatcher.dispatchMessage(val,owner.json,&request,result.getPromise());
-	result.thenWake(request);
-	return stSleep;
+	result = owner.dispatcher.dispatchMessage(val,owner.json,&request);
+	if (result.getState() == IPromiseControl::stateResolved) {
+		return onData(request);
+	} else {
+		result.thenWake(request);
+		return stSleep;
+	}
 
 }
 

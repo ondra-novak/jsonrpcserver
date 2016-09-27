@@ -36,7 +36,7 @@ public:
 	JSON::ConstValue rpcHelp(const Request &r);
 	JSON::ConstValue rpcPing(const Request &r);
 	JSON::ConstValue rpcPingNotify(const Request &r);
-	JSON::ConstValue rpcDelay(const Request &r);
+	Future<JSON::ConstValue> rpcDelay(const Request &r);
 
 
 };

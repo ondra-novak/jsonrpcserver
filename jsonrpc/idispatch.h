@@ -73,46 +73,45 @@ public:
 	///Calls RPC method
 	/**
 	 * @param req request (contains method-name, argument etc)
-	 * @param result result of the call. Note that promise can be unresolved, because method
-	 *  may be resolved asynchronously
-	 *
-	 *  @note exception is not dispatched. You need to dispatch exception by calling the function dispatchException()
+	 * @return future variable with response. It can be resolved or not(yet)
 	 *
 	 */
-    virtual void callMethod(const Request &req, Promise<Response> result) throw() = 0;
+    virtual Future<Response> callMethod(const Request &req) throw() = 0;
 
     ///Dispatches exception
     /**
      * Reason to dispatch exception is if you need to carry exception through the RPC protocol. Without dispatching
      * every exception is considered as internal error (with 500 as status code).
-     * There is only exception - MethodException - with can have different status code. Exception dispatching
+     * There is only one exception - MethodException - with can have different status code. Exception dispatching
      * helps you to keep internal structure of the exceptions untouch and allows you tu convert exceptions
      * into normalized JSONRPC error messages
      *
      * @param req requests which generated an exception
      * @param exception pointer to the exception
-     * @param result promise which must be resolved by this call (now or later)
+     * @return function must return resolved or unresolved future, which carries the new result
+     * or an exception. If future is resolved by exception, it should be MethodException to emit
+     * correct error status. Other exceptions are emitted as internal errors.
+     * The function have to return Future(null) to express, that it cannot handle the exception. In this
+     * case, next handler is called.
      *
-     * function will convert exception into UncaughtException if none handler resolves the exception
+     * The function will convert the exception into an UncaughtException
+     * when there are no more handlers to resolve the exception
      *
      */
-    virtual void dispatchException(const Request &req, const PException &exception, Promise<Response> result) throw() = 0;
+    virtual Future<Response> dispatchException(const Request &req, const PException &exception) throw() = 0;
 
 
-    ///Calls RPC method directly from JSON message. Result is also JSON message which is ready to ship
+    ///Calls RPC method directly from JSON message. Result is also JSON message which is ready to transfer back to the client
     /**
      * Function retrieves required arguments and executes method through the callMethod. Result
      * is passed through the Promise
      * @param jsonrpcmsg JSON message contains everything need to process JSONRPC call
      * @param json reference to JSON builder (must be MT safe)
      * @param request http request if available (NULL, if not)
-     * @param result result is stored here
+     * @return Future variable resolved or unresolved yet
      */
-    virtual void dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-    		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request,
-			Promise<JSON::ConstValue> result) throw()= 0;
-
-
+    virtual Future<JSON::ConstValue> dispatchMessage(const JSON::ConstValue jsonrpcmsg,
+    		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request) throw()= 0;
 
 };
 
