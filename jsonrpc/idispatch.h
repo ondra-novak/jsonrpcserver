@@ -19,7 +19,7 @@ class IDispatcher;
 struct Request {
 
 	///Name of the method
-	ConstStrA methodName;
+	JSON::ConstValue methodName;
 	///parameters
 	JSON::ConstValue params;
 	///Client side identification. If this is null-value (not null-pointer), the call is probably notification only
@@ -32,7 +32,7 @@ struct Request {
 	bool isNotification;
 
 	///pointer to HTTP interface. Can be NULL
-	Pointer<BredyHttpSrv::IHttpRequestInfo> httpRequest;
+	Pointer<BredyHttpSrv::IHttpContextControl> httpRequest;
 	///pointer to dispatcher
 	Pointer<IDispatcher> dispatcher;
 };
@@ -111,7 +111,7 @@ public:
      * @return Future variable resolved or unresolved yet
      */
     virtual Future<JSON::ConstValue> dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-    		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request) throw()= 0;
+    		const JSON::Builder &json, BredyHttpSrv::IHttpContextControl *request) throw()= 0;
 
 };
 

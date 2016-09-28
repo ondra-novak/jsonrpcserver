@@ -40,6 +40,10 @@ Server::Server(const Config& config)
 	loadConfig(config);
 }
 
+Server::~Server() {
+	setLogObject(0);
+}
+
 void Server::regMethodHandler(ConstStrA method, IMethod* fn) {
 	LS_LOG.info("(jsonrpc) add method: %1") << method;
 	Dispatcher::regMethodHandler(method,fn);
@@ -143,8 +147,8 @@ public:
 			jsonsrv::RpcRequest oldreq;
 			oldreq.args = static_cast<const JSON::Value &>(req.params);
 			oldreq.context = static_cast<const JSON::Value &>(req.context);
-			oldreq.functionName = req.methodName;
-			oldreq.httpRequest = req.httpRequest;
+			oldreq.functionName = req.methodName.getStringA();
+			oldreq.httpRequest = req.httpRequest.get();
 			oldreq.id = req.id.getStringA();
 			oldreq.idnode = static_cast<const JSON::Value &>(req.id);
 			oldreq.jsonFactory = req.json.factory;
@@ -196,10 +200,10 @@ Server::OldAPI::CallResult Server::OldAPI::callMethod(BredyHttpSrv::IHttpRequest
 	req.context = context;
 	req.params = args;
 	req.id = id;
-	req.methodName = methodName;
+	req.methodName = json(methodName);
 	req.isNotification = false;
 	req.dispatcher = &owner;
-	req.httpRequest = httpRequest;
+	req.httpRequest = httpRequest->getIfcPtr<BredyHttpSrv::IHttpContextControl>();
 	req.json = json.factory;
 
 	CallResult cres;

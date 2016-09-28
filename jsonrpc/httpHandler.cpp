@@ -28,7 +28,7 @@ namespace jsonrpc {
 
 using namespace BredyHttpSrv;
 
-class HttpHandler::RpcContext: public HttpHandler::IRequestContext {
+class HttpHandler::RpcContext: public HttpHandler::IRequestContext, public IHttpContextControl {
 public:
 	RpcContext(IHttpRequest &request, HttpHandler &owner)
 		:request(request),owner(owner),result(null) {}
@@ -38,11 +38,40 @@ public:
 	}
 
 	virtual natural onData(IHttpRequest &request);
+	virtual ConstStrA getMethod() const {return request.getMethod();}
+	virtual ConstStrA getPath() const {return request.getPath();}
+	virtual ConstStrA getProtocol() const {return request.getProtocol();}
+	virtual HeaderValue getHeaderField(ConstStrA field) const {return request.getHeaderField(field);}
+	virtual HeaderValue getHeaderField(HeaderField field) const {return request.getHeaderField(field);}
+	virtual bool enumHeader(HdrEnumFn fn) const {return request.enumHeader(fn);}
+	virtual ConstStrA getBaseUrl() const {return request.getBaseUrl();}
+	virtual StringA getAbsoluteUrl() const {return request.getAbsoluteUrl();}
+	virtual StringA getAbsoluteUrl(ConstStrA relpath) const {return request.getAbsoluteUrl(relpath);}
+	virtual bool keepAlive() const {return request.keepAlive();}
+	virtual void beginIO() {return request.beginIO();}
+	virtual void endIO() {return request.endIO();}
+	virtual void setRequestContext(IHttpHandlerContext *context) {requestContext = context;}
+	virtual void setConnectionContext(IHttpHandlerContext *context) {request.setRequestContext(context);}
+	virtual IHttpHandlerContext *getRequestContext() const {return requestContext;}
+	virtual IHttpHandlerContext *getConnectionContext() const {return request.getConnectionContext();}
+	virtual void *proxyInterface(IInterfaceRequest &p) {
+		IHttpRequestInfo *me = this;
+		void *x = me->IInterface::proxyInterface(p);
+		if (x == 0) return request.proxyInterface(p); else return x;
+	}
+	virtual const void *proxyInterface(const IInterfaceRequest &p) const {
+		const IHttpRequestInfo *me = this;
+		const void *x = me->IInterface::proxyInterface(p);
+		if (x == 0) return request.proxyInterface(p); else return x;
+	}
 
 protected:
 	IHttpRequest &request;
 	HttpHandler &owner;
 	Future<JSON::ConstValue> result;
+	AllocPointer<IHttpHandlerContext> requestContext;
+
+	void wakeUpConnection(const JSON::ConstValue &);
 
 
 };
@@ -100,11 +129,16 @@ natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 		request.errorPage(400,ConstStrA(),e.what());
 	}
 
-	result = owner.dispatcher.dispatchMessage(val,owner.json,&request);
+	JSON::ConstValue v = val["method"];
+	if (v != null) request.setRequestName(v.getStringA());
+	request.sendHeaders();
+
+	result = owner.dispatcher.dispatchMessage(val,owner.json,this);
 	if (result.getState() == IPromiseControl::stateResolved) {
 		return onData(request);
 	} else {
-		result.thenWake(request);
+		result.thenCall(Message<void, JSON::ConstValue>::create(
+				this, &HttpHandler::RpcContext::wakeUpConnection));
 		return stSleep;
 	}
 
@@ -210,6 +244,10 @@ natural HttpHandler::sendWsClientJs(IHttpRequest& request) {
 	return stOK;
 }
 
+
+void HttpHandler::RpcContext::wakeUpConnection(const JSON::ConstValue &) {
+	request.wakeUp(0);
+}
 
 } /* namespace jsonrpc */
 

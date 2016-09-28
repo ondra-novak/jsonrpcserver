@@ -38,6 +38,8 @@ public:
 
 	Server(const Config &config);
 
+	~Server();
+
 	///Perform logRotate of the rpclog
 	void logRotate() {openLog();}
 

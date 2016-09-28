@@ -17,7 +17,7 @@ namespace jsonrpc {
 
 using namespace LightSpeed;
 
-Dispatcher::Dispatcher() {}
+Dispatcher::Dispatcher():logObject(0) {}
 
 template<typename Container>
 inline void Dispatcher::createPrototype(ConstStrA methodName, JSON::ConstValue params, Container& container) {
@@ -43,19 +43,25 @@ inline void Dispatcher::createPrototype(ConstStrA methodName, JSON::ConstValue p
 
 Future<Response> Dispatcher::callMethod(const Request& req) throw() {
 
-	AutoArray<char, SmallAlloc<256> > prototype;
+	try {
+		AutoArray<char, SmallAlloc<256> > prototype;
 
-	createPrototype(req.methodName,req.params,prototype);
-	PMethodHandler m1 = findMethod(prototype);
-	if (m1 == null) {
-		m1 = findMethod(req.methodName);
+		createPrototype(req.methodName.getStringA(),req.params,prototype);
+		PMethodHandler m1 = findMethod(prototype);
 		if (m1 == null) {
-			throw LookupException(THISLOCATION,prototype);
+			m1 = findMethod(req.methodName.getStringA());
+			if (m1 == null) {
+				throw LookupException(THISLOCATION,prototype);
+			}
 		}
+
+
+		return (*m1)(req);
+	} catch (...) {
+		Future<Response> r;
+		r.getPromise().rejectInCatch();
+		return r;
 	}
-
-
-	return (*m1)(req);
 
 }
 
@@ -132,7 +138,7 @@ bool Dispatcher::CmpMethodPrototype::operator ()(const Key &sa, const Key &sb) c
 
 class Dispatcher::ResultObserver: public Future<Response>::IObserver, public Request, public DynObject {
 public:
-	ResultObserver(Promise<JSON::ConstValue> result, ILog *logService):outres(result),logService(logService) {}
+	ResultObserver(Promise<JSON::ConstValue> result, WeakRef<ILog> logService):outres(result),logService(logService) {}
 	virtual void resolve(const Response &result) throw() {
 		try {
 			JSON::Builder::CObject r = json("id",this->id)
@@ -141,8 +147,11 @@ public:
 			if (result.context != null) {
 				r("context",result.context);
 			}
-			if (logService != 0 ) {
-				logService->logMethod(*this->httpRequest,this->methodName,this->params,this->context,result.logOutput);
+			{
+				WeakRefPtr<ILog> log(logService);
+				if (log != null ) {
+					log->logMethod(*this->httpRequest,this->methodName.getStringA(),this->params,this->context,result.logOutput);
+				}
 			}
 			outres.resolve(r);
 		} catch (...) {
@@ -163,8 +172,11 @@ public:
 			JSON::Builder::CObject r = json("id",this->id)
 					("error",exceptionObj)
 					("result",JSON::getConstant(JSON::constNull));
-			if (logService != 0 )
-				logService->logMethod(*this->httpRequest,this->methodName,this->params,this->context,exceptionObj);
+			{
+				WeakRefPtr<ILog> log(logService);
+				if (log != null )
+					log->logMethod(*this->httpRequest,this->methodName.getStringA(),this->params,this->context,exceptionObj);
+			}
 
 			outres.resolve(r);
 		} catch (...) {
@@ -175,7 +187,7 @@ public:
 
 protected:
 	Promise<JSON::ConstValue> outres;
-	ILog *logService;
+	WeakRef<ILog> logService;
 
 };
 
@@ -200,7 +212,7 @@ protected:
 };
 
 Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request) throw()
+		const JSON::Builder &json, BredyHttpSrv::IHttpContextControl *request) throw()
  {
 
 
@@ -218,7 +230,7 @@ Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue json
 	r->id = id;
 	r->isNotification = id == null || id->isNull();
 	r->json = json;
-	r->methodName = method.getStringA();
+	r->methodName = method;
 	r->params = params;
 
 
@@ -290,7 +302,7 @@ void Dispatcher::setLogObject(ILog* log) {
 }
 
 
-ILog* Dispatcher::getLogObject() const {
+WeakRef<ILog> Dispatcher::getLogObject() const {
 	return logObject;
 }
 
@@ -319,7 +331,7 @@ Future<Response> Dispatcher::dispatchException(const Request& req, const PExcept
 	exceptionMap.forEach(ResolveException(req,exception,r), Direction::forward);
 	if (!r.hasPromise()) {
 		r.clear();
-		r.getPromise().reject(UncauchException(THISLOCATION,*exception));
+		r.getPromise().reject(exception);
 	}
 	return r;
 }

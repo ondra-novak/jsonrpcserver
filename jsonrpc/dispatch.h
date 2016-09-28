@@ -14,9 +14,9 @@
 
 #include "lightspeed/base/containers/map.h"
 
-#include "lightspeed/base/memory/sharedPtr.h"
 
 #include "lightspeed/mt/rwlock.h"
+#include "lightspeed/base/memory/weakref.h"
 
 #include "methodreg.h"
 namespace jsonrpc {
@@ -35,13 +35,13 @@ public:
     virtual Future<Response> callMethod(const Request &req) throw();
     virtual Future<Response> dispatchException(const Request &req, const PException &exception) throw();
     virtual Future<JSON::ConstValue> dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-        		const JSON::Builder &json, BredyHttpSrv::IHttpRequestInfo *request) throw();
+        		const JSON::Builder &json, BredyHttpSrv::IHttpContextControl *request) throw();
 	virtual void regExceptionHandler(ConstStrA name, IExceptionHandler *fn);
 	virtual void unregExceptionHandler(ConstStrA name);
 
 
 
-    ILog *getLogObject() const;
+    WeakRef<ILog> getLogObject() const;
 
 
     virtual void enumMethods(const IMethodEnum &enm) const;
@@ -67,7 +67,7 @@ protected:
 	MethodMap methodMap;
 	ExceptionMap exceptionMap;
 
-	Pointer<ILog> logObject;
+	WeakRefTarget<ILog> logObject;
 	mutable RWLock mapLock;
 
 

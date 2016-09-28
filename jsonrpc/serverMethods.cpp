@@ -8,6 +8,7 @@
 #include "serverMethods.h"
 
 #include "../httpserver/IJobScheduler.h"
+#include "lightspeed/base/memory/weakref.h"
 #include "methodreg.h"
 #include "methodreg.tcc"
 namespace jsonrpc {
@@ -79,15 +80,39 @@ JSON::ConstValue ServerMethods::rpcPingNotify(const Request& r) {
 
 }
 
-void delayedResponse(Promise<JSON::ConstValue> v) {
-	v.resolve(JSON::getConstant(JSON::constTrue));
-}
+class DelayedResponse:public BredyHttpSrv::IHttpHandlerContext {
+public:
+
+	DelayedResponse(const Promise<JSON::ConstValue> &resp):meweak(this),resp(resp) {}
+	~DelayedResponse() {
+		meweak.setNull();
+	}
+
+	static void delayedResponse(const WeakRef<DelayedResponse> &ref) {
+		WeakRefPtr<DelayedResponse> ptr(ref);
+		if (ptr != null) ptr->sendReply();
+	}
+
+	void sendReply() {
+		resp.resolve(JSON::getConstant(JSON::constTrue));
+	}
+
+	WeakRefTarget<DelayedResponse> meweak;
+	Promise<JSON::ConstValue> resp;
+};
+
 
 Future<JSON::ConstValue> ServerMethods::rpcDelay(const Request& r) {
+
+
+	Future<JSON::ConstValue> v;
+	DelayedResponse *dr = new DelayedResponse(v.getPromise());
+	r.httpRequest->setRequestContext(dr);
+	WeakRef<DelayedResponse> w = dr->meweak;
+
 	BredyHttpSrv::IJobScheduler &sch = r.httpRequest->getIfc<BredyHttpSrv::IJobScheduler>();
 	natural secs = r.params[0].getUInt();
-	Future<JSON::ConstValue> v;
-	sch.schedule(ThreadFunction::create(&delayedResponse, v.getPromise()),secs);
+	sch.schedule(ThreadFunction::create(&DelayedResponse::delayedResponse, w),secs);
 	return v;
 }
 
