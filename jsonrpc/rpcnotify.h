@@ -9,7 +9,8 @@
 #define JSONRPCSERVER_JSONRPC_RPCNOTIFY_H_
 
 
-namespace jsonsrv {
+namespace jsonrpc {
+	struct Request;
 
 	///contains prepared notification
 	/** Object has just prepared notification ready to send. Using
@@ -85,8 +86,8 @@ namespace jsonsrv {
 		 */
 		virtual void sendNotification(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments, TimeoutControl tmControl = standardTimeout) = 0;
 
-		virtual void setContext(IHttpHandlerContext *context) = 0;
-		virtual IHttpHandlerContext *getContext() const = 0;
+		virtual void setContext(BredyHttpSrv::IHttpHandlerContext *context) = 0;
+		virtual BredyHttpSrv::IHttpHandlerContext *getContext() const = 0;
 
 
 		///Closes the websocket connection
@@ -104,6 +105,28 @@ namespace jsonsrv {
 		 * To close connection by standard way, use closeConnection();
 		 */
 		virtual void dropConnection() = 0;
+
+		///Return future which is resolved when connection is closed
+		/** You can use Future::then to specify any action. Note that
+		 * during processing the handler, object is still valid and connection is available.
+		 * @return Future which resolves once connection is closed
+		 */
+		virtual Future<void> onClose() = 0;
+
+
+		static IRpcNotify *fromRequest(const Request &r);
+	};
+
+
+}
+
+namespace jsonsrv {
+
+	struct RpcRequest;
+	typedef jsonrpc::PreparedNotify PreparedNotify;
+
+	class IRpcNotify: public jsonrpc::IRpcNotify {
+	public:
 		///Converts request to pointer IRpcNotify
 		/**
 		 * @param r pointer to RpcRequest
@@ -122,18 +145,8 @@ namespace jsonsrv {
 		 *
 		 */
 		static IRpcNotify *fromRequest(RpcRequest *r);
-
-		///Return future which is resolved when connection is closed
-		/** You can use Future::then to specify any action. Note that
-		 * during processing the handler, object is still valid and connection is available.
-		 * @return Future which resolves once connection is closed
-		 */
-		virtual Future<void> onClose() = 0;
 	};
 
-
 }
-
-
 
 #endif /* JSONRPCSERVER_JSONRPC_RPCNOTIFY_H_ */

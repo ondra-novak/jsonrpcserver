@@ -23,19 +23,20 @@ namespace BredyHttpSrv {
 }
 
 namespace jsonsrv {
-	class PreparedNotify;
 	class IJsonRpcLogObject;
 	class IJsonRpc;
 }
 
 namespace LightSpeed {
 	class IExecutor;
-
 }
 
 namespace jsonrpc {
 
-typedef jsonsrv::PreparedNotify PreparedNotify;
+class IRpcNotify;
+class PreparedNotify;
+
+
 
 
 /// WSRPC object

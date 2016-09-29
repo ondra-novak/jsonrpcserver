@@ -40,6 +40,25 @@ static inline Future<Response> returnValueToResponse(const Future<Response> &res
 	return result;
 }
 
+static inline Future<Response> returnValueToResponse(bool b) {
+	Future<Response> f;
+	f.getPromise().resolve(Response(JSON::getConstant(b?JSON::constTrue:JSON::constFalse)));
+	return f;
+}
+
+
+static inline Future<Response> returnValueToResponse(Void) {
+	Future<Response> f;
+	f.getPromise().resolve(Response(JSON::getConstant(JSON::constTrue)));
+	return f;
+}
+static inline Future<Response> returnValueToResponse(NullType) {
+	Future<Response> f;
+	f.getPromise().resolve(Response(JSON::getConstant(JSON::constTrue)));
+	return f;
+}
+
+
 template<typename Fn>
 void IMethodRegister::regMethod(ConstStrA method,const Fn &fn) {
 

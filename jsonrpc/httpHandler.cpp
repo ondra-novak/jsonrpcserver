@@ -31,10 +31,11 @@ using namespace BredyHttpSrv;
 class HttpHandler::RpcContext: public HttpHandler::IRequestContext, public IHttpContextControl {
 public:
 	RpcContext(IHttpRequest &request, HttpHandler &owner)
-		:request(request),owner(owner),result(null) {}
+		:request(request),owner(owner),result(null),me(this) {}
 	~RpcContext() {
 		//if request is being destroyed, we need to cancel the future now.
 		result.cancel();
+		me.setNull();
 	}
 
 	virtual natural onData(IHttpRequest &request);
@@ -70,6 +71,7 @@ protected:
 	HttpHandler &owner;
 	Future<JSON::ConstValue> result;
 	AllocPointer<IHttpHandlerContext> requestContext;
+	WeakRefTarget<BredyHttpSrv::IHttpContextControl> me;
 
 	void wakeUpConnection(const JSON::ConstValue &);
 
@@ -133,7 +135,7 @@ natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 	if (v != null) request.setRequestName(v.getStringA());
 	request.sendHeaders();
 
-	result = owner.dispatcher.dispatchMessage(val,owner.json,this);
+	result = owner.dispatcher.dispatchMessage(val,owner.json,me);
 	if (result.getState() == IPromiseControl::stateResolved) {
 		return onData(request);
 	} else {

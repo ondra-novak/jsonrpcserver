@@ -8,33 +8,101 @@
 
 #include "ijsonrpc.h"
 #include "lightspeed/base/exceptions/stdexception.h"
+
+#include "lightspeed/base/memory/weakref.h"
 namespace jsonrpc {
 
 
 using namespace LightSpeed;
 
 class IDispatcher;
+class ILog;
+
+class IRequestContext: public BredyHttpSrv::IHttpHandlerContext {};
 
 ///Object passed to the every call of the every method
+/** The request can be copied as a value. It contains shared or weak references
+ * to other objects. Shared references are valid indefently, because they are
+ * ref-counter. Weak references can disappear, regadless on how many copies of the
+ * request has been created. Always check weak reference for its value. Never lock
+ * weak refernce for long time.
+ */
 struct Request {
 
 	///Name of the method
+	/** the name is carried as ConstValue which always contains a string. */
 	JSON::ConstValue methodName;
 	///parameters
+	/** the parameters are carried as ConstValue which always contains an array */
 	JSON::ConstValue params;
 	///Client side identification. If this is null-value (not null-pointer), the call is probably notification only
+	/** the ID can be anything, it is object created by caller and must be returned to the caller
+	 */
 	JSON::ConstValue id;
 	///context passed with the call
 	JSON::ConstValue context;
 	///json builder to build result
+	/** For convience, this builder can be used to easly create JSON response */
 	JSON::Builder json;
 	///true if call is notification. However the call still must resolve the promise
+	/** In most cases, isNotification will be true, while id is set to null.
+	 * Even if notifications has no return value, the method itself should resolve
+	 * promise, or return some value. It can return instance od Void as return value.
+	 * Failing this requirement can cause a memory leak.
+	 */
 	bool isNotification;
 
-	///pointer to HTTP interface. Can be NULL
-	Pointer<BredyHttpSrv::IHttpContextControl> httpRequest;
+	///pointer to HTTP interface.
+	/** This is only class which represents context of the request. It is tied to
+	 * current connection which created the request and persists until the connection
+	 * is closed or server stopped. This is very important for methods performing
+	 * asynchronous operations. If connection disappear during the call, reference
+	 * to the httpRequest becomes invalid and any access to it causes access violation.
+	 * The asynchronous method can continue even if the request is lost, however, it cannot
+	 * access the original request and any result returned by the method is discarded.
+	 *
+	 * You can easy install a handler, which is called before the connection is closed.
+	 * See function setRequestContext
+	 *
+	 */
+	WeakRef<BredyHttpSrv::IHttpContextControl> httpRequest;
 	///pointer to dispatcher
-	Pointer<IDispatcher> dispatcher;
+	/** The dispatcher instances should unlikely disappear, however, if this can happen
+	 * for example in case that some task running beyond lifetime of whole server,
+	 * you should check, whether this value is not NULL before you access it.
+	 *
+	 * The dispatcher itself has not much useful method, however, most server implementation
+	 * offers access to other interfaces through the getIfc() function. You
+	 * can access for example IMethodRegister. The dispatcher can be used to call methods
+	 * from inside of other method.
+	 */
+	WeakRef<IDispatcher> dispatcher;
+
+
+	///Sets context of the request
+	/**
+	 * @param ctx pointer to any object which implements IRequestContext. The object
+	 * must be allocated, because the server receives its ownership and it is destroyed
+	 * when it is no longer needed. Also note, that context is destroyed when connection
+	 * is closed, this is very important for methods performing asynchronous task.
+ 	 * Destroying the context invokes context's destructor and the method can perform
+ 	 * necesery actions to prevent any future problems.  During destruction, the
+ 	 * original request is still available.
+ 	 *
+ 	 * @note function destroyes any context already there. Also note that context
+ 	 * is destroyed after the result is delivered to the caller. If result is delivered
+ 	 * through the promise, accessing anything in the request after the promise is resolved
+ 	 * causes undefined behaviour
+	 *
+	 */
+	void setRequestContext(IRequestContext *ctx) {
+		httpRequest.lock()->setRequestContext(ctx);
+	}
+
+	IRequestContext *getRequestContext() {
+		return dynamic_cast<IRequestContext *>(httpRequest.lock()->getRequestContext());
+	}
+
 };
 
 ///Contains result of the call
@@ -65,7 +133,9 @@ struct Response {
 		return Response(result.getMT(), context.getMT(), logOutput.getMT());
 	}
 };
-typedef jsonsrv::IJsonRpcLogObject ILog;
+
+
+typedef Future<Response> FResponse;
 
 ///Dispatches JSONRPC request to the handler, registers handlers, etc.
 class IDispatcher: public virtual IInterface {
@@ -101,6 +171,16 @@ public:
     virtual Future<Response> dispatchException(const Request &req, const PException &exception) throw() = 0;
 
 
+    ///Dispatches exception
+    /** Appends exception dispatching to result future.
+     *
+     * @param req request
+     * @param result result from callMethod
+     * @return new result (contains or will contain dispatched exception)
+     */
+    virtual Future<Response> dispatchException(const Request &req, Future<Response> result) throw() = 0;
+
+
     ///Calls RPC method directly from JSON message. Result is also JSON message which is ready to transfer back to the client
     /**
      * Function retrieves required arguments and executes method through the callMethod. Result
@@ -111,7 +191,8 @@ public:
      * @return Future variable resolved or unresolved yet
      */
     virtual Future<JSON::ConstValue> dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-    		const JSON::Builder &json, BredyHttpSrv::IHttpContextControl *request) throw()= 0;
+    		const JSON::Builder &json,
+			const WeakRef<BredyHttpSrv::IHttpContextControl> &requestrequest) throw()= 0;
 
 };
 

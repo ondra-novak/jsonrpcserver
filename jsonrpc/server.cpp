@@ -103,6 +103,10 @@ void Server::loadConfig(const Config& cfg) {
 
 }
 
+WeakRef<IDispatcher> Server::getDispatcherWeakRef() {
+	return me;
+}
+
 void Server::loadConfig(const IniConfig::Section& sect) {
 	StringA clientPage;
 	StringA helpdir;
@@ -144,15 +148,17 @@ public:
 	virtual Future<Response> operator()(const Request &req) const throw() {
 		Future<Response> out;
 		try {
+			WeakRefPtr<BredyHttpSrv::IHttpContextControl> httpReq(req.httpRequest);
+			WeakRefPtr<IDispatcher> dispptr(req.dispatcher);
 			jsonsrv::RpcRequest oldreq;
 			oldreq.args = static_cast<const JSON::Value &>(req.params);
 			oldreq.context = static_cast<const JSON::Value &>(req.context);
 			oldreq.functionName = req.methodName.getStringA();
-			oldreq.httpRequest = req.httpRequest.get();
+			oldreq.httpRequest = httpReq.get();
 			oldreq.id = req.id.getStringA();
 			oldreq.idnode = static_cast<const JSON::Value &>(req.id);
 			oldreq.jsonFactory = req.json.factory;
-			oldreq.serverStub = req.dispatcher->getIfcPtr<jsonsrv::IJsonRpc>();
+			oldreq.serverStub = dispptr->getIfcPtr<jsonsrv::IJsonRpc>();
 			JSON::Value oldres = (mptr)(&oldreq);
 			out.getPromise().resolve(Response(oldres, oldreq.contextOut, oldreq.logOutput));
 		} catch (...) {
@@ -195,6 +201,7 @@ Server::OldAPI::CallResult Server::OldAPI::callMethod(BredyHttpSrv::IHttpRequest
 					const JSON::Value& context, const JSON::Value& id) {
 
 
+	WeakRefTarget<BredyHttpSrv::IHttpContextControl> httpreq(httpRequest->getIfcPtr<BredyHttpSrv::IHttpContextControl>());
 	JSON::Builder json;
 	Request req;
 	req.context = context;
@@ -202,8 +209,8 @@ Server::OldAPI::CallResult Server::OldAPI::callMethod(BredyHttpSrv::IHttpRequest
 	req.id = id;
 	req.methodName = json(methodName);
 	req.isNotification = false;
-	req.dispatcher = &owner;
-	req.httpRequest = httpRequest->getIfcPtr<BredyHttpSrv::IHttpContextControl>();
+	req.dispatcher = owner.getDispatcherWeakRef();
+	req.httpRequest = httpreq;
 	req.json = json.factory;
 
 	CallResult cres;
@@ -228,6 +235,7 @@ Server::OldAPI::CallResult Server::OldAPI::callMethod(BredyHttpSrv::IHttpRequest
 		return cres;
 	}
 }
+
 
 Optional<bool> Server::OldAPI::isAllowedOrigin(ConstStrA /*origin*/) {
 	return null;

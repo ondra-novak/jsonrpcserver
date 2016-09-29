@@ -28,6 +28,7 @@ class Dispatcher: public IDispatcher, public IMethodRegister {
 public:
 
 	Dispatcher();
+	~Dispatcher();
 
 	virtual void regMethodHandler(ConstStrA method, IMethod *fn);
 	virtual void unregMethod(ConstStrA method);
@@ -35,7 +36,10 @@ public:
     virtual Future<Response> callMethod(const Request &req) throw();
     virtual Future<Response> dispatchException(const Request &req, const PException &exception) throw();
     virtual Future<JSON::ConstValue> dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-        		const JSON::Builder &json, BredyHttpSrv::IHttpContextControl *request) throw();
+        		const JSON::Builder &json,
+				const WeakRef<BredyHttpSrv::IHttpContextControl> &request) throw();
+    virtual Future<Response> dispatchException(const Request &req,
+    				Future<Response> result) throw();
 	virtual void regExceptionHandler(ConstStrA name, IExceptionHandler *fn);
 	virtual void unregExceptionHandler(ConstStrA name);
 
@@ -68,6 +72,7 @@ protected:
 	ExceptionMap exceptionMap;
 
 	WeakRefTarget<ILog> logObject;
+	WeakRefTarget<IDispatcher> me;
 	mutable RWLock mapLock;
 
 

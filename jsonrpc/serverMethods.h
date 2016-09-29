@@ -29,16 +29,19 @@ public:
 
 
 	JSON::ConstValue rpcListMethods(const Request &r);
-	JSON::ConstValue rpcMulticall(const Request &r);
+	FResponse rpcMulticall(const Request &r);
 	JSON::ConstValue rpcStats(const Request &r);
-	JSON::ConstValue rpcCrash(const Request &r);
-	JSON::ConstValue rpcCrashScheduler(const Request &r);
+	Void rpcCrash(const Request &r);
+	Void rpcCrashScheduler(const Request &r);
 	JSON::ConstValue rpcHelp(const Request &r);
 	JSON::ConstValue rpcPing(const Request &r);
-	JSON::ConstValue rpcPingNotify(const Request &r);
+	Void rpcPingNotify(const Request &r);
 	Future<JSON::ConstValue> rpcDelay(const Request &r);
 
+private:
 
+	FResponse runMulticall1(const Request &r);
+	FResponse runMulticallN(const Request &r);
 };
 
 } /* namespace jsonrpc */

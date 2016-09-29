@@ -76,21 +76,25 @@ public:
 		///old interface - not implemented - return null
 		virtual Optional<bool> isAllowedOrigin(ConstStrA origin) ;
 
-	    virtual void setLogObject(ILog *logObject) {owner.setLogObject(logObject);}
+	    virtual void setLogObject(jsonsrv::IJsonRpcLogObject *logObject) {owner.setLogObject(logObject);}
 
 
-		OldAPI(Dispatcher &owner):owner(owner) {}
+		OldAPI(Server &owner):owner(owner) {}
 
-	    Dispatcher &owner;
+		Server &owner;
 
     };
 
     OldAPI oldAPI;
 
+	WeakRef<IDispatcher> getDispatcherWeakRef();
+
 
 protected:
 	void loadConfig(const Config &cfg);
 	void loadConfig(const IniConfig::Section &cfg);
+
+
 };
 
 } /* namespace jsonrpc */

@@ -259,15 +259,10 @@ void JsonRpcWebsocketsConnection::sendPrepared(const PreparedNotify& ntf, Timeou
 	this->sendTextMessage(ntf.content,true);
 }
 
-StringA buildPreparedNotify(const JSON::Builder& json, ConstStrA notifyName,
-		JSON::ConstValue params) {
-	JSON::ConstValue req = json("method", notifyName)("params", params)("id",
-			json(nil));
-	return json.factory->toString(*req);
-}
 
-PreparedNotify::PreparedNotify(ConstStrA notifyName, JSON::ConstValue params, const JSON::Builder &json)
-	:content(buildPreparedNotify(json, notifyName, params)) {}
+Future<void> JsonRpcWebsocketsConnection::onClose() {
+	return onCloseFuture;
+}
 
 PreparedNotify JsonRpcWebsocketsConnection::prepare(
 		LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments) {
@@ -280,9 +275,23 @@ IRpcNotify *IRpcNotify::fromRequest(RpcRequest *r) {
 	return conn;
 }
 
-Future<void> JsonRpcWebsocketsConnection::onClose() {
-	return onCloseFuture;
 }
 
-} /* namespace jsonsrv */
+namespace jsonrpc {
+
+StringA buildPreparedNotify(const JSON::Builder& json, ConstStrA notifyName,
+		JSON::ConstValue params) {
+	JSON::ConstValue req = json("method", notifyName)("params", params)("id",
+			json(nil));
+	return json.factory->toString(*req);
+}
+
+
+PreparedNotify::PreparedNotify(ConstStrA notifyName, JSON::ConstValue params, const JSON::Builder &json)
+	:content(buildPreparedNotify(json, notifyName, params)) {}
+
+
+
+
+}
 

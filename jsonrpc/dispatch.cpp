@@ -17,7 +17,11 @@ namespace jsonrpc {
 
 using namespace LightSpeed;
 
-Dispatcher::Dispatcher():logObject(0) {}
+Dispatcher::Dispatcher():logObject(0),me(this) {}
+Dispatcher::~Dispatcher() {
+	logObject.setNull();
+	me.setNull();
+}
 
 template<typename Container>
 inline void Dispatcher::createPrototype(ConstStrA methodName, JSON::ConstValue params, Container& container) {
@@ -64,6 +68,7 @@ Future<Response> Dispatcher::callMethod(const Request& req) throw() {
 	}
 
 }
+
 
 Dispatcher::PMethodHandler Dispatcher::findMethod(ConstStrA prototype) {
 	Synchronized<RWLock::ReadLock> _(mapLock);
@@ -140,6 +145,7 @@ class Dispatcher::ResultObserver: public Future<Response>::IObserver, public Req
 public:
 	ResultObserver(Promise<JSON::ConstValue> result, WeakRef<ILog> logService):outres(result),logService(logService) {}
 	virtual void resolve(const Response &result) throw() {
+
 		try {
 			JSON::Builder::CObject r = json("id",this->id)
 					("result",result.result)
@@ -148,9 +154,10 @@ public:
 				r("context",result.context);
 			}
 			{
+				WeakRefPtr<BredyHttpSrv::IHttpContextControl> httpReq(this->httpRequest);
 				WeakRefPtr<ILog> log(logService);
-				if (log != null ) {
-					log->logMethod(*this->httpRequest,this->methodName.getStringA(),this->params,this->context,result.logOutput);
+				if (httpReq != null && log != null) {
+					log->logMethod(*httpReq,this->methodName.getStringA(),this->params,this->context,result.logOutput);
 				}
 			}
 			outres.resolve(r);
@@ -173,9 +180,11 @@ public:
 					("error",exceptionObj)
 					("result",JSON::getConstant(JSON::constNull));
 			{
+				WeakRefPtr<BredyHttpSrv::IHttpContextControl> httpReq(this->httpRequest);
 				WeakRefPtr<ILog> log(logService);
-				if (log != null )
-					log->logMethod(*this->httpRequest,this->methodName.getStringA(),this->params,this->context,exceptionObj);
+				if (httpReq != null && log != null) {
+					log->logMethod(*httpReq,this->methodName.getStringA(),this->params,this->context,exceptionObj);
+				}
 			}
 
 			outres.resolve(r);
@@ -193,26 +202,31 @@ protected:
 
 class Dispatcher::ExceptionTranslateObserver: public Future<Response>::IObserver, public DynObject {
 public:
-	ExceptionTranslateObserver(Request *r, Promise<Response> result)
+	ExceptionTranslateObserver(const Request &r, Promise<Response> result)
 		:r(r),outres(result) {}
 	virtual void resolve(const Response &result) throw() {
 		outres.resolve(result);
 		delete this;
 	}
 	virtual void resolve(const PException &e) throw() {
-		outres.resolve(r->dispatcher->dispatchException(*r, e));
+		WeakRefPtr<IDispatcher> dispptr(r.dispatcher);
+		if (dispptr != null) {
+			outres.resolve(dispptr->dispatchException(r, e));
+		} else {
+			outres.resolve(e);
+		}
 		delete this;
 	}
 
 protected:
-	Request *r;
+	const Request &r;
 	Promise<Response> outres;
 	IDispatcher *dispatch;
 
 };
 
 Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-		const JSON::Builder &json, BredyHttpSrv::IHttpContextControl *request) throw()
+		const JSON::Builder &json, const WeakRef<BredyHttpSrv::IHttpContextControl> &request) throw()
  {
 
 
@@ -225,7 +239,7 @@ Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue json
 	Future<JSON::ConstValue> result;
 	AllocPointer<ResultObserver> r = new(IPromiseControl::getAllocator()) ResultObserver(result.getPromise(), getLogObject());
 	r->context = context;
-	r->dispatcher = Pointer<IDispatcher>(this);
+	r->dispatcher = me;
 	r->httpRequest = request;
 	r->id = id;
 	r->isNotification = id == null || id->isNull();
@@ -262,9 +276,7 @@ Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue json
 				resp.addObserver(r.detach());
 			} else {
 				//create intermediate future
-				Future<Response> resp2;
-				//attach exception conversion observer
-				resp.addObserver(new(IPromiseControl::getAllocator()) ExceptionTranslateObserver(r,resp2.getPromise()));
+				Future<Response> resp2 = dispatchException(*r, resp);
 				//attach convertor to JSON
 				resp2.addObserver(r.detach());
 			}
@@ -334,6 +346,18 @@ Future<Response> Dispatcher::dispatchException(const Request& req, const PExcept
 		r.getPromise().reject(exception);
 	}
 	return r;
+}
+
+Future<Response> Dispatcher::dispatchException(const Request& req,
+		Future<Response> result) throw () {
+
+	//create intermediate future
+	Future<Response> resp2;
+	//attach exception conversion observer
+	result.addObserver(new(IPromiseControl::getAllocator()) ExceptionTranslateObserver(req,resp2.getPromise()));
+
+	return resp2;
+
 }
 
 
