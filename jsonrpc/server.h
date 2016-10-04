@@ -43,7 +43,7 @@ public:
 	///Perform logRotate of the rpclog
 	void logRotate() {openLog();}
 
-	virtual IMethodProperties &regMethodHandler(ConstStrA method, IMethod *fn);
+	virtual void regMethodHandler(natural version, ConstStrA method, IMethod *fn);
 	virtual void unregMethod(ConstStrA method);
     virtual void regStatsHandler(ConstStrA name, IMethod *fn);
     virtual void unregStats(ConstStrA name);
@@ -79,13 +79,16 @@ public:
 	    virtual void setLogObject(jsonsrv::IJsonRpcLogObject *logObject) {owner.setLogObject(logObject);}
 
 
-		OldAPI(Server &owner):owner(owner) {}
+		OldAPI(Server &owner, natural version):owner(owner),version(version) {}
 
 		Server &owner;
+		const natural version;
 
     };
 
-    OldAPI oldAPI;
+    OldAPI getOldApi(natural version = naturalNull) {
+    	return OldAPI(*this,version);
+    }
 
 	WeakRef<IDispatcher> getDispatcherWeakRef();
 

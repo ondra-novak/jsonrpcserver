@@ -41,21 +41,6 @@ public:
 
 
 
-class IMethodProperties {
-public:
-	///Sets the version, where the method was considered as deprecated
-	/**
-	 * @param ver version when the method was considered as deprecated. Deprecated method
-	 * is method which is invisible and cannot be called under newer version of the API.
-	 *
-	 * @return reference to self, allowing to make chains.
-	 */
-	virtual IMethodProperties &deprecated(natural ver) = 0;
-
-protected:
-	virtual ~IMethodProperties() {}
-};
-
 
 class IMethodRegister: public virtual IInterface{
 public:
@@ -63,6 +48,8 @@ public:
 
 	///Register method handler
 	/**
+	 * @param upToVersion numeric specification maximum version where method is defined. It will
+	 *  not appear in newest version. To declare method without version, specify naturalNull there
 	 * @param method method name (and optionally, format of arguments).
 	 * @param fn pointer to object, which will handle this method call
 	 * @param untilVer version when this method has been removed from the api. If there
@@ -92,7 +79,9 @@ public:
 	 * properties of currently registered method. See IMethodProperties
 	 *
 	 */
-	virtual IMethodProperties &regMethodHandler(ConstStrA method, IMethod *fn) = 0;
+	virtual void regMethodHandler(natural upToVersion, ConstStrA method, IMethod *fn) = 0;
+
+
 	///Unregister method (you must supply correct arguments as well)
 	/**
 	 * @param method method name (including arguments)
@@ -110,7 +99,7 @@ public:
     	virtual void operator()(ConstStrA prototype) const = 0;
     };
 
-    virtual void enumMethods(const IMethodEnum &enm) const  = 0;
+    virtual void enumMethods(const IMethodEnum &enm, natural version) const  = 0;
 
 
     ///change log object
@@ -119,12 +108,63 @@ public:
      */
     virtual void setLogObject(ILog *logObject) = 0;
 
+    ///Register method which calls a function
+    /**
+     * @param method method prototype, see regMethodHandler()
+     * @param fn reference to function to call. The regMethod() function will make copy of the argument.
+     *   You can use lambda function here
+     */
     template<typename Fn>
-    IMethodProperties &regMethod(ConstStrA method,const Fn &fn);
+    void regMethod(ConstStrA method,const Fn &fn);
+    ///Register method which calls a member function on an object
+    /**
+     * @param method method prototype, see regMethodHandler()
+     * @param objPtr pointer to the object. It can be a smart pointer, because it is managed by value
+     * @param fn reference to member function to call
+     */
     template<typename ObjPtr, typename Obj, typename Ret>
-    IMethodProperties &regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &));
+    void regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &));
+
+    ///Register method which calls a member function on an object and brings a static argument
+    /**
+     * @param method method prototype, see regMethodHandler()
+     * @param objPtr pointer to the object. It can be a smart pointer, because it is managed by value
+     * @param fn reference to member function to call
+     * @param arg an argument, which is passed as second argument of the member function
+     */
     template<typename ObjPtr, typename Obj, typename Ret, typename Arg>
-    IMethodProperties &regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &, const Arg &arg), const Arg &arg);
+    void regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &, const Arg &arg), const Arg &arg);
+
+
+    ///Register method which calls a function limited to a specified version
+    /**
+     * @param upToVersion max version number. It won't be visible in newer versions
+     * @param method method prototype, see regMethodHandler()
+     * @param fn reference to function to call. The regMethod() function will make copy of the argument.
+     *   You can use lambda function here
+     */
+    template<typename Fn>
+    void regMethod(natural upToVersion, ConstStrA method,const Fn &fn);
+
+    ///Register method which calls a member function on an object limited to a specified version
+    /**
+     * @param upToVersion max version number. It won't be visible in newer versions
+     * @param method method prototype, see regMethodHandler()
+     * @param objPtr pointer to the object. It can be a smart pointer, because it is managed by value
+     * @param fn reference to member function to call
+     */
+    template<typename ObjPtr, typename Obj, typename Ret>
+    void regMethod(natural upToVersion, ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &));
+    ///Register method which calls a member function on an object and brings a static argument limited to a specified version
+    /**
+     * @param upToVersion max version number. It won't be visible in newer versions
+     * @param method method prototype, see regMethodHandler()
+     * @param objPtr pointer to the object. It can be a smart pointer, because it is managed by value
+     * @param fn reference to member function to call
+     * @param arg an argument, which is passed as second argument of the member function
+     */
+    template<typename ObjPtr, typename Obj, typename Ret, typename Arg>
+    void regMethod(natural upToVersion, ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &, const Arg &arg), const Arg &arg);
 
     template<typename Fn>
     void regException(ConstStrA method,const Fn &fn);
@@ -149,3 +189,4 @@ public:
 
 
 }
+

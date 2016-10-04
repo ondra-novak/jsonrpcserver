@@ -58,7 +58,7 @@ JSON::ConstValue ServerMethods::rpcListMethods(const Request& r) {
 
 	};
 	JSON::Builder::Array result = r.json.array();
-	reg.enumMethods(Enum(result));
+	reg.enumMethods(Enum(result),r.version);
 	return result;
 }
 
@@ -140,7 +140,7 @@ FResponse ServerMethods::rpcStats(const Request& r) {
 	};
 
 	CollectStats c(r,responses,stats);
-	stats.enumMethods(c);
+	stats.enumMethods(c,r.version);
 
 	if (responses.empty()) {
 		throw MethodException(THISLOCATION,204,"No statistics are available at the moment");

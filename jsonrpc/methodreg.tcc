@@ -60,7 +60,7 @@ static inline Future<Response> returnValueToResponse(NullType) {
 
 
 template<typename Fn>
-IMethodProperties &IMethodRegister::regMethod(ConstStrA method,const Fn &fn) {
+void IMethodRegister::regMethod(natural upToVersion, ConstStrA method,const Fn &fn) {
 
 	///method handler with bound function.
 	/** It calls specified function. The function must accept const Request &, and
@@ -83,7 +83,7 @@ IMethodProperties &IMethodRegister::regMethod(ConstStrA method,const Fn &fn) {
 	};
 
 
-	return regMethodHandler(method,new BoundFunction(fn));
+	return regMethodHandler(upToVersion, method,new BoundFunction(fn));
 }
 
 template<typename ObjPtr, typename Obj, typename Ret>
@@ -117,13 +117,30 @@ struct IMethodRegister::MethodCallMemberObjectArg {
 
 
 template<typename ObjPtr, typename Obj, typename Ret>
-IMethodProperties &IMethodRegister::regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &)) {
-	return regMethod(method,MethodCallMemberObject<ObjPtr,Obj,Ret>(objPtr,fn));
+void IMethodRegister::regMethod(natural upToVersion, ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &)) {
+	return regMethod(upToVersion, method,MethodCallMemberObject<ObjPtr,Obj,Ret>(objPtr,fn));
 }
 
 template<typename ObjPtr, typename Obj, typename Ret, typename Arg>
-IMethodProperties &IMethodRegister::regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &, const Arg &arg), const Arg &arg) {
-	return regMethod(method,MethodCallMemberObjectArg<ObjPtr,Obj,Ret,Arg>(objPtr,fn,arg));
+void IMethodRegister::regMethod(natural upToVersion,ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &, const Arg &arg), const Arg &arg) {
+	return regMethod(upToVersion,method,MethodCallMemberObjectArg<ObjPtr,Obj,Ret,Arg>(objPtr,fn,arg));
+}
+
+template<typename Fn>
+void jsonrpc::IMethodRegister::regMethod(ConstStrA method,const Fn& fn) {
+	return regMethod(naturalNull,method,fn);
+}
+
+template<typename ObjPtr, typename Obj, typename Ret>
+void jsonrpc::IMethodRegister::regMethod(ConstStrA method,const ObjPtr& objPtr, Ret (Obj::*fn)(const Request&)) {
+	return regMethod(naturalNull,method,objPtr,fn);
+}
+
+template<typename ObjPtr, typename Obj, typename Ret, typename Arg>
+void jsonrpc::IMethodRegister::regMethod(ConstStrA method,
+		const ObjPtr& objPtr, Ret (Obj::*fn)(const Request&, const Arg& arg),
+		const Arg& arg) {
+	return regMethod(naturalNull,method,objPtr,fn,arg);
 }
 
 template<typename Fn>

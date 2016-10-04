@@ -15,12 +15,16 @@
 namespace jsonrpc {
 
 class IDispatcher;
+class IPeer;
 
 using namespace LightSpeed;
 
 struct WSContext {
-	BredyHttpSrv::IHttpContextControl &httpReq;
+	IPeer &peer;
 	IDispatcher &dispatcher;
+
+	WSContext(IPeer &peer,IDispatcher &dispatcher)
+		:peer(peer),dispatcher(dispatcher) {}
 };
 
 

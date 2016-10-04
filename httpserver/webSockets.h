@@ -111,12 +111,12 @@ public:
 	 * @param alloc new object should use specified allocator (use new(alloc) )
 	 * @param request that identifies this connection
 	 * @param vpath virtual path used in HTTP request
-	 * @return function should return pointer to new connection, or nil, if it don't want to accept this connection
+	 * @return function should return pointer to new connection, or nullptr, if it don't want to accept this connection
 	 *
 	 * @note in this phase, connection is not yet upgrated. So newly created connection should not perform
 	 * send operation. Use AbstractWebSocketConn::onConnect function to send your first message
 	 *
-	 * Function can throw HttpStatusException to throw status code when it rejects connection. Returning nil
+	 * Function can throw HttpStatusException to throw status code when it rejects connection. Returning nullptr
 	 * cause that code 404 will be emited.
 	 */
 	virtual WebSocketConnection * onNewConnection(IRuntimeAlloc &alloc, IHttpRequest &request, ConstStrA vpath) = 0;

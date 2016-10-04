@@ -51,7 +51,7 @@ protected:
 	StringA clientFile;
 	StringA methodListTag;
 
-	natural dumpMethods(ConstStrA name, BredyHttpSrv::IHttpRequest& request);
+	natural dumpMethods(ConstStrA name, natural version, BredyHttpSrv::IHttpRequest& request);
 
 
 

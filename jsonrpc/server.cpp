@@ -25,7 +25,6 @@ namespace jsonrpc {
 
 Server::Server(const IniConfig::Section& cfg)
 	:HttpHandler(static_cast<IDispatcher &>(*this))
-	,oldAPI(*this)
 
 {
 	setLogObject(this);
@@ -34,7 +33,6 @@ Server::Server(const IniConfig::Section& cfg)
 
 Server::Server(const Config& config)
 	:HttpHandler(static_cast<IDispatcher &>(*this))
-	,oldAPI(*this)
 
 {
 	setLogObject(this);
@@ -45,9 +43,12 @@ Server::~Server() {
 	setLogObject(0);
 }
 
-IMethodProperties &Server::regMethodHandler(ConstStrA method, IMethod* fn) {
-	LS_LOG.info("(jsonrpc) add method: %1") << method;
-	return Dispatcher::regMethodHandler(method,fn);
+void Server::regMethodHandler(natural version, ConstStrA method, IMethod* fn) {
+	if (version == naturalNull)
+		LS_LOG.info("(jsonrpc) add method: %1") << method;
+	else
+		LS_LOG.info("(jsonrpc) add method: %1 (up to version: %2)") << method << version;
+	return Dispatcher::regMethodHandler(version, method,fn);
 }
 
 void Server::unregMethod(ConstStrA method) {
@@ -178,7 +179,7 @@ protected:
 
 void Server::OldAPI::registerMethod(ConstStrA methodName,const jsonsrv::IRpcCall& method, ConstStrA ) {
 
-	owner.regMethodHandler(methodName,new OldFunctionStub(method));
+	owner.regMethodHandler(version, methodName,new OldFunctionStub(method));
 }
 
 void Server::OldAPI::eraseMethod(ConstStrA methodName) {
@@ -189,11 +190,12 @@ void Server::OldAPI::registerGlobalHandler(ConstStrA ,const jsonsrv::IRpcCall& )
 void Server::OldAPI::eraseGlobalHandler(ConstStrA ) {}
 void Server::OldAPI::registerMethodObsolete(ConstStrA ) {}
 
-void Server::OldAPI::registerStatHandler(ConstStrA ,const jsonsrv::IRpcCall& ) {
+void Server::OldAPI::registerStatHandler(ConstStrA name,const jsonsrv::IRpcCall& method) {
+	owner.stats.regMethodHandler(version, name, new OldFunctionStub(method));
 }
 
-void Server::OldAPI::eraseStatHandler(ConstStrA ) {
-
+void Server::OldAPI::eraseStatHandler(ConstStrA name ) {
+	owner.stats.unregMethod(name);
 }
 
 void Server::OldAPI::setRequestMaxSize(natural ) {}

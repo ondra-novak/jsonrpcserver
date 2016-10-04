@@ -26,6 +26,8 @@ namespace jsonrpc {
 		const StringA content;
 
 		PreparedNotify(ConstStrA notifyName, JSON::ConstValue params, const JSON::Builder &json);
+	protected:
+		PreparedNotify(const StringA &content);
 	};
 
 	class IRpcNotify: public LightSpeed::IInterface {
@@ -90,8 +92,6 @@ namespace jsonrpc {
 		 */
 		virtual void sendNotification(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments, TimeoutControl tmControl = standardTimeout) = 0;
 
-		virtual void setContext(BredyHttpSrv::IHttpHandlerContext *context) = 0;
-		virtual BredyHttpSrv::IHttpHandlerContext *getContext() const = 0;
 
 
 		///Closes the websocket connection
@@ -131,6 +131,10 @@ namespace jsonsrv {
 
 	class IRpcNotify: public jsonrpc::IRpcNotify {
 	public:
+
+		virtual void setContext(BredyHttpSrv::IHttpHandlerContext *context) = 0;
+		virtual BredyHttpSrv::IHttpHandlerContext *getContext() const = 0;
+
 		///Converts request to pointer IRpcNotify
 		/**
 		 * @param r pointer to RpcRequest

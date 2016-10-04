@@ -156,12 +156,23 @@ void HttpHandler::unsetClientPage() {
 
 natural HttpHandler::onGET(BredyHttpSrv::IHttpRequest&r, ConstStrA vpath) {
 
-	if (vpath.head(9)==ConstStrA("/methods/")) {
-		return dumpMethods(vpath.offset(9),r);
+	QueryParser qp(vpath);
+	ConstStrA path = qp.getPath();
+
+	if (path.head(9)==ConstStrA("/methods/")) {
+		natural version = 0;
+		while (qp.hasItems()) {
+			const QueryField &fld = qp.getNext();
+			if (fld.name == "v" || fld.name == "ver" || fld.name == "version") {
+				if (fld.value == "max") version == naturalNull;
+				else parseUnsignedNumber(fld.value.getFwIter(),version,10);
+			}
+		}
+		return dumpMethods(vpath.offset(9),version,r);
 	} else
-	if (vpath == ConstStrA("/client.js")) {
+	if (path == ConstStrA("/client.js")) {
 		return sendClientJs(r);
-	} else if (vpath == ConstStrA("/ws_client.js")) {
+	} else if (path == ConstStrA("/ws_client.js")) {
 		return sendWsClientJs(r);
 	}
 
@@ -175,7 +186,7 @@ natural HttpHandler::onGET(BredyHttpSrv::IHttpRequest&r, ConstStrA vpath) {
 }
 
 
-natural HttpHandler::dumpMethods(ConstStrA name, IHttpRequest& request) {
+natural HttpHandler::dumpMethods(ConstStrA name, natural version, IHttpRequest& request) {
 
 	if (name.tail(3) != ConstStrA(".js")) return 404;
 	ConstStrA varname = name.crop(0,3);
@@ -207,7 +218,7 @@ natural HttpHandler::dumpMethods(ConstStrA name, IHttpRequest& request) {
 		ConstStrA prevMethod;
 	};
 
-	mreg.enumMethods(MethodReceiver(arr,fact));
+	mreg.enumMethods(MethodReceiver(arr,fact), version);
 
 	ConstStrA jsonstr = fact->toString(*arr);
 	HashMD5<char> hash;

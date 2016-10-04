@@ -81,6 +81,16 @@ using namespace LightSpeed;
 
 	};
 
+	class RemoteException: public RpcException {
+	public:
+		LIGHTSPEED_EXCEPTIONFINAL;
+		RemoteException(const ProgramLocation &loc, const JSON::ConstValue &data);
+		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const ;
+		~RemoteException() throw() {}
+	protected:
+		void message(ExceptionMsg &msg) const;
+		JSON::ConstValue data;
+	};
 
 
 
@@ -89,3 +99,4 @@ using namespace LightSpeed;
 
 
 #endif /* JSONRPC_JSONRPCSERVER_qwo10986_ERRORS_H_ */
+

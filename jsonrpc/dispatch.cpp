@@ -301,10 +301,10 @@ Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue json
 	}
 }
 
-IMethodProperties &Dispatcher::regMethodHandler(ConstStrA method, IMethod* fn) {
+void Dispatcher::regMethodHandler(natural version, ConstStrA method, IMethod* fn) {
 	Synchronized<RWLock::WriteLock> _(mapLock);
-	MethodMap::Iterator iter = methodMap.insert(StrKey(StringA(method)),MethodDef(fn));
-	return iter.getNext().value;
+	MethodMap::Iterator iter = methodMap.insert(StrKey(StringA(method)),MethodDef(fn,version));
+
 }
 
 void Dispatcher::unregMethod(ConstStrA method) {
@@ -377,11 +377,12 @@ void Dispatcher::unregExceptionHandler(ConstStrA name) {
 	exceptionMap.erase(StrKey(name));
 }
 
-void Dispatcher::enumMethods(const IMethodEnum& enm) const {
+void Dispatcher::enumMethods(const IMethodEnum& enm, natural version) const {
 	Synchronized<RWLock::ReadLock> _(mapLock);
 	for (MethodMap::Iterator iter = methodMap.getFwIter(); iter.hasItems();) {
-		const Key &key = iter.getNext().key;
-		enm(key);
+		const MethodMap::KeyValue &kv = iter.getNext();
+		if (kv.value.version >= version)
+			enm(kv.key);
 	}
 }
 

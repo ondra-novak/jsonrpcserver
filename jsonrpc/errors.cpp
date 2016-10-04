@@ -8,6 +8,13 @@
 
 #include "errors.h"
 
+#include <lightspeed/utils/json/jsonserializer.tcc>
+#include "lightspeed/base/containers/autoArray.tcc"
+
+#include "lightspeed/base/memory/smallAlloc.h"
+
+using LightSpeed::JSON::Serializer;
+using LightSpeed::SmallAlloc;
 namespace jsonrpc {
 
 void LookupException::message(ExceptionMsg& msg) const {
@@ -54,6 +61,23 @@ JSON::ConstValue UncauchException::getJSON(const JSON::Builder& json) const {
 			("statusMessage",statusMessage)
 			("type",type.name());
 
+}
+
+
+RemoteException::RemoteException(const ProgramLocation& loc,
+			const JSON::ConstValue& data):Exception(loc),data(data)
+
+{
+}
+
+JSON::ConstValue RemoteException::getJSON(const JSON::Builder&) const {
+	return data;
+}
+
+void RemoteException::message(ExceptionMsg& msg) const {
+	AutoArrayStream<char, SmallAlloc<1024> > buffer;
+	JSON::serialize(data, buffer, false);
+	msg("Remote server exception: %1") << buffer.getArray();
 }
 
 

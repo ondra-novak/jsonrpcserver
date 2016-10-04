@@ -30,7 +30,7 @@ public:
 	Dispatcher();
 	~Dispatcher();
 
-	virtual IMethodProperties &regMethodHandler(ConstStrA method, IMethod *fn);
+	virtual void regMethodHandler(natural version, ConstStrA method, IMethod *fn);
 	virtual void unregMethod(ConstStrA method);
     virtual void setLogObject(ILog *logObject);
     virtual Future<Response> callMethod(const Request &req) throw();
@@ -47,7 +47,7 @@ public:
     WeakRef<ILog> getLogObject() const;
 
 
-    virtual void enumMethods(const IMethodEnum &enm) const;
+    virtual void enumMethods(const IMethodEnum &enm, natural version) const;
 
 	typedef RefCntPtr<IMethod> PMethodHandler;
     PMethodHandler findMethod(ConstStrA prototype, natural version = 0);
@@ -66,13 +66,12 @@ protected:
 	};
 	typedef RefCntPtr<IExceptionHandler> PExceptionHandler;
 
-	class MethodDef: public IMethodProperties {
+	struct MethodDef {
 	public:
 		PMethodHandler handler;
 		natural version;
 
-		MethodDef(PMethodHandler handler):handler(handler),version(naturalNull) {}
-		virtual IMethodProperties &deprecated(natural ver) {version = ver; return *this;}
+		MethodDef(PMethodHandler handler, natural version):handler(handler),version(version) {}
 	};
 
 	typedef Map<Key, MethodDef, CmpMethodPrototype> MethodMap;
