@@ -12,6 +12,8 @@
 #include "lightspeed/base/containers/map.tcc"
 
 #include "lightspeed/base/actions/promise.tcc"
+
+#include "ipeer.h"
 #include "methodreg.tcc"
 namespace jsonrpc {
 
@@ -70,13 +72,14 @@ Future<Response> Dispatcher::callMethod(const Request& req) throw() {
 }
 
 
-Dispatcher::PMethodHandler Dispatcher::findMethod(ConstStrA prototype) {
+Dispatcher::PMethodHandler Dispatcher::findMethod(ConstStrA prototype, natural version) {
 	Synchronized<RWLock::ReadLock> _(mapLock);
 
-	const  PMethodHandler *h = methodMap.find(StrKey(prototype));
+	const MethodDef *h = methodMap.find(StrKey(prototype));
 	if (h == 0) return null;
 	else {
-		return *h;
+		if (h->version < version) return null;
+		return h->handler;
 	}
 
 /*	MethodMap::Iterator iter = methodMap.seek(Key(StrKey(ConstStrA(prototype))));
@@ -154,10 +157,10 @@ public:
 				r("context",result.context);
 			}
 			{
-				WeakRefPtr<BredyHttpSrv::IHttpContextControl> httpReq(this->httpRequest);
+				WeakRefPtr<IPeer> peer(this->peer);
 				WeakRefPtr<ILog> log(logService);
-				if (httpReq != null && log != null) {
-					log->logMethod(*httpReq,this->methodName.getStringA(),this->params,this->context,result.logOutput);
+				if (peer != null && log != null) {
+					log->logMethod(peer->getName(),this->methodName.getStringA(),this->params,this->context,result.logOutput);
 				}
 			}
 			outres.resolve(r);
@@ -180,10 +183,10 @@ public:
 					("error",exceptionObj)
 					("result",JSON::getConstant(JSON::constNull));
 			{
-				WeakRefPtr<BredyHttpSrv::IHttpContextControl> httpReq(this->httpRequest);
+				WeakRefPtr<IPeer> peer(this->peer);
 				WeakRefPtr<ILog> log(logService);
-				if (httpReq != null && log != null) {
-					log->logMethod(*httpReq,this->methodName.getStringA(),this->params,this->context,exceptionObj);
+				if (peer != null && log != null) {
+					log->logMethod(peer->getName(),this->methodName.getStringA(),this->params,this->context,exceptionObj);
 				}
 			}
 
@@ -226,7 +229,7 @@ protected:
 };
 
 Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-		const JSON::Builder &json, const WeakRef<BredyHttpSrv::IHttpContextControl> &request) throw()
+		const JSON::Builder &json, const WeakRef<IPeer> &peer) throw()
  {
 
 
@@ -234,18 +237,20 @@ Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue json
 	JSON::ConstValue method = jsonrpcmsg["method"];
 	JSON::ConstValue params = jsonrpcmsg["params"];
 	JSON::ConstValue context = jsonrpcmsg["context"];
+	JSON::ConstValue version = jsonrpcmsg["version"];
 
 	//Request is initialized as ResultObserver which will later create result JSON
 	Future<JSON::ConstValue> result;
 	AllocPointer<ResultObserver> r = new(IPromiseControl::getAllocator()) ResultObserver(result.getPromise(), getLogObject());
 	r->context = context;
 	r->dispatcher = me;
-	r->httpRequest = request;
+	r->peer = peer;
 	r->id = id;
 	r->isNotification = id == null || id->isNull();
 	r->json = json;
 	r->methodName = method;
 	r->params = params;
+	r->version = version == null?0:version->getUInt();
 
 
 	try {
@@ -296,10 +301,10 @@ Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue json
 	}
 }
 
-void Dispatcher::regMethodHandler(ConstStrA method, IMethod* fn) {
+IMethodProperties &Dispatcher::regMethodHandler(ConstStrA method, IMethod* fn) {
 	Synchronized<RWLock::WriteLock> _(mapLock);
-	fn->enableMTAccess();
-	methodMap.insert(StrKey(StringA(method)),fn);
+	MethodMap::Iterator iter = methodMap.insert(StrKey(StringA(method)),MethodDef(fn));
+	return iter.getNext().value;
 }
 
 void Dispatcher::unregMethod(ConstStrA method) {

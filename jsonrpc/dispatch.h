@@ -30,14 +30,13 @@ public:
 	Dispatcher();
 	~Dispatcher();
 
-	virtual void regMethodHandler(ConstStrA method, IMethod *fn);
+	virtual IMethodProperties &regMethodHandler(ConstStrA method, IMethod *fn);
 	virtual void unregMethod(ConstStrA method);
     virtual void setLogObject(ILog *logObject);
     virtual Future<Response> callMethod(const Request &req) throw();
     virtual Future<Response> dispatchException(const Request &req, const PException &exception) throw();
     virtual Future<JSON::ConstValue> dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-        		const JSON::Builder &json,
-				const WeakRef<BredyHttpSrv::IHttpContextControl> &request) throw();
+        		const JSON::Builder &json,const WeakRef<IPeer> &peer) throw();
     virtual Future<Response> dispatchException(const Request &req,
     				Future<Response> result) throw();
 	virtual void regExceptionHandler(ConstStrA name, IExceptionHandler *fn);
@@ -51,7 +50,7 @@ public:
     virtual void enumMethods(const IMethodEnum &enm) const;
 
 	typedef RefCntPtr<IMethod> PMethodHandler;
-    PMethodHandler findMethod(ConstStrA prototype);
+    PMethodHandler findMethod(ConstStrA prototype, natural version = 0);
 
 
 
@@ -67,7 +66,16 @@ protected:
 	};
 	typedef RefCntPtr<IExceptionHandler> PExceptionHandler;
 
-	typedef Map<Key, PMethodHandler, CmpMethodPrototype> MethodMap;
+	class MethodDef: public IMethodProperties {
+	public:
+		PMethodHandler handler;
+		natural version;
+
+		MethodDef(PMethodHandler handler):handler(handler),version(naturalNull) {}
+		virtual IMethodProperties &deprecated(natural ver) {version = ver; return *this;}
+	};
+
+	typedef Map<Key, MethodDef, CmpMethodPrototype> MethodMap;
 	typedef Map<Key, PExceptionHandler, CmpMethodPrototype> ExceptionMap;
 
 	MethodMap methodMap;

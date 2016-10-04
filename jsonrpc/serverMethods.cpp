@@ -12,6 +12,8 @@
 
 #include "errors.h"
 #include "lightspeed/base/interface.tcc"
+
+#include "ipeer.h"
 #include "methodreg.h"
 #include "methodreg.tcc"
 #include "rpcnotify.h"
@@ -163,8 +165,9 @@ Void ServerMethods::rpcCrash(const Request& ) {
 
 
 Void ServerMethods::rpcCrashScheduler(const Request& r) {
-	WeakRefPtr<BredyHttpSrv::IHttpContextControl> ptr(r.httpRequest);
-	BredyHttpSrv::IJobScheduler *sch = ptr->getIfcPtr<BredyHttpSrv::IJobScheduler>();
+	WeakRefPtr<IPeer> peer(r.peer);
+	if (peer == null) throw CanceledException(THISLOCATION);
+	BredyHttpSrv::IJobScheduler *sch = peer->getHttpRequest()->getIfcPtr<BredyHttpSrv::IJobScheduler>();
 	sch->schedule(Action::create(this,&ServerMethods::rpcCrash,r),3);
 	return Void();
 }
@@ -195,11 +198,11 @@ static void delayedResponse(Promise<JSON::ConstValue> resp) {
 
 Future<JSON::ConstValue> ServerMethods::rpcDelay(const Request& r) {
 
-
 	Future<JSON::ConstValue> v;
-	WeakRefPtr<BredyHttpSrv::IHttpContextControl> ptr(r.httpRequest);
-	if (ptr == null) throw CanceledException(THISLOCATION);
-	BredyHttpSrv::IJobScheduler &sch = ptr->getIfc<BredyHttpSrv::IJobScheduler>();
+	WeakRefPtr<IPeer> peer(r.peer);
+	if (peer == null) throw CanceledException(THISLOCATION);
+	BredyHttpSrv::IHttpRequestInfo *httpreq = peer->getHttpRequest();
+	BredyHttpSrv::IJobScheduler &sch = httpreq->getIfc<BredyHttpSrv::IJobScheduler>();
 	natural secs = r.params[0].getUInt();
 	sch.schedule(ThreadFunction::create(&delayedResponse, v.getPromise()),secs);
 	return v;

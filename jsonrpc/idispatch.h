@@ -17,10 +17,8 @@ using namespace LightSpeed;
 
 class IDispatcher;
 class ILog;
-class IRpcNotify;
-class IClient;
+class IPeer;
 
-class IRequestContext: public BredyHttpSrv::IHttpHandlerContext {};
 
 ///Object passed to the every call of the every method
 /** The request can be copied as a value. It contains shared or weak references
@@ -31,6 +29,14 @@ class IRequestContext: public BredyHttpSrv::IHttpHandlerContext {};
  */
 struct Request {
 
+	///interface version
+	/** The request can declare version of interface. There are two special versions
+	 *
+	 * version 0 - use all available methods (including deprecated)
+	 * version naturalNull - use newest version (some method may be deprecated and removed)
+	 *
+	 */
+	natural version;
 	///Name of the method
 	/** the name is carried as ConstValue which always contains a string. */
 	JSON::ConstValue methodName;
@@ -54,20 +60,15 @@ struct Request {
 	 */
 	bool isNotification;
 
-	///pointer to HTTP interface.
-	/** This is only class which represents context of the request. It is tied to
-	 * current connection which created the request and persists until the connection
-	 * is closed or server stopped. This is very important for methods performing
-	 * asynchronous operations. If connection disappear during the call, reference
-	 * to the httpRequest becomes invalid and any access to it causes access violation.
-	 * The asynchronous method can continue even if the request is lost, however, it cannot
-	 * access the original request and any result returned by the method is discarded.
-	 *
-	 * You can easy install a handler, which is called before the connection is closed.
-	 * See function setRequestContext
-	 *
+
+	///Reference to interface witch identifies the peer
+	/**
+	 * For more information, see IPeer documentation. Note that once the pointer is set to
+	 * null, the peer is no longer available. You  should also not lock the pointer for long period
+	 * because it can potentially block the servicing thread which is resposnsible to set the pointer to
+	 * NULL once the peer is no longer available.
 	 */
-	WeakRef<BredyHttpSrv::IHttpContextControl> httpRequest;
+	WeakRef<IPeer> peer;
 	///pointer to dispatcher
 	/** The dispatcher instances should unlikely disappear, however, if this can happen
 	 * for example in case that some task running beyond lifetime of whole server,
@@ -79,49 +80,6 @@ struct Request {
 	 * from inside of other method.
 	 */
 	WeakRef<IDispatcher> dispatcher;
-
-
-	///Contains reference to the IRpcNotify - it is responsible to deliver rpc notifications
-	/** If this reference is null, then no notify service is available. Otherwise you can
-	 * use this service to send notifications to the client. If you plan to send notifications
-	 * later outside to current method, you should store the reference as WeakRef. When
-	 * the client disconnects, this reference is set to null
-	 */
-	WeakRef<IRpcNotify> notifySvc;
-
-
-	///Contains reference to the IClient object if it is implemented
-	/** Some connections (websockets) supports reversed RPC, where the client processes methods
-	 * requested by the server. If the client interface is available, this reference is set
-	 * to non-null value
-	 */
-	WeakRef<IClient> client;
-
-
-	///Sets context of the request
-	/**
-	 * @param ctx pointer to any object which implements IRequestContext. The object
-	 * must be allocated, because the server receives its ownership and it is destroyed
-	 * when it is no longer needed. Also note, that context is destroyed when connection
-	 * is closed, this is very important for methods performing asynchronous task.
- 	 * Destroying the context invokes context's destructor and the method can perform
- 	 * necesery actions to prevent any future problems.  During destruction, the
- 	 * original request is still available.
- 	 *
- 	 * @note function destroyes any context already there. Also note that context
- 	 * is destroyed after the result is delivered to the caller. If result is delivered
- 	 * through the promise, accessing anything in the request after the promise is resolved
- 	 * causes undefined behaviour
-	 *
-	 */
-	void setRequestContext(IRequestContext *ctx) {
-		httpRequest.lock()->setRequestContext(ctx);
-	}
-
-	IRequestContext *getRequestContext() {
-		return dynamic_cast<IRequestContext *>(httpRequest.lock()->getRequestContext());
-	}
-
 };
 
 ///Contains result of the call
@@ -210,8 +168,7 @@ public:
      * @return Future variable resolved or unresolved yet
      */
     virtual Future<JSON::ConstValue> dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-    		const JSON::Builder &json,
-			const WeakRef<BredyHttpSrv::IHttpContextControl> &requestrequest) throw()= 0;
+    		const JSON::Builder &json, const WeakRef<IPeer> &peer) throw()= 0;
 
 };
 

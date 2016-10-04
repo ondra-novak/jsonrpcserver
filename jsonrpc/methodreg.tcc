@@ -60,7 +60,7 @@ static inline Future<Response> returnValueToResponse(NullType) {
 
 
 template<typename Fn>
-void IMethodRegister::regMethod(ConstStrA method,const Fn &fn) {
+IMethodProperties &IMethodRegister::regMethod(ConstStrA method,const Fn &fn) {
 
 	///method handler with bound function.
 	/** It calls specified function. The function must accept const Request &, and
@@ -83,7 +83,7 @@ void IMethodRegister::regMethod(ConstStrA method,const Fn &fn) {
 	};
 
 
-	regMethodHandler(method,new BoundFunction(fn));
+	return regMethodHandler(method,new BoundFunction(fn));
 }
 
 template<typename ObjPtr, typename Obj, typename Ret>
@@ -117,13 +117,13 @@ struct IMethodRegister::MethodCallMemberObjectArg {
 
 
 template<typename ObjPtr, typename Obj, typename Ret>
-void IMethodRegister::regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &)) {
-	regMethod(method,MethodCallMemberObject<ObjPtr,Obj,Ret>(objPtr,fn));
+IMethodProperties &IMethodRegister::regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &)) {
+	return regMethod(method,MethodCallMemberObject<ObjPtr,Obj,Ret>(objPtr,fn));
 }
 
 template<typename ObjPtr, typename Obj, typename Ret, typename Arg>
-void IMethodRegister::regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &, const Arg &arg), const Arg &arg) {
-	regMethod(method,MethodCallMemberObjectArg<ObjPtr,Obj,Ret,Arg>(objPtr,fn,arg));
+IMethodProperties &IMethodRegister::regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &, const Arg &arg), const Arg &arg) {
+	return regMethod(method,MethodCallMemberObjectArg<ObjPtr,Obj,Ret,Arg>(objPtr,fn,arg));
 }
 
 template<typename Fn>

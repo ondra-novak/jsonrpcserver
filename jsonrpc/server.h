@@ -43,7 +43,7 @@ public:
 	///Perform logRotate of the rpclog
 	void logRotate() {openLog();}
 
-	virtual void regMethodHandler(ConstStrA method, IMethod *fn);
+	virtual IMethodProperties &regMethodHandler(ConstStrA method, IMethod *fn);
 	virtual void unregMethod(ConstStrA method);
     virtual void regStatsHandler(ConstStrA name, IMethod *fn);
     virtual void unregStats(ConstStrA name);

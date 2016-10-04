@@ -22,13 +22,15 @@
 #include "lightspeed/utils/md5iter.h"
 
 #include "lightspeed/base/interface.tcc"
+
+#include "ipeer.h"
 #include "methodreg.h"
 using LightSpeed::parseUnsignedNumber;
 namespace jsonrpc {
 
 using namespace BredyHttpSrv;
 
-class HttpHandler::RpcContext: public HttpHandler::IRequestContext, public IHttpContextControl {
+class HttpHandler::RpcContext: public HttpHandler::IRequestContext, public IPeer {
 public:
 	RpcContext(IHttpRequest &request, HttpHandler &owner)
 		:request(request),owner(owner),result(null),me(this) {}
@@ -39,41 +41,38 @@ public:
 	}
 
 	virtual natural onData(IHttpRequest &request);
-	virtual ConstStrA getMethod() const {return request.getMethod();}
-	virtual ConstStrA getPath() const {return request.getPath();}
-	virtual ConstStrA getProtocol() const {return request.getProtocol();}
-	virtual HeaderValue getHeaderField(ConstStrA field) const {return request.getHeaderField(field);}
-	virtual HeaderValue getHeaderField(HeaderField field) const {return request.getHeaderField(field);}
-	virtual bool enumHeader(HdrEnumFn fn) const {return request.enumHeader(fn);}
-	virtual ConstStrA getBaseUrl() const {return request.getBaseUrl();}
-	virtual StringA getAbsoluteUrl() const {return request.getAbsoluteUrl();}
-	virtual StringA getAbsoluteUrl(ConstStrA relpath) const {return request.getAbsoluteUrl(relpath);}
-	virtual bool keepAlive() const {return request.keepAlive();}
-	virtual void beginIO() {return request.beginIO();}
-	virtual void endIO() {return request.endIO();}
-	virtual void setRequestContext(IHttpHandlerContext *context) {requestContext = context;}
-	virtual void setConnectionContext(IHttpHandlerContext *context) {request.setRequestContext(context);}
-	virtual IHttpHandlerContext *getRequestContext() const {return requestContext;}
-	virtual IHttpHandlerContext *getConnectionContext() const {return request.getConnectionContext();}
-	virtual void *proxyInterface(IInterfaceRequest &p) {
-		IHttpRequestInfo *me = this;
-		void *x = me->IInterface::proxyInterface(p);
-		if (x == 0) return request.proxyInterface(p); else return x;
-	}
-	virtual const void *proxyInterface(const IInterfaceRequest &p) const {
-		const IHttpRequestInfo *me = this;
-		const void *x = me->IInterface::proxyInterface(p);
-		if (x == 0) return request.proxyInterface(p); else return x;
-	}
 
 protected:
 	IHttpRequest &request;
 	HttpHandler &owner;
 	Future<JSON::ConstValue> result;
-	AllocPointer<IHttpHandlerContext> requestContext;
-	WeakRefTarget<BredyHttpSrv::IHttpContextControl> me;
+	ContextVar requestContext;
+	WeakRefTarget<IPeer> me;
 
 	void wakeUpConnection(const JSON::ConstValue &);
+
+	virtual BredyHttpSrv::IHttpRequestInfo *getHttpRequest() const {
+		return &request;
+	}
+	virtual ConstStrA getName() const {
+		return request.getIfc<BredyHttpSrv::IHttpPeerInfo>().getPeerRealAddr();
+	}
+	virtual natural getPortIndex() const {
+		return request.getIfc<BredyHttpSrv::IHttpPeerInfo>().getSourceId();
+	}
+	virtual IRpcNotify *getNotifySvc() const {
+		return 0;
+	}
+	virtual void setContext(Context *ctx) {
+		requestContext = ctx;
+	}
+	virtual Context *getContext() const {
+		return requestContext;
+	}
+	virtual IClient *getClient() const {
+		return 0;
+	}
+
 
 
 };

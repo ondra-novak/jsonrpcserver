@@ -16,6 +16,7 @@
 #include "lightspeed/base/interface.tcc"
 #include "lightspeed/base/actions/promise.tcc"
 
+#include "ipeer.h"
 using BredyHttpSrv::IHttpPeerInfo;
 using LightSpeed::DbgLog::needRotateLogs;
 using LightSpeed::JSON::serialize;
@@ -44,9 +45,9 @@ Server::~Server() {
 	setLogObject(0);
 }
 
-void Server::regMethodHandler(ConstStrA method, IMethod* fn) {
+IMethodProperties &Server::regMethodHandler(ConstStrA method, IMethod* fn) {
 	LS_LOG.info("(jsonrpc) add method: %1") << method;
-	Dispatcher::regMethodHandler(method,fn);
+	return Dispatcher::regMethodHandler(method,fn);
 }
 
 void Server::unregMethod(ConstStrA method) {
@@ -148,13 +149,14 @@ public:
 	virtual Future<Response> operator()(const Request &req) const throw() {
 		Future<Response> out;
 		try {
-			WeakRefPtr<BredyHttpSrv::IHttpContextControl> httpReq(req.httpRequest);
+			WeakRefPtr<IPeer> peer = req.peer;
+			if (peer == null) throw CanceledException(THISLOCATION);
 			WeakRefPtr<IDispatcher> dispptr(req.dispatcher);
 			jsonsrv::RpcRequest oldreq;
 			oldreq.args = static_cast<const JSON::Value &>(req.params);
 			oldreq.context = static_cast<const JSON::Value &>(req.context);
 			oldreq.functionName = req.methodName.getStringA();
-			oldreq.httpRequest = httpReq.get();
+			oldreq.httpRequest = peer->getHttpRequest();
 			oldreq.id = req.id.getStringA();
 			oldreq.idnode = static_cast<const JSON::Value &>(req.id);
 			oldreq.jsonFactory = req.json.factory;
@@ -187,10 +189,10 @@ void Server::OldAPI::registerGlobalHandler(ConstStrA ,const jsonsrv::IRpcCall& )
 void Server::OldAPI::eraseGlobalHandler(ConstStrA ) {}
 void Server::OldAPI::registerMethodObsolete(ConstStrA ) {}
 
-void Server::OldAPI::registerStatHandler(ConstStrA handlerName,const jsonsrv::IRpcCall& method) {
+void Server::OldAPI::registerStatHandler(ConstStrA ,const jsonsrv::IRpcCall& ) {
 }
 
-void Server::OldAPI::eraseStatHandler(ConstStrA handlerName) {
+void Server::OldAPI::eraseStatHandler(ConstStrA ) {
 
 }
 
@@ -201,7 +203,37 @@ Server::OldAPI::CallResult Server::OldAPI::callMethod(BredyHttpSrv::IHttpRequest
 					const JSON::Value& context, const JSON::Value& id) {
 
 
-	WeakRefTarget<BredyHttpSrv::IHttpContextControl> httpreq(httpRequest->getIfcPtr<BredyHttpSrv::IHttpContextControl>());
+	class FakePeer: public IPeer {
+	public:
+		virtual BredyHttpSrv::IHttpRequestInfo *getHttpRequest() const {return req;}
+		virtual ConstStrA getName() const {
+			return req->getIfc<BredyHttpSrv::IHttpPeerInfo>().getPeerRealAddr();
+		}
+		virtual natural getPortIndex() const {
+			return req->getIfc<BredyHttpSrv::IHttpPeerInfo>().getSourceId();
+		}
+		virtual IRpcNotify *getNotifySvc() const {
+			return 0;
+		}
+		virtual void setContext(Context *ctx) {
+			this->ctx = ctx;
+		}
+		virtual Context *getContext() const {
+			return ctx;
+		}
+		virtual IClient *getClient() const {
+			return 0;
+		}
+
+		ContextVar ctx;
+		BredyHttpSrv::IHttpRequestInfo *req;
+
+		FakePeer(BredyHttpSrv::IHttpRequestInfo *req):req(req) {}
+	};
+
+
+	FakePeer fakePeer(httpRequest);
+	WeakRefTarget<IPeer> peer(&fakePeer);
 	JSON::Builder json;
 	Request req;
 	req.context = context;
@@ -210,7 +242,7 @@ Server::OldAPI::CallResult Server::OldAPI::callMethod(BredyHttpSrv::IHttpRequest
 	req.methodName = json(methodName);
 	req.isNotification = false;
 	req.dispatcher = owner.getDispatcherWeakRef();
-	req.httpRequest = httpreq;
+	req.peer = peer;
 	req.json = json.factory;
 
 	CallResult cres;

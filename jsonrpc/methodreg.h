@@ -41,6 +41,21 @@ public:
 
 
 
+class IMethodProperties {
+public:
+	///Sets the version, where the method was considered as deprecated
+	/**
+	 * @param ver version when the method was considered as deprecated. Deprecated method
+	 * is method which is invisible and cannot be called under newer version of the API.
+	 *
+	 * @return reference to self, allowing to make chains.
+	 */
+	virtual IMethodProperties &deprecated(natural ver) = 0;
+
+protected:
+	virtual ~IMethodProperties() {}
+};
+
 
 class IMethodRegister: public virtual IInterface{
 public:
@@ -73,10 +88,11 @@ public:
 	 *
 	 *
 	 *
-	 *
+	 * @return function returns refernce to interface which allows to control various
+	 * properties of currently registered method. See IMethodProperties
 	 *
 	 */
-	virtual void regMethodHandler(ConstStrA method, IMethod *fn) = 0;
+	virtual IMethodProperties &regMethodHandler(ConstStrA method, IMethod *fn) = 0;
 	///Unregister method (you must supply correct arguments as well)
 	/**
 	 * @param method method name (including arguments)
@@ -104,11 +120,11 @@ public:
     virtual void setLogObject(ILog *logObject) = 0;
 
     template<typename Fn>
-    void regMethod(ConstStrA method,const Fn &fn);
+    IMethodProperties &regMethod(ConstStrA method,const Fn &fn);
     template<typename ObjPtr, typename Obj, typename Ret>
-    void regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &));
+    IMethodProperties &regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &));
     template<typename ObjPtr, typename Obj, typename Ret, typename Arg>
-    void regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &, const Arg &arg), const Arg &arg);
+    IMethodProperties &regMethod(ConstStrA method, const ObjPtr &objPtr, Ret (Obj::*fn)(const Request &, const Arg &arg), const Arg &arg);
 
     template<typename Fn>
     void regException(ConstStrA method,const Fn &fn);
