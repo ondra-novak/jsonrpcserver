@@ -9,6 +9,10 @@
 #define JSONRPCSERVER_JSONRPC_RPCNOTIFY_H_
 
 
+namespace BredyHttpSrv {
+class IHttpHandlerContext;
+}
+
 namespace jsonrpc {
 	struct Request;
 

@@ -50,6 +50,9 @@ public:
 
     virtual void enumMethods(const IMethodEnum &enm) const;
 
+	typedef RefCntPtr<IMethod> PMethodHandler;
+    PMethodHandler findMethod(ConstStrA prototype);
+
 
 
 protected:
@@ -62,7 +65,6 @@ protected:
 	struct CmpMethodPrototype {
 		bool operator()(const Key &a, const Key &b) const;
 	};
-	typedef RefCntPtr<IMethod> PMethodHandler;
 	typedef RefCntPtr<IExceptionHandler> PExceptionHandler;
 
 	typedef Map<Key, PMethodHandler, CmpMethodPrototype> MethodMap;
@@ -78,7 +80,6 @@ protected:
 
     template<typename Container>
     static void createPrototype(ConstStrA methodName, JSON::ConstValue params, Container &container);
-    PMethodHandler findMethod(ConstStrA prototype);
 
     class ResultObserver;
     class ExceptionTranslateObserver;

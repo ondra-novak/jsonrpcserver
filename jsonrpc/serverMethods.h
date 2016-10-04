@@ -9,7 +9,7 @@
 #define JSONRPC_JSONRPCSERVER_131658031_SERVERMETHODS_H_
 #include <lightspeed/base/types.h>
 
-#include "idispatch.h"
+#include "dispatch.h"
 
 namespace jsonrpc {
 
@@ -28,15 +28,19 @@ public:
 	void registerServerMethods(IMethodRegister &reg, natural flags);
 
 
+
 	JSON::ConstValue rpcListMethods(const Request &r);
 	FResponse rpcMulticall(const Request &r);
-	JSON::ConstValue rpcStats(const Request &r);
+	FResponse rpcStats(const Request &r);
 	Void rpcCrash(const Request &r);
 	Void rpcCrashScheduler(const Request &r);
 	JSON::ConstValue rpcHelp(const Request &r);
 	JSON::ConstValue rpcPing(const Request &r);
 	Void rpcPingNotify(const Request &r);
 	Future<JSON::ConstValue> rpcDelay(const Request &r);
+
+	///by registering methods here, one can specify which statistics will be shown in Server.stats()
+	Dispatcher stats;
 
 private:
 

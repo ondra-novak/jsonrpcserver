@@ -17,6 +17,8 @@ using namespace LightSpeed;
 
 class IDispatcher;
 class ILog;
+class IRpcNotify;
+class IClient;
 
 class IRequestContext: public BredyHttpSrv::IHttpHandlerContext {};
 
@@ -71,12 +73,29 @@ struct Request {
 	 * for example in case that some task running beyond lifetime of whole server,
 	 * you should check, whether this value is not NULL before you access it.
 	 *
-	 * The dispatcher itself has not much useful method, however, most server implementation
+	 * The dispatcher itself has not much useful methods, however, most server implementation
 	 * offers access to other interfaces through the getIfc() function. You
 	 * can access for example IMethodRegister. The dispatcher can be used to call methods
 	 * from inside of other method.
 	 */
 	WeakRef<IDispatcher> dispatcher;
+
+
+	///Contains reference to the IRpcNotify - it is responsible to deliver rpc notifications
+	/** If this reference is null, then no notify service is available. Otherwise you can
+	 * use this service to send notifications to the client. If you plan to send notifications
+	 * later outside to current method, you should store the reference as WeakRef. When
+	 * the client disconnects, this reference is set to null
+	 */
+	WeakRef<IRpcNotify> notifySvc;
+
+
+	///Contains reference to the IClient object if it is implemented
+	/** Some connections (websockets) supports reversed RPC, where the client processes methods
+	 * requested by the server. If the client interface is available, this reference is set
+	 * to non-null value
+	 */
+	WeakRef<IClient> client;
 
 
 	///Sets context of the request

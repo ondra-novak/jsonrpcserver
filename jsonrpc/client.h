@@ -18,9 +18,12 @@
 
 #include "rpchandler.h"
 #include "iclient.h"
+#include "config.h"
 using jsonsrv::RpcError;
 using LightSpeed::MemFile;
 namespace jsonrpc {
+
+
 
 class Client : public IClient{
 public:

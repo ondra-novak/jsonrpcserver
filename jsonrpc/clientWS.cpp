@@ -288,7 +288,7 @@ ClientWS::ConnectConfig ClientWS::ConnectConfig::fromHttpMapper( BredyHttpSrv::I
 	return out;
 }
 
-ClientWS::ConnectConfig ClientWS::ConnectConfig::fromRequest(BredyHttpSrv::IHttpRequest& request) {
+ClientWS::ConnectConfig ClientWS::ConnectConfig::fromRequest(BredyHttpSrv::IHttpRequestInfo& request) {
 	//extract server from the mapper
 	BredyHttpSrv::HttpServer &server = request.getIfc<BredyHttpSrv::HttpServer>();
 	//retrieve TCP server instance

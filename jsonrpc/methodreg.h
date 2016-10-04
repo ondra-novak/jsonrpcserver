@@ -48,7 +48,7 @@ public:
 
 	///Register method handler
 	/**
-	 * @param method method name (and optionally, format of arguments)
+	 * @param method method name (and optionally, format of arguments).
 	 * @param fn pointer to object, which will handle this method call
 	 * @param untilVer version when this method has been removed from the api. If there
 	 *  is same method with higher version, it will overwrite old method from specified version
@@ -70,6 +70,10 @@ public:
 	 * @endcode
 	 *
 	 * there can be comma , to create alternatives "ss,ssn,ssnb,ssb"
+	 *
+	 *
+	 *
+	 *
 	 *
 	 */
 	virtual void regMethodHandler(ConstStrA method, IMethod *fn) = 0;

@@ -10,16 +10,21 @@
 
 #include <lightspeed/base/containers/queue.h>
 #include "iclient.h"
+#include "config.h"
 #include "lightspeed/base/actions/promise.h"
 
 #include "lightspeed/mt/thread.h"
 
 #include "lightspeed/base/containers/map.h"
 #include "../httpclient/webSocketsClient.h"
+#include "rpcerror.h"
+
+using jsonsrv::RpcError;
 
 namespace BredyHttpSrv {
 	class IJobScheduler;
 	class IHttpRequestInfo;
+	class IHttpMapper;
 }
 
 namespace jsonsrv {
@@ -125,7 +130,7 @@ public:
 		 * is set to NULL.Initialization causes that WS client will use server's netrowk event listener, server's
 		 * scheduler and server's thread pool
 		 */
-		static ConnectConfig fromRequest(BredyHttpSrv::IHttpRequest &request);
+		static ConnectConfig fromRequest(BredyHttpSrv::IHttpRequestInfo &request);
 
 
 	};

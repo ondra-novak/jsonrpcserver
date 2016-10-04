@@ -11,17 +11,10 @@
 
 #include "../httpclient/httpClient.h"
 #include "lightspeed/base/actions/promise.h"
-#include "rpchandler.h"
-#include "rpcerror.h"
 
 namespace jsonrpc {
 
 using namespace LightSpeed;
-
-struct ClientConfig: public BredyHttpClient::ClientConfig {
-	StringA url;
-	JSON::PFactory jsonFactory;
-};
 
 class IClient {
 public:
@@ -62,7 +55,7 @@ public:
 
 };
 
-using jsonsrv::RpcError;
+
 
 
 
