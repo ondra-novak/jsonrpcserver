@@ -303,7 +303,7 @@ Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue json
 
 void Dispatcher::regMethodHandler(natural version, ConstStrA method, IMethod* fn) {
 	Synchronized<RWLock::WriteLock> _(mapLock);
-	MethodMap::Iterator iter = methodMap.insert(StrKey(StringA(method)),MethodDef(fn,version));
+	methodMap.insert(StrKey(StringA(method)),MethodDef(fn,version));
 
 }
 

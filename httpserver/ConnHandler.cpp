@@ -22,8 +22,15 @@ namespace BredyHttpSrv {
 
 static atomic contextCounter = 0;
 
+ConnHandler::ConnHandler(StringA serverIdent, natural maxBusyThreads)
+	:serverIdent(serverIdent),me(this)
+{
+	busySemaphore = new BusyThreadsControl(maxBusyThreads);
+}
+
+
 ConnHandler::Command ConnHandler::onDataReady(const PNetworkStream &stream, ITCPServerContext *context) throw() {
-	Synchronized<Semaphore> _(busySemaphore);
+	Synchronized<PBusyThreadsControl> _(busySemaphore);
 	ConnContext *ctx = static_cast<ConnContext *>(context);
 		try {
 
@@ -58,7 +65,7 @@ ConnHandler::Command ConnHandler::onDataReady(const PNetworkStream &stream, ITCP
 natural ConnHandler::wait(const INetworkResource *res, natural waitFor, natural timeout) const {
 	natural k = INetworkResource::WaitHandler::wait(res,waitFor,0);
 	if (k == 0 && timeout != 0) {
-		SyncReleased<Semaphore> _(busySemaphore);
+		SyncReleased<PBusyThreadsControl> _(busySemaphore);
 		k = INetworkResource::WaitHandler::wait(res,waitFor,timeout);
 	}
 	return k;
@@ -89,8 +96,8 @@ void ConnHandler::onDisconnectByPeer(ITCPServerContext *context) throw () {
 
 ITCPServerContext *ConnHandler::onIncome(const NetworkAddress &addr) throw() {
 	DbgLog::setThreadName("server",false);
-	ConnContext* x = new ConnContext(*this,addr);
-	x->setStaticObj();
+	ConnContext* x = new ConnContext(serverIdent,me,addr,busySemaphore);
+	x->addRef();
 	return x;
 }
 ConnHandler::Command ConnHandler::onAccept(ITCPServerConnControl *controlObject, ITCPServerContext *context) {
@@ -100,11 +107,6 @@ ConnHandler::Command ConnHandler::onAccept(ITCPServerConnControl *controlObject,
 	ctx->setControlObject(controlObject);
 	return cmdWaitRead;
 }
-
-
-
-
-
 
 
 void ConnHandler::addSite(ConstStrA path, IHttpHandler* handler) {
@@ -119,7 +121,11 @@ void ConnHandler::removeSite(ConstStrA path) {
 
 
 natural ConnContext::callHandler(ConstStrA vpath, IHttpHandler **h) {
-	return owner.callHandler(*this, vpath, h);
+	WeakRefPtr<ConnHandler> ownerptr(owner);
+	if (ownerptr != null)
+		return ownerptr->callHandler(*this, vpath, h);
+	else
+		return IHttpHandler::stServiceUnavailble;
 }
 natural ConnHandler::callHandler(HttpReqImpl &rq, ConstStrA vpath, IHttpHandler **h){
 	
@@ -141,8 +147,9 @@ natural ConnHandler::callHandler(HttpReqImpl &rq, ConstStrA vpath, IHttpHandler 
 
 
 
-ConnContext::ConnContext(ConnHandler &owner, const NetworkAddress &addr)
-	:HttpReqImpl(owner.serverIdent, owner.busySemaphore), owner(owner) {
+ConnContext::ConnContext(const StringA &serverIdent, const WeakRef<ConnHandler> &owner, const NetworkAddress &addr, const PBusyThreadsControl &busySemaphore)
+	:HttpReqImpl(serverIdent,busySemaphore)
+	,owner(owner) {
 	natural contextId = lockInc(contextCounter);
 	peerAddr = addr;
 
@@ -162,20 +169,30 @@ ConnContext::~ConnContext() {
 }
 
 void* ConnContext::proxyInterface(IInterfaceRequest& p) {
-	if (p.getType() == TypeInfo(typeid(ITCPServerConnControl))) {
+	if (p.getType() == TypeInfo(typeid(ITCPServerConnControl)) && controlObject != 0) {
 		return controlObject.get();
 	}
 	void *r = HttpReqImpl::proxyInterface(p);
-	if (r == 0) r = owner.proxyInterface(p);
+	if (r == 0) {
+		WeakRefPtr<ConnHandler> conn(owner);
+		if (conn != null) {
+			r = conn->proxyInterface(p);
+		}
+	}
 	return r;
 }
 
 const void* ConnContext::proxyInterface(const IInterfaceRequest& p) const {
-	if (p.getType() == TypeInfo(typeid(ITCPServerConnControl))) {
+	if (p.getType() == TypeInfo(typeid(ITCPServerConnControl)) && controlObject != 0) {
 		return controlObject.get();
 	}
 	const void *r = HttpReqImpl::proxyInterface(p);
-	if (r == 0) r = owner.proxyInterface(p);
+	if (r == 0) {
+		WeakRefPtr<ConnHandler> conn(owner);
+		if (conn != 0) {
+			return conn->proxyInterface(p);
+		}
+	}
 	return r;
 }
 
@@ -190,7 +207,7 @@ const void* ConnHandler::proxyInterface(const IInterfaceRequest& p) const {
 ConnHandler::Command ConnHandler::onUserWakeup( const PNetworkStream &, ITCPServerContext *context, natural ) throw()
 {
 	try {
-		Synchronized<Semaphore> _(busySemaphore);
+		Synchronized<PBusyThreadsControl> _(busySemaphore);
 
 		ConnContext *ctx = static_cast<ConnContext *>(context);
 
@@ -286,7 +303,9 @@ natural ConnContext::getSourceId() const {
 bool ConnContext::mapHost(ConstStrA host, ConstStrA &vpath)
 {
 	try {
-		storedVPath = owner.mapHost(host, vpath);
+		WeakRefPtr<ConnHandler> conn(owner);
+		if (conn == null) return false;
+		storedVPath = conn->mapHost(host, vpath);
 		vpath = storedVPath;
 		return true;
 	}
@@ -297,22 +316,27 @@ bool ConnContext::mapHost(ConstStrA host, ConstStrA &vpath)
 
 ConstStrA ConnContext::getBaseUrl() const
 {
+	WeakRefPtr<ConnHandler> conn(owner);
+	if (conn == null) throwNullPointerException(THISLOCATION);
 	HeaderValue host = getHeaderField(fldHost);
-	return storedBaseUrl = owner.getBaseUrl(host);
+	return storedBaseUrl = conn->getBaseUrl(host);
 }
 
 StringA ConnContext::getAbsoluteUrl() const
 {
+	WeakRefPtr<ConnHandler> conn(owner);
+	if (conn == null) throwNullPointerException(THISLOCATION);
 	HeaderValue host = getHeaderField(fldHost);
 	ConstStrA path = getPath();
-	return owner.getAbsoluteUrl(host, path, ConstStrA());
+	return conn->getAbsoluteUrl(host, path, ConstStrA());
 }
 
-StringA ConnContext::getAbsoluteUrl(ConstStrA relpath) const
-{
+StringA ConnContext::getAbsoluteUrl(ConstStrA relpath) const {
+	WeakRefPtr<ConnHandler> conn(owner);
+	if (conn == null) throwNullPointerException(THISLOCATION);
 	HeaderValue host = getHeaderField(fldHost);
 	ConstStrA path = getPath();
-	return owner.getAbsoluteUrl(host, path, relpath);
+	return conn->getAbsoluteUrl(host, path, relpath);
 }
 
 void ConnContext::setControlObject(Pointer<ITCPServerConnControl> controlObject) {
@@ -335,23 +359,38 @@ void ConnContext::clear()
 }
 
 void ConnContext::recordRequestDuration(natural durationMs) {
-	HttpReqImpl::recordRequestDuration(durationMs);
-	owner.recordRequestDuration(durationMs);
+	WeakRefPtr<ConnHandler> conn(owner);
+	if (conn != null) {
+		HttpReqImpl::recordRequestDuration(durationMs);
+		conn->recordRequestDuration(durationMs);
+	}
 }
 
 LightSpeed::ConstStrA ConnContext::getPeerRealAddr() const
 {
+	WeakRefPtr<ConnHandler> conn(owner);
 	if (peerRealAddrStr.empty()) {
 		StringA ipport = getPeerAddrStr();
 		natural sep = ipport.findLast(':');
 		ConstStrA ip = ipport.head(sep);
 		HeaderValue proxies = getHeaderField(fldXForwardedFor);
-		if (proxies.defined)
-			peerRealAddrStr = owner.getRealAddr(ip, proxies);
+		if (proxies.defined && conn != null)
+			peerRealAddrStr = conn->getRealAddr(ip, proxies);
 		else
 			peerRealAddrStr = ip;
 	}
 	return peerRealAddrStr;
 }
 
+void ConnContext::releaseOwnership() {
+	if (release()) delete this;
+	controlObject = null;
 }
+
+ConnHandler::~ConnHandler() {
+	me.setNull();
+}
+
+
+}
+

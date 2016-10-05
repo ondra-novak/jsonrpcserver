@@ -164,7 +164,7 @@ natural HttpHandler::onGET(BredyHttpSrv::IHttpRequest&r, ConstStrA vpath) {
 		while (qp.hasItems()) {
 			const QueryField &fld = qp.getNext();
 			if (fld.name == "v" || fld.name == "ver" || fld.name == "version") {
-				if (fld.value == "max") version == naturalNull;
+				if (fld.value == "max") version = naturalNull;
 				else parseUnsignedNumber(fld.value.getFwIter(),version,10);
 			}
 		}

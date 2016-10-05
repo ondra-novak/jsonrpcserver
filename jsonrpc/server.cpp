@@ -25,6 +25,8 @@ namespace jsonrpc {
 
 Server::Server(const IniConfig::Section& cfg)
 	:HttpHandler(static_cast<IDispatcher &>(*this))
+	,wsHandler(static_cast<IDispatcher &>(*this))
+	,wsenabled(true)
 
 {
 	setLogObject(this);
@@ -33,6 +35,8 @@ Server::Server(const IniConfig::Section& cfg)
 
 Server::Server(const Config& config)
 	:HttpHandler(static_cast<IDispatcher &>(*this))
+	,wsHandler(static_cast<IDispatcher &>(*this))
+	,wsenabled(true)
 
 {
 	setLogObject(this);
@@ -96,6 +100,8 @@ void Server::loadConfig(const Config& cfg) {
 		| (cfg.enableListMethods ? flagEnableListMethods : 0)
 		| (cfg.enableStats ? flagEnableStatHandler : 0));
 
+
+	wsenabled = cfg.enableWebSockets;
 /*	registerStatHandler("server",RpcCall::create(this,&JsonRpcServer::rpcHttpStatHandler));
 	if (cfg.corsOrigin != nil) {
 		setCORSOrigin((StringA)cfg.corsOrigin);
@@ -139,6 +145,7 @@ void Server::loadConfig(const IniConfig::Section& sect) {
 	sect.get(cfg.enableMulticall, "multicall");
 	sect.get(cfg.enableListMethods, "listMethods");
 	sect.get(cfg.enableStats, "enableStats");
+	sect.get(cfg.enableWebSockets, "enableWebsockets");
 
 	loadConfig(cfg);
 
@@ -275,7 +282,13 @@ Optional<bool> Server::OldAPI::isAllowedOrigin(ConstStrA /*origin*/) {
 	return null;
 }
 
-
+natural Server::onGET(BredyHttpSrv::IHttpRequest& req, ConstStrA vpath) {
+	if (wsenabled && vpath.empty() && req.getHeaderField(req.fldUpgrade) == "websocket" ) {
+		return req.forwardRequestTo(&wsHandler,vpath);
+	} else {
+		return HttpHandler::onGET(req,vpath);
+	}
+}
 
 } /* namespace jsonrpc */
 

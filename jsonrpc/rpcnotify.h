@@ -27,7 +27,7 @@ namespace jsonrpc {
 
 		PreparedNotify(ConstStrA notifyName, JSON::ConstValue params, const JSON::Builder &json);
 	protected:
-		PreparedNotify(const StringA &content);
+		PreparedNotify(const StringA &content):content(content) {}
 	};
 
 	class IRpcNotify: public LightSpeed::IInterface {

@@ -95,17 +95,16 @@ static ConstStrA getStatusMessage(natural status) {
 	return ConstStrA("Unknown status code");
 }
 
-HttpReqImpl::HttpReqImpl(ConstStrA serverIdent, Semaphore &busySemaphore)
-: inout(0)
-, serverIdent(serverIdent)
+HttpReqImpl::HttpReqImpl(StringA serverIdent, const PBusyThreadsControl &busySemaphore)
+:serverIdent(serverIdent)
+,busySemaphore(busySemaphore)
+,inout(0)
 , httpMajVer(1)
 , httpMinVer(0)
 , bHeaderSent(false)
 , useChunked(false)
 ,switchedProtocol(false)
 ,statusCode(200)
-,busySemaphore(busySemaphore)
-,busyLockStatus(1)
 ,postBodyLimit(naturalNull)
 {
 
@@ -840,19 +839,10 @@ void HttpReqImpl::send100continue() const {
 /* namespace jsonsvc */
 
 void HttpReqImpl::beginIO() {
-	if (busyLockStatus == 0) {
-		busySemaphore.unlock();
-	}
-	busyLockStatus++;
+	busySemaphore->unlock(lockStatus);
 }
 void HttpReqImpl::endIO() {
-	if (busyLockStatus != 0) {
-		busyLockStatus--;
-		if (busyLockStatus == 0) {
-			busySemaphore.lock();
-		}
-	}
-
+	busySemaphore->lock(lockStatus);
 }
 
 PNetworkStream HttpReqImpl::getConnection() {

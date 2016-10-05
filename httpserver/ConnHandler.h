@@ -18,6 +18,7 @@
 #include "hostMapper.h"
 #include "lightspeed/mt/rwlock.h"
 
+#include "lightspeed/base/memory/weakref.h"
 using LightSpeed::NetworkStream;
 
 namespace BredyHttpSrv {
@@ -30,8 +31,8 @@ class ConnContext;
 class ConnHandler: public ITCPServerConnHandler, public IHttpMapper, public INetworkResource::WaitHandler {
 public:
 
-	ConnHandler( StringA serverIdent, natural maxBusyThreads)
-		:serverIdent(serverIdent),busySemaphore((atomic)maxBusyThreads) {}
+	ConnHandler( StringA serverIdent, natural maxBusyThreads);
+	~ConnHandler();
 
 	virtual Command onDataReady(const PNetworkStream &stream, ITCPServerContext *context) throw();
 	virtual Command onWriteReady(const PNetworkStream &stream, ITCPServerContext *context) throw();
@@ -69,7 +70,8 @@ protected:
 	RWLock pathMapLock;
 	HostMapper hostMap;
 	natural numThreads;
-	mutable Semaphore busySemaphore;
+	PBusyThreadsControl busySemaphore;
+	WeakRefTarget<ConnHandler> me;
 
 
 
@@ -83,7 +85,7 @@ protected:
 
 class ConnContext: public ITCPServerContext, public HttpReqImpl, public IHttpPeerInfo  {
 public:
-	ConnHandler &owner;
+	WeakRef<ConnHandler> owner;
 	NetworkAddress peerAddr;
 	mutable StringA peerAddrStr;
 	mutable StringA peerRealAddrStr;
@@ -93,7 +95,7 @@ public:
 	StringKey<StringA> storedVPath;
 	mutable StringA storedBaseUrl;
 
-	ConnContext(ConnHandler &owner, const NetworkAddress &addr);
+	ConnContext(const StringA &serverIdent, const WeakRef<ConnHandler> &owner, const NetworkAddress &addr, const PBusyThreadsControl &busySemaphore);
 	~ConnContext();
 
 	virtual natural callHandler(ConstStrA vpath, IHttpHandler **h);
@@ -115,6 +117,8 @@ public:
 
 
 	virtual void recordRequestDuration(natural durationMs);
+	virtual void releaseOwnership();
+
 };
 
 } /* namespace jsonsvc */

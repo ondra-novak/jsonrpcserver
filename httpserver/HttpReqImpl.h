@@ -15,6 +15,8 @@
 #include "lightspeed/base/framework/ITCPServer.h"
 
 #include "lightspeed/base/containers/stringpool.h"
+
+#include "busyThreadsControl.h"
 #include "nstream.h"
 
 namespace LightSpeed {
@@ -28,7 +30,7 @@ class ConnContext;
 class HttpReqImpl: public IHttpRequest{
 public:
 
-	HttpReqImpl(ConstStrA serverIdent, Semaphore &busySemaphore);
+	HttpReqImpl(StringA serverIdent, const PBusyThreadsControl &busySemaphore);
 
 
 	virtual ConstStrA getMethod() const;
@@ -124,6 +126,7 @@ protected:
 
 
 
+
 	void writeChunk(const void *data, natural len);
 	ITCPServerConnHandler::Command  errorPageKA(natural code, ConstStrA expl = ConstStrA());
 	void send100continue() const;
@@ -132,8 +135,10 @@ protected:
 	
 
 protected:
+	StringA serverIdent;
+	PBusyThreadsControl busySemaphore;
+
 	NStream *inout;
-	ConstStrA serverIdent;
 	unsigned short httpMajVer;
 	unsigned short httpMinVer;
 	mutable natural remainPostData;
@@ -146,6 +151,7 @@ protected:
 	mutable bool inputClosed;
 	mutable bool bNeedContinue;
 	mutable bool chunkedPost;
+
 
 	StrPool hdrPool,responseHdrPool;
 	HeaderMap requestHdrs, responseHdrs;
@@ -161,8 +167,7 @@ protected:
 	AllocPointer<IHttpHandlerContext> requestContext;
 	AllocPointer<IHttpHandlerContext> connectionContext;
 	natural bufferAllocPos;
-	Semaphore &busySemaphore;
-	natural busyLockStatus;
+	BusyThreadsControl::LockStatus lockStatus;
 	mutable natural postBodyLimit;
 
 	HdrStr requestName;

@@ -7,15 +7,19 @@
 
 #include "wsHandler.h"
 
-#include <lightspeed/utils/json/jsonserializer.tcc>
 #include "iclient.h"
 #include "ipeer.h"
 #include "lightspeed/base/debug/dbglog.h"
 
 #include "errors.h"
 #include "idispatch.h"
+#include "lightspeed/base/actions/promise.tcc"
 #include "rpcerror.h"
 #include "rpcnotify.h"
+
+#include <lightspeed/utils/json/jsonserializer.tcc>
+#include <lightspeed/base/containers/avltree.tcc>
+
 
 using LightSpeed::JSON::Serializer;
 namespace jsonrpc {
