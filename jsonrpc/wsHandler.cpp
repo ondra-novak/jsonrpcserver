@@ -20,6 +20,7 @@
 #include <lightspeed/utils/json/jsonserializer.tcc>
 #include <lightspeed/base/containers/avltree.tcc>
 
+#include "httpHandler.h"
 
 using LightSpeed::JSON::Serializer;
 namespace jsonrpc {
@@ -48,7 +49,7 @@ WeakRef<IWSHandlerEvents> WSHandler::getListener() const {
 class WSConnection: public BredyHttpSrv::WebSocketConnection, public IRpcNotify, public IClient, public IPeer {
 public:
 	WSConnection(JSON::Builder json, IDispatcher &dispatcher,
-			BredyHttpSrv::IHttpRequest&request, WeakRef<IWSHandlerEvents> events);
+			BredyHttpSrv::IHttpRequest&request, WeakRef<IWSHandlerEvents> events, natural version);
 	~WSConnection();
 	virtual void onConnect();
 	virtual void onTextMessage(ConstStrA msg);
@@ -72,6 +73,7 @@ public:
 	virtual void setContext(Context *ctx);
 	virtual Context *getContext() const;
 	virtual IClient *getClient() const;
+	virtual natural getVersion() const {return version;}
 
 	void processResponse(const JSON::ConstValue &req);
 	void processRequest(const JSON::ConstValue &req);
@@ -96,14 +98,18 @@ public:
 	WaitingPromises waitingPromises;
 	MicroLock promisesLock;
 
+	natural version;
+
 };
 
 
 
 BredyHttpSrv::WebSocketConnection* WSHandler::onNewConnection(
-		IRuntimeAlloc& alloc, BredyHttpSrv::IHttpRequest& request, ConstStrA ) {
+		IRuntimeAlloc& alloc, BredyHttpSrv::IHttpRequest& request, ConstStrA vpath) {
 
-	return new(alloc) WSConnection(json, dispatcher,request, events);
+	natural ver = HttpHandler::getVersionFromReq(request, vpath);
+
+	return new(alloc) WSConnection(json, dispatcher,request, events, ver);
 
 }
 
@@ -112,7 +118,7 @@ BredyHttpSrv::WebSocketConnection* WSHandler::onNewConnection(
 WSConnection::WSConnection(JSON::Builder json,
 		IDispatcher &dispatcher,
 		BredyHttpSrv::IHttpRequest& request,
-		WeakRef<IWSHandlerEvents> events)
+		WeakRef<IWSHandlerEvents> events, natural version)
 
 :WebSocketConnection(request),
  json(json)
@@ -122,6 +128,7 @@ WSConnection::WSConnection(JSON::Builder json,
 ,onCloseFuture(null)
 ,events(events)
 ,nextPromiseId(TimeStamp::now().asUnix())
+,version(version)
 {
 }
 
@@ -160,7 +167,7 @@ void WSConnection::onTextMessage(ConstStrA msg) {
 	}
 }
 
-void WSConnection::onBinaryMessage(ConstBin msg) {
+void WSConnection::onBinaryMessage(ConstBin ) {
 	closeConnection(closeAbnormal);
 }
 

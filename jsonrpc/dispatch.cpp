@@ -237,7 +237,6 @@ Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue json
 	JSON::ConstValue method = jsonrpcmsg["method"];
 	JSON::ConstValue params = jsonrpcmsg["params"];
 	JSON::ConstValue context = jsonrpcmsg["context"];
-	JSON::ConstValue version = jsonrpcmsg["version"];
 
 	//Request is initialized as ResultObserver which will later create result JSON
 	Future<JSON::ConstValue> result;
@@ -250,7 +249,7 @@ Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue json
 	r->json = json;
 	r->methodName = method;
 	r->params = params;
-	r->version = version == null?0:version->getUInt();
+	r->version = peer.lock()->getVersion();
 
 
 	try {

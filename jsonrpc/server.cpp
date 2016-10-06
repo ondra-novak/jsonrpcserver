@@ -233,15 +233,19 @@ Server::OldAPI::CallResult Server::OldAPI::callMethod(BredyHttpSrv::IHttpRequest
 		virtual IClient *getClient() const {
 			return 0;
 		}
+		virtual natural getVersion() const {
+			return version;
+		}
 
 		ContextVar ctx;
 		BredyHttpSrv::IHttpRequestInfo *req;
+		natural version;
 
-		FakePeer(BredyHttpSrv::IHttpRequestInfo *req):req(req) {}
+		FakePeer(BredyHttpSrv::IHttpRequestInfo *req,natural version):req(req),version(version) {}
 	};
 
 
-	FakePeer fakePeer(httpRequest);
+	FakePeer fakePeer(httpRequest, this->version);
 	WeakRefTarget<IPeer> peer(&fakePeer);
 	JSON::Builder json;
 	Request req;
@@ -283,8 +287,9 @@ Optional<bool> Server::OldAPI::isAllowedOrigin(ConstStrA /*origin*/) {
 }
 
 natural Server::onGET(BredyHttpSrv::IHttpRequest& req, ConstStrA vpath) {
-	if (wsenabled && vpath.empty() && req.getHeaderField(req.fldUpgrade) == "websocket" ) {
-		return req.forwardRequestTo(&wsHandler,vpath);
+	if (vpath.empty() && req.getHeaderField(req.fldUpgrade) == "websocket" ) {
+		if (!wsenabled) return stForbidden;
+		else return req.forwardRequestTo(&wsHandler,vpath);
 	} else {
 		return HttpHandler::onGET(req,vpath);
 	}

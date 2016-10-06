@@ -105,6 +105,15 @@ public:
 	virtual IClient *getClient() const = 0;
 
 
+	///Retrieves API version which the client asks
+	/**
+	 * @retval 0 the client doesn't require specified version
+	 * @retval naturalNull the client requires newest available version
+	 * @retval other specifies version thah client asks.
+	 *
+	 * Version is typically specified by ?ver=xxx in the url. Other method is to use X-RPC-Version header field
+	 */
+	virtual natural getVersion() const = 0;
 };
 
 

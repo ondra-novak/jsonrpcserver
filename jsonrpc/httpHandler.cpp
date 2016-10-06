@@ -32,8 +32,8 @@ using namespace BredyHttpSrv;
 
 class HttpHandler::RpcContext: public HttpHandler::IRequestContext, public IPeer {
 public:
-	RpcContext(IHttpRequest &request, HttpHandler &owner)
-		:request(request),owner(owner),result(null),me(this) {}
+	RpcContext(IHttpRequest &request, HttpHandler &owner,natural version)
+		:request(request),owner(owner),result(null),me(this),version(version) {}
 	~RpcContext() {
 		//if request is being destroyed, we need to cancel the future now.
 		result.cancel();
@@ -41,6 +41,7 @@ public:
 	}
 
 	virtual natural onData(IHttpRequest &request);
+	natural sendResponse();
 
 protected:
 	IHttpRequest &request;
@@ -48,6 +49,7 @@ protected:
 	Future<JSON::ConstValue> result;
 	ContextVar requestContext;
 	WeakRefTarget<IPeer> me;
+	natural version;
 
 	void wakeUpConnection(const JSON::ConstValue &);
 
@@ -72,7 +74,9 @@ protected:
 	virtual IClient *getClient() const {
 		return 0;
 	}
-
+	virtual natural getVersion() const {
+		return version;
+	}
 
 
 };
@@ -99,9 +103,10 @@ natural HttpHandler::onData(IHttpRequest& request) {
 	}
 }
 
-natural HttpHandler::onPOST(IHttpRequest& request, ConstStrA) {
+natural HttpHandler::onPOST(IHttpRequest& request, ConstStrA vpath) {
+	natural version = getVersionFromReq(request,vpath);
 	request.header(IHttpRequest::fldContentType,"application/json");
-	RpcContext *ctx = new RpcContext(request,*this);
+	RpcContext *ctx = new RpcContext(request,*this,version);
 	request.setRequestContext(ctx);
 
 	return stContinue;
@@ -109,40 +114,43 @@ natural HttpHandler::onPOST(IHttpRequest& request, ConstStrA) {
 
 }
 
+natural HttpHandler::RpcContext::sendResponse() {
+const JSON::ConstValue *res = result.tryGetValue();
+if (res) {
+	SeqFileOutput output(&request);
+	owner.json.factory->toStream(*(*res),output);
+	result.clear();
+	return stContinue;
+} else {
+	result.thenCall(Message<void,JSON::ConstValue,void>::create(this, &HttpHandler::RpcContext::wakeUpConnection));
+	return stSleep;
+}
+}
+
 natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 
-	if (result.hasPromise()) {
-		const JSON::ConstValue *res = result.tryGetValue();
-		if (res) {
-			SeqFileOutput output(&request);
-			owner.json.factory->toStream(*(*res),output);
-			result.clear();
-			return stContinue;
+	IHttpRequest::EventType evType = request.getEventType();
+	switch (evType) {
+	case IHttpRequest::evUserWakeup: return sendResponse();
+	case IHttpRequest::evEndOfStream: return stOK;
+	case IHttpRequest::evDataReady: {
+			JSON::ConstValue val;
+			try {
+				SeqFileInput input(&request);
+				val = owner.json.factory->fromStream(input);
+			} catch (std::exception &e) {
+				request.errorPage(400,ConstStrA(),e.what());
+			}
+
+			JSON::ConstValue v = val["method"];
+			if (v != null) request.setRequestName(v.getStringA());
+			request.sendHeaders();
+
+			result = owner.dispatcher.dispatchMessage(val,owner.json,me);
+			return sendResponse();
 		}
+	default: return stInternalError;
 	}
-	if (!request.canRead()) return 0;
-
-	JSON::ConstValue val;
-	try {
-		SeqFileInput input(&request);
-		val = owner.json.factory->fromStream(input);
-	} catch (std::exception &e) {
-		request.errorPage(400,ConstStrA(),e.what());
-	}
-
-	JSON::ConstValue v = val["method"];
-	if (v != null) request.setRequestName(v.getStringA());
-	request.sendHeaders();
-
-	result = owner.dispatcher.dispatchMessage(val,owner.json,me);
-	if (result.getState() == IPromiseControl::stateResolved) {
-		return onData(request);
-	} else {
-		result.thenCall(Message<void, JSON::ConstValue>::create(
-				this, &HttpHandler::RpcContext::wakeUpConnection));
-		return stSleep;
-	}
-
 }
 
 void HttpHandler::setClientPage(const FilePath& path) {
@@ -160,18 +168,11 @@ natural HttpHandler::onGET(BredyHttpSrv::IHttpRequest&r, ConstStrA vpath) {
 	ConstStrA path = qp.getPath();
 
 	if (path.head(9)==ConstStrA("/methods/")) {
-		natural version = 0;
-		while (qp.hasItems()) {
-			const QueryField &fld = qp.getNext();
-			if (fld.name == "v" || fld.name == "ver" || fld.name == "version") {
-				if (fld.value == "max") version = naturalNull;
-				else parseUnsignedNumber(fld.value.getFwIter(),version,10);
-			}
-		}
+		natural version = getVersionFromReq(r,vpath);
 		return dumpMethods(vpath.offset(9),version,r);
 	} else
-	if (path == ConstStrA("/client.js")) {
-		return sendClientJs(r);
+		if (path == ConstStrA("/client.js")) {
+			return sendClientJs(r);
 	} else if (path == ConstStrA("/ws_client.js")) {
 		return sendWsClientJs(r);
 	}
@@ -259,6 +260,30 @@ natural HttpHandler::sendWsClientJs(IHttpRequest& request) {
 
 void HttpHandler::RpcContext::wakeUpConnection(const JSON::ConstValue &) {
 	request.wakeUp(0);
+}
+
+const char *HttpHandler::versionHdr = "Version";
+
+natural HttpHandler::getVersionFromReq(BredyHttpSrv::IHttpRequestInfo& req, ConstStrA vpath) {
+	QueryParser qp(vpath);
+	bool verset = false;
+	natural version = 0;
+	while (qp.hasItems()) {
+		const QueryField &fld = qp.getNext();
+		if (fld.name == "v" || fld.name == "ver" || fld.name == "version") {
+			verset = true;
+			if (fld.value == "max") version = naturalNull;
+			else parseUnsignedNumber(fld.value.getFwIter(),version,10);
+		}
+	}
+	if (!verset) {
+		HeaderValue hv = req.getHeaderField(versionHdr);
+		if (hv.defined) {
+			if (hv == "max") version = naturalNull;
+			else parseUnsignedNumber(hv.getFwIter(),version,10);
+		}
+	}
+	return version;
 }
 
 } /* namespace jsonrpc */

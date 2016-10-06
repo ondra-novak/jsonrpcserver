@@ -29,11 +29,9 @@ class IPeer;
  */
 struct Request {
 
-	///interface version
-	/** The request can declare version of interface. There are two special versions
-	 *
-	 * version 0 - use all available methods (including deprecated)
-	 * version naturalNull - use newest version (some method may be deprecated and removed)
+	///API version
+	/** Contains same value as IPeer::getVersion(). However the peer can be unavailable,
+	 * so this is the fastest way
 	 *
 	 */
 	natural version;

@@ -25,6 +25,9 @@ public:
 	void setClientPage(const FilePath &path);
 	void unsetClientPage();
 
+	static const char *versionHdr;
+	static natural getVersionFromReq(BredyHttpSrv::IHttpRequestInfo &req, ConstStrA vpath);
+
 protected:
 	virtual natural onRequest(BredyHttpSrv::IHttpRequest& request, ConstStrA vpath);
 	virtual natural onData(BredyHttpSrv::IHttpRequest& request);
@@ -52,6 +55,8 @@ protected:
 	StringA methodListTag;
 
 	natural dumpMethods(ConstStrA name, natural version, BredyHttpSrv::IHttpRequest& request);
+
+
 
 
 
