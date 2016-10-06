@@ -517,15 +517,24 @@ bool HttpReqImpl::HttpHeaderCmpKeys::operator ()(ConstStrA a, ConstStrA b) const
 }
 
 
-ITCPServerConnHandler::Command HttpReqImpl::onData(NStream& stream) {
+ITCPServerConnHandler::Command HttpReqImpl::onData(NStream& stream, EventType eventType, natural reason) {
+
+
 	inout = &stream;
 	try {
 		if (curHandler != nil) {
-			SectionIODirectRev _(*this);
+			evType = eventType;
+			wakeUpReason = reason;
 			natural res = curHandler->onData(*this);
 			return processHandlerResponse(res);
-		} else {
+
+		} else if (eventType == evDataReady) {
+			//only evDataReady is expected
+			evType = evRequest;
 			return readHeader();
+		} else {
+			//otherwise it is invalid
+			return ITCPServerConnHandler::cmdRemove;
 		}
 	} catch (HttpStatusException &e) {
 		LogObject lg(THISLOCATION);
@@ -603,7 +612,6 @@ ITCPServerConnHandler::Command  HttpReqImpl::readHeader() {
 					return errorPageKA(400,StringA(ConstStrA("Unknown protocol: ")+ protocol));
 				}
 			} else if (line.empty()) {
-				SectionIODirectRev _(*this);
 				return finishReadHeader();
 			} else {
 
@@ -708,14 +716,6 @@ bool HttpReqImpl::isInputAvailable() const {
 	else return switchedProtocol || remainPostData > 0;
 }
 
-ITCPServerConnHandler::Command HttpReqImpl::onUserWakeup()
-{
-	//no handler expect this state - so close connection unconditionaly
-	if (curHandler == null) return ITCPServerConnHandler::cmdRemove;
-	//call onData and process its response
-	return processHandlerResponse(curHandler->onData(*this));
-}
-
 ITCPServerConnHandler::Command  HttpReqImpl::processHandlerResponse(natural res) {
 	//stDetach causes waiting for user wakeup.
 	if (res == IHttpHandler::stSleep) {
@@ -726,6 +726,7 @@ ITCPServerConnHandler::Command  HttpReqImpl::processHandlerResponse(natural res)
 		//in case of 100 response, keep connection on-line
 		if (res == 100) {
 			if (!isInputAvailable()) {
+				evType = evEndOfStream;
 				res = curHandler->onData(*this);
 				if (res == 100) res =500;
 				return processHandlerResponse(res);
@@ -856,12 +857,6 @@ void HttpReqImpl::setMaxPostSize(natural bytes) {
 
 }
 
-void HttpReqImpl::wakeUp(natural ) throw()
-{
-	ITCPServerConnControl &control = getIfc<ITCPServerConnControl>();
-	control.getUserSleeper()->wakeUp(0);
-}
-
 bool HttpReqImpl::mapHost(ConstStrA , ConstStrA &)
 {
 
@@ -894,6 +889,14 @@ void HttpReqImpl::logRequest(natural reqTime)
 		<< requestName
 		<< reqTime
 		<< host;
+}
+
+IHttpRequest::EventType HttpReqImpl::getEventType() {
+	return evType;
+}
+
+natural HttpReqImpl::getWakeupReason() {
+	return wakeUpReason;
 }
 
 }

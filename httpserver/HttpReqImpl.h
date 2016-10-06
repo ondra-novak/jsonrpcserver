@@ -70,7 +70,7 @@ public:
 	void finishChunk();
 
 
-	ITCPServerConnHandler::Command onData(NStream &stream);
+	ITCPServerConnHandler::Command onData(NStream &stream, EventType evType, natural reason);
 	ITCPServerConnHandler::Command  readHeader();
 	ITCPServerConnHandler::Command  finishReadHeader();
 	virtual void clear();
@@ -91,7 +91,6 @@ public:
 
 
 	virtual void setMaxPostSize(natural bytes) ;
-	virtual void wakeUp(natural reason = 0) throw();
 	///converts host and path to the vpath
 	/**
 	 @param host host read from the request
@@ -106,9 +105,12 @@ public:
 	 */
 	virtual bool mapHost(ConstStrA host, ConstStrA &vpath);
 
-	ITCPServerConnHandler::Command  onUserWakeup();
 
 	virtual void setRequestName(ConstStrA name);
+
+	virtual EventType getEventType() ;
+	virtual natural getWakeupReason() ;
+
 
 protected:
 
@@ -174,6 +176,9 @@ protected:
 
 	TimeStamp reqBeginTime;
 	bool reportDuration;
+
+	EventType evType;
+	natural wakeUpReason;
 
 	class SectionIODirect {
 	public:

@@ -197,6 +197,7 @@ using namespace LightSpeed;
 			~SectionIO() {r.endIO();}
 			IHttpRequestInfo &r;
 		};
+
     };
 
     ///Interface control connection and request context
@@ -545,7 +546,45 @@ using namespace LightSpeed;
 		 * @param durationMs duration in milliseconds
 		 */
 		virtual void recordRequestDuration(natural durationMs) = 0;
-};
+
+		///Defines type of event which causes execution of the handler
+		enum EventType {
+			///The handler has been executed because header of the request is complete
+			/** This state is returned for the first call of the handler for the request, i.e.
+			 * when onRequest is called.
+			 */
+			evRequest,
+			///The handler has been executed because new data arrived
+			/** The handler which previously returned stContinue can continue, because some new data arrived */
+			evDataReady,
+			///The handler has been executed because connection is ready to accept new outgoing data
+			/** The handler which previously returned stWaitForWrite can continue to send a responsed */
+			evWriteReady,
+			///The handler has been executed because wakeUp function has been called
+			/** The handler which previously returned stSleep can continue in its work, because
+			 * the function wakeUp has been called. The handler can receive reason of wakeUp
+			 * using the function getWakeupReason()
+			 *
+			 */
+			evUserWakeup,
+			///End of stream found
+			/** The handler which has previously returned stContinue is notified, that
+			 * end of stream has been reached. The handler must not return stContinue.
+			 */
+			evEndOfStream,
+		};
+		virtual EventType getEventType() = 0;
+		///Retrieves the reason value from the wakeUp() function
+		/** @return the most recent value of the reason
+		 *
+		 * @note only the recent reason is stored. In most of cases the reason is not used,
+		 * however, if you want to use it, ensure, that there is nothing what can
+		 * request wakeUp() on the connection which can overwrite stored reason before it is
+		 * collected.
+		 */
+		virtual natural getWakeupReason() = 0;
+
+	};
 
 	class IHttpHandler {
 	public:

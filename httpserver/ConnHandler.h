@@ -51,7 +51,7 @@ public:
 	void mapHost(ConstStrA mapLine);
 	void unmapHost(ConstStrA mapLine);
 
-
+	Command processEvent(const PNetworkStream &stream, ITCPServerContext *ctx, IHttpRequest::EventType event, natural reason) throw();
 
 	virtual void *proxyInterface(IInterfaceRequest &p);
 	virtual const void *proxyInterface(const IInterfaceRequest &p) const;
@@ -94,6 +94,7 @@ public:
 	StringA ctxName;
 	StringKey<StringA> storedVPath;
 	mutable StringA storedBaseUrl;
+	MicroLock controlObjectPtrLock;
 
 	ConnContext(const StringA &serverIdent, const WeakRef<ConnHandler> &owner, const NetworkAddress &addr, const PBusyThreadsControl &busySemaphore);
 	~ConnContext();
@@ -114,6 +115,7 @@ public:
 	virtual void clear();
 
 	virtual ConstStrA getPeerRealAddr() const;
+	virtual void wakeUp(natural reson) throw();
 
 
 	virtual void recordRequestDuration(natural durationMs);

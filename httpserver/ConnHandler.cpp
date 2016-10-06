@@ -30,6 +30,11 @@ ConnHandler::ConnHandler(StringA serverIdent, natural maxBusyThreads)
 
 
 ConnHandler::Command ConnHandler::onDataReady(const PNetworkStream &stream, ITCPServerContext *context) throw() {
+	return processEvent(stream,context,IHttpRequest::evDataReady,0);
+}
+
+ConnHandler::Command ConnHandler::processEvent(const PNetworkStream &stream, ITCPServerContext *context, IHttpRequest::EventType event, natural reason) throw() {
+
 	Synchronized<PBusyThreadsControl> _(busySemaphore);
 	ConnContext *ctx = static_cast<ConnContext *>(context);
 		try {
@@ -42,9 +47,9 @@ ConnHandler::Command ConnHandler::onDataReady(const PNetworkStream &stream, ITCP
 			ctx->nstream = Constructor1<NStream,PNetworkStream>(stream.getMT());
 		}
 
-		ConnHandler::Command cmd =  ctx->onData(ctx->nstream);
+		ConnHandler::Command cmd =  ctx->onData(ctx->nstream, event, reason);
 		while (cmd == ConnHandler::cmdWaitRead && ctx->nstream->dataReady() > 0) {
-			cmd =  ctx->onData(ctx->nstream);
+			cmd =  ctx->onData(ctx->nstream, IHttpRequest::evDataReady, 0);
 		}
 		if (cmd == ITCPServerConnHandler::cmdWaitUserWakeup) {
 			LogObject(THISLOCATION).debug("Request uses detach feature");
@@ -75,9 +80,7 @@ natural ConnHandler::wait(const INetworkResource *res, natural waitFor, natural 
 
 
 ConnHandler::Command ConnHandler::onWriteReady(const PNetworkStream &stream, ITCPServerContext *context) throw() {
-	//because handler can't wait for both reading or writing, it is always known, what expected
-	//so we can route onWriteReady through onDataReady
-	return onDataReady(stream,context);
+	return processEvent(stream,context,IHttpRequest::evWriteReady,0);
 }
 ConnHandler::Command ConnHandler::onTimeout(const PNetworkStream &, ITCPServerContext *) throw () {
 	//when timeout - remove connection
@@ -204,25 +207,9 @@ const void* ConnHandler::proxyInterface(const IInterfaceRequest& p) const {
 	return IHttpMapper::proxyInterface(p);
 }
 
-ConnHandler::Command ConnHandler::onUserWakeup( const PNetworkStream &, ITCPServerContext *context, natural ) throw()
+ConnHandler::Command ConnHandler::onUserWakeup( const PNetworkStream &stream, ITCPServerContext *context, natural reason) throw()
 {
-	try {
-		Synchronized<PBusyThreadsControl> _(busySemaphore);
-
-		ConnContext *ctx = static_cast<ConnContext *>(context);
-
-		//we need context otherwise close connection
-		if (ctx == 0)
-			return cmdRemove;
-
-		DbgLog::setThreadName(ctx->ctxName,false);
-
-		return ctx->onUserWakeup();
-	} catch (std::exception &e) {
-		LogObject(THISLOCATION).note("Uncaught exception: %1") << e.what();
-		return cmdRemove;
-	}
-
+	return processEvent(stream,context,IHttpRequest::evUserWakeup,reason);
 }
 
 ConstStrA trimSpaces(ConstStrA what) {
@@ -383,12 +370,24 @@ LightSpeed::ConstStrA ConnContext::getPeerRealAddr() const
 }
 
 void ConnContext::releaseOwnership() {
+	Synchronized<MicroLock> _(controlObjectPtrLock);
 	if (release()) delete this;
 	controlObject = null;
 }
 
 ConnHandler::~ConnHandler() {
 	me.setNull();
+}
+
+void ConnContext::wakeUp(natural reason) throw()
+{
+	{
+		Synchronized<MicroLock> _(controlObjectPtrLock);
+		if (controlObject != 0) {
+			controlObject->getUserSleeper()->wakeUp(reason);
+			return;
+		}
+	}
 }
 
 
