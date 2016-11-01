@@ -40,24 +40,24 @@ void ServerMethods::registerServerMethods(IMethodRegister &reg, natural flags) {
 
 }
 
-JSON::ConstValue ServerMethods::rpcListMethods(const Request& r) {
+JValue ServerMethods::rpcListMethods(const Request& r) {
 	WeakRefPtr<IDispatcher> disp(r.dispatcher);
 	IMethodRegister &reg = disp->getIfc<IMethodRegister>();
 
 	class Enum: public IMethodRegister::IMethodEnum {
 	public:
-		mutable JSON::Builder::Array result;
+		JArray &result;
 		mutable ConstStrA prevPrototype;
 		natural limitVersion;
-		Enum(JSON::Builder::Array result):result(result) {}
+		Enum(JArray &result):result(result) {}
 		virtual void operator()(ConstStrA prototype) const {
 			if (prototype == prevPrototype) return;
 			prevPrototype = prototype;
-			result << prototype;
+			result.add(JValue(prototype));
 		}
 
 	};
-	JSON::Builder::Array result = r.json.array();
+	JArray result;
 	reg.enumMethods(Enum(result),r.version);
 	return result;
 }
@@ -69,11 +69,11 @@ FResponse ServerMethods::rpcMulticall(const Request& r) {
 //[["method",[params]],["method",[params],...] => result:{results:[...],errors:[...]}
 
 	if (r.params.empty()) throw MethodException(THISLOCATION,400,"Invalid parameters");
-	if (r.params[0]->isString()) {
-		if (r.params.length() < 2)
+	if (r.params[0].type() == json::string) {
+		if (r.params.size() < 2)
 			throw MethodException(THISLOCATION,400,"Need at least two parameters");
 		return runMulticall1(r);
-	}  else if (r.params[0]->isArray()) {
+	}  else if (r.params[0].type() == json::array) {
 		return runMulticallN(r);
 	} else {
 		throw MethodException(THISLOCATION,400,"Need at least two parameters");
@@ -84,35 +84,34 @@ FResponse ServerMethods::rpcMulticall(const Request& r) {
 class MakeStatResult {
 public:
 	StringA name;
-	JSON::Builder json;
 
-	MakeStatResult( const JSON::Builder &json, const StringA &name)
-		:name(name),json(json) {}
-	JSON::ConstValue operator()(const Response &resp) const {
-		return json(name,resp.result);
+	MakeStatResult( const StringA &name)
+		:name(name) {}
+	JValue operator()(const Response &resp) const {
+		return JObject(name,resp.result);
 	}
 };
 
 class CombineStats{
 public:
-	JSON::Container result;
-	CombineStats(const JSON::Container &result):result(result) {}
+	JObject result;
+	CombineStats(const JValue &result):result(result) {}
 	Response operator()(const VariantPair &vp) {
 		const VariantPair *ptr = &vp, *newptr;
-		result.load(ptr->second.getValue<JSON::ConstValue>());
+		result.merge(ptr->second.getValue<JValue>());
 		newptr = ptr->first.getPtr<VariantPair>();
 		while (newptr) {
 			ptr = newptr;
-			result.load(ptr->second.getValue<JSON::ConstValue>());
+			result.merge(ptr->second.getValue<JValue>());
 			newptr = ptr->first.getPtr<VariantPair>();
 		}
-		result.load(ptr->first.getValue<JSON::ConstValue>());
+		result.merge(ptr->first.getValue<JValue>());
 		return Response(result);
 	}
 };
 
 FResponse ServerMethods::rpcStats(const Request& r) {
-	typedef Future<JSON::ConstValue> StatResult;
+	typedef Future<JValue> StatResult;
 	typedef AutoArray<StatResult,SmallAlloc<256> > Collector;
 	Collector responses;
 
@@ -123,7 +122,7 @@ FResponse ServerMethods::rpcStats(const Request& r) {
 			Dispatcher::PMethodHandler h = dispatch.findMethod(prototype);
 			if (h == null) return;
 			try {
-				StatResult resp = StatResult::transform((*h)(r),MakeStatResult(r.json, prototype));
+				StatResult resp = StatResult::transform((*h)(r),MakeStatResult(prototype));
 				responses.add(resp);
 			} catch (...) {
 				StatResult r;
@@ -152,7 +151,7 @@ FResponse ServerMethods::rpcStats(const Request& r) {
 	for (natural i = 2; i < responses.length(); i++) {
 		combined = combined && responses(2);
 	}
-	return FResponse::transform(combined, CombineStats(r.json.object()));
+	return FResponse::transform(combined, CombineStats(JValue(json::object)));
 
 
 }
@@ -172,10 +171,10 @@ Void ServerMethods::rpcCrashScheduler(const Request& r) {
 	return Void();
 }
 
-JSON::ConstValue ServerMethods::rpcHelp(const Request& r) {
+JValue ServerMethods::rpcHelp(const Request& r) {
 }
 
-JSON::ConstValue ServerMethods::rpcPing(const Request& r) {
+JValue ServerMethods::rpcPing(const Request& r) {
 	return r.params;
 }
 
@@ -191,14 +190,14 @@ Void ServerMethods::rpcPingNotify(const Request& r) {
 }
 
 
-static void delayedResponse(Promise<JSON::ConstValue> resp) {
-	resp.resolve(JSON::getConstant(JSON::constTrue));
+static void delayedResponse(Promise<JValue> resp) {
+	resp.resolve(JValue(true));
 }
 
 
-Future<JSON::ConstValue> ServerMethods::rpcDelay(const Request& r) {
+Future<JValue> ServerMethods::rpcDelay(const Request& r) {
 
-	Future<JSON::ConstValue> v;
+	Future<JValue> v;
 	WeakRefPtr<IPeer> peer(r.peer);
 	if (peer == null) throw CanceledException(THISLOCATION);
 	BredyHttpSrv::IHttpRequestInfo *httpreq = peer->getHttpRequest();
@@ -213,22 +212,18 @@ class MulticallCyclerBase: public FResponse::IObserver {
 public:
 
 	struct State {
-		JSON::Container results;
-		JSON::Container errors;
-		JSON::Container logOutput;
-		JSON::Container context;
-		JSON::Container newContext;
+		JArray results;
+		JArray errors;
+		JArray logOutput;
+		JObject context;
+		JObject newContext;
 	};
 
-	MulticallCyclerBase(const JSON::Builder &json, State &state, const JSON::ConstValue &initContext = null)
-		:state(state),json(json)
+	MulticallCyclerBase(State &state, const JValue &initContext = JValue())
+		:state(state)
 	{
-		if (initContext) {
-			state.errors = json.array();
-			state.results = json.array();
-			state.context = json(initContext);
-			state.newContext = json.array();
-			state.logOutput = json.array();
+		if (initContext.defined()) {
+			state.context.setBaseObject(initContext);
 		}
 	}
 
@@ -236,11 +231,11 @@ public:
 		//add to results
 		state.results.add(resp.result);
 		//merge contexts
-		if (resp.context != null) {
-			state.context.load(resp.context);
-			state.newContext.load(resp.context);
+		if (resp.context.defined()) {
+			state.context.merge(resp.context);
+			state.newContext.merge(resp.context);
 		}
-		if (resp.logOutput != null)
+		if (resp.logOutput.defined())
 			state.logOutput.add(resp.logOutput);
 		//advence to next argument
 		goon();
@@ -248,16 +243,16 @@ public:
 	}
 	virtual void resolve(const PException &e) throw() {
 
-		JSON::ConstValue exceptionObj;
+		JValue exceptionObj;
 		RpcException *rpce = dynamic_cast<RpcException *>(e.get());
 		if (rpce) {
-			exceptionObj = rpce->getJSON(json);
+			exceptionObj = rpce->getJSON();
 		} else {
-			exceptionObj = UncauchException(THISLOCATION,*e).getJSON(json);
+			exceptionObj = UncauchException(THISLOCATION,*e).getJSON();
 		}
 		state.errors.add(exceptionObj);
 		state.logOutput.add(exceptionObj);
-		state.results.add(JSON::getConstant(JSON::constNull));
+		state.results.add(JValue(nullptr));
 
 		goon();
 
@@ -270,7 +265,6 @@ public:
 protected:
 	State &state;
 
-	JSON::Builder json;
 
 };
 
@@ -279,25 +273,25 @@ class MulticallCycler1: public MulticallCyclerBase {
 	State state;
 public:
 	MulticallCycler1(const Request &r, const Promise<Response> &retval)
-		:MulticallCyclerBase(r.json,state,r.context)
+		:MulticallCyclerBase(state,r.context)
 		,retval(retval)
 		,r(r) {}
 
 	void goon() {
 
-		natural cnt = r.params.length()-1;
-		natural pos = state.results.length();
+		natural cnt = r.params.size()-1;
+		natural pos = state.results.size();
 		WeakRefPtr<IDispatcher> dispatcher(r.dispatcher);
 		//dispatcher is no longer available, reject rest of multicall
 		if (dispatcher == null) {
 
 			CanceledException canceled(THISLOCATION);canceled.setStaticObj();
 			UncauchException uncouch(THISLOCATION,canceled);
-			JSON::ConstValue excp = uncouch.getJSON(r.json);
+			JValue excp = uncouch.getJSON();
 
 
-			while (state.results.length() < cnt) {
-				state.results.add(JSON::getConstant(JSON::constNull));
+			while (state.results.size() < cnt) {
+				state.results.add(JValue(nullptr));
 				state.errors.add(excp);
 			}
 		}
@@ -311,16 +305,16 @@ public:
 			req.context = state.context;
 			FResponse resp = dispatcher->callMethod(req);
 
-			MulticallCyclerBase directObserver(r.json,state);
+			MulticallCyclerBase directObserver(state);
 
 			if (!resp.tryObserver(&directObserver)) {
 				resp.addObserver(this);
 				return;
 			}
-			pos = state.results.length();
+			pos = state.results.size();
 		}
 
-		retval.resolve(Response(r.json("results",state.results)
+		retval.resolve(Response(JObject("results",state.results)
 									  ("errors",state.errors),state.newContext,state.logOutput));
 		delete this;
 	}
@@ -336,25 +330,25 @@ class MulticallCyclerN: public MulticallCyclerBase {
 	State state;
 public:
 	MulticallCyclerN(const Request &r, const Promise<Response> &retval)
-		:MulticallCyclerBase(r.json,state,r.context)
+		:MulticallCyclerBase(state,r.context)
 		,retval(retval)
 		,r(r) {}
 
 	void goon() {
 
-		natural cnt = r.params.length();
-		natural pos = state.results.length();
+		natural cnt = r.params.size();
+		natural pos = state.results.size();
 		WeakRefPtr<IDispatcher> dispatcher(r.dispatcher);
 		//dispatcher is no longer available, reject rest of multicall
 		if (dispatcher == null) {
 
 			CanceledException canceled(THISLOCATION);canceled.setStaticObj();
 			UncauchException uncouch(THISLOCATION,canceled);
-			JSON::ConstValue excp = uncouch.getJSON(r.json);
+			JValue excp = uncouch.getJSON();
 
 
-			while (state.results.length() < cnt) {
-				state.results.add(JSON::getConstant(JSON::constNull));
+			while (state.results.size() < cnt) {
+				state.results.add(JValue(nullptr));
 				state.errors.add(excp);
 			}
 		}
@@ -368,16 +362,16 @@ public:
 			req.context = state.context;
 			FResponse resp = dispatcher->callMethod(req);
 
-			MulticallCyclerBase directObserver(r.json,state);
+			MulticallCyclerBase directObserver(state);
 
 			if (!resp.tryObserver(&directObserver)) {
 				resp.addObserver(this);
 				return;
 			}
-			pos = state.results.length();
+			pos = state.results.size();
 		}
 
-		retval.resolve(Response(r.json("results",state.results)
+		retval.resolve(Response(JObject("results",state.results)
 									  ("errors",state.errors),state.newContext,state.logOutput));
 		delete this;
 	}

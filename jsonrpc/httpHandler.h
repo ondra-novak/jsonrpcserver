@@ -19,7 +19,6 @@ using namespace LightSpeed;
 class HttpHandler: public BredyHttpSrv::IHttpHandler {
 public:
 	HttpHandler(IDispatcher &dispatcher);
-	HttpHandler(IDispatcher &dispatcher, const JSON::Builder &json);
 
 
 	void setClientPage(const FilePath &path);
@@ -47,7 +46,6 @@ protected:
 
 
 	IDispatcher &dispatcher;
-	JSON::Builder json;
 
 	class RpcContext;
 	AllocPointer<BredyHttpSrv::IHttpHandler> webClient;

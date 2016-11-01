@@ -41,7 +41,6 @@ public:
 
 
 	WSHandler(IDispatcher &dispatcher);
-	WSHandler(IDispatcher &dispatcher, const JSON::Builder &json);
 
 	void setListener(IWSHandlerEvents *handler);
 	WeakRef<IWSHandlerEvents> getListener() const;
@@ -51,7 +50,6 @@ protected:
 
 	IDispatcher &dispatcher;
 	WeakRefTarget<IWSHandlerEvents> events;
-	JSON::Builder json;
 };
 
 } /* namespace jsonrpc */

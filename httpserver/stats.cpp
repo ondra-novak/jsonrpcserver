@@ -63,7 +63,8 @@ JSON::PNode maxField( const StatBuffer<T> &b, JSON::IFactory *f, natural cnt )
 template<typename T>
 JSON::PNode statFields( const StatBuffer<T> &b, JSON::IFactory *f )
 {
-	JSON::Builder json(f);
+	/*
+	JSON::Builder_del json(f);
 	return json
 			("avg006",avgField(b,f,6))
 			("avg030",avgField(b,f,30))
@@ -77,7 +78,7 @@ JSON::PNode statFields( const StatBuffer<T> &b, JSON::IFactory *f )
 			("max030",maxField(b,f,30))
 			("max060",maxField(b,f,60))
 			("max300",maxField(b,f,300));
-
+*/
 }
 
 
@@ -95,10 +96,11 @@ AutoArray<char,StaticAlloc<19> > getTimeAsStr(natural seconds) {
 JSON::PNode BredyHttpSrv::StatHandler::getStatsJSON(
 		IHttpRequestInfo *rq,
 		JSON::IFactory* f) {
+	/*
 	const HttpServer &server = rq->getIfc<HttpServer>();
 	const HttpStats &st = server.getStats();
-	JSON::Builder json(f);
-	JSON::Builder::Object out = json.object();
+	JSON::Builder_del json(f);
+	JSON::Builder_del::Object out = json.object();
 	out("request", statFields(st.requests,f))
 		("threads", statFields(st.threads,f))
 		("threadsIdle", statFields(st.idleThreads,f))
@@ -113,7 +115,7 @@ JSON::PNode BredyHttpSrv::StatHandler::getStatsJSON(
 		out("upTime",json("total",ConstStrA(getTimeAsStr(ProgInstance::getUpTime(false))))
 					("fromLastCrash",ConstStrA(getTimeAsStr(ProgInstance::getUpTime(true)))));
 
-	return out;
+	return out;*/
 }
 
 StatHandler::~StatHandler() {

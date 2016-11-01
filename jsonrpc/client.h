@@ -16,10 +16,8 @@
 
 #include "lightspeed/base/containers/autoArray.h"
 
-#include "rpchandler.h"
 #include "iclient.h"
 #include "config.h"
-using jsonsrv::RpcError;
 using LightSpeed::MemFile;
 namespace jsonrpc {
 
@@ -42,9 +40,9 @@ public:
 	 *
 	 *
 	 */
-	Future<Result> callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0);
+	Future<Result> callAsync(ConstStrA method, JValue params, JValue context = JValue());
 
-	Result call(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0);
+	Result call(ConstStrA method, JValue params, JValue context = 0);
 
 	///Starts batch of requests
 	/** When batch is opened, client starts to collect requests without sending anyone to the server. The batch must be
@@ -81,7 +79,7 @@ z	 * finally closed the batch will handle all collected requests
 		~Batch() {client.closeBatch();}
 		Batch(const Batch &other):client(other.client) {client.beginBatch();}
 
-		Future<Result> call(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0);
+		Future<Result> call(ConstStrA method, JValue params, JValue context = 0);
 	protected:
 		Client &client;
 	};
@@ -91,9 +89,9 @@ protected:
 	JSON::PFactory jsonFactory;
 
 	struct PreparedItem {
-		PreparedItem(const JSON::ConstValue &request,Promise<Result> result);
+		PreparedItem(const JValue &request,Promise<Result> result);
 		~PreparedItem();
-		JSON::ConstValue request;
+		JValue request;
 		mutable Promise<Result> result;
 		mutable bool done;
 	};

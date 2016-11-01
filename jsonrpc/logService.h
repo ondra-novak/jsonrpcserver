@@ -11,14 +11,15 @@
 #include "idispatch.h"
 #include "lightspeed/base/debug/LogProvider.h"
 
+#include "ilog.h"
 namespace jsonrpc {
 
 class LogService: public ILog {
 public:
 	LogService();
 
-	virtual void logMethod(BredyHttpSrv::IHttpRequestInfo &invoker, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput);
-	virtual void logMethod(ConstStrA source, ConstStrA methodName, const JSON::ConstValue &params, const JSON::ConstValue &context, const JSON::ConstValue &logOutput) ;
+	virtual void logMethod(BredyHttpSrv::IHttpRequestInfo &invoker, ConstStrA methodName, const JValue &params, const JValue &context, const JValue &logOutput);
+	virtual void logMethod(ConstStrA source, ConstStrA methodName, const JValue &params, const JValue &context, const JValue &logOutput) ;
 
 	///Sets output file
 	void setFile(String fname);

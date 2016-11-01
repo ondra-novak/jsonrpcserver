@@ -6,10 +6,11 @@
 #include "../httpserver/httprequest.h"
 #include "lightspeed/base/actions/promise.h"
 
-#include "ijsonrpc.h"
 #include "lightspeed/base/exceptions/stdexception.h"
 
 #include "lightspeed/base/memory/weakref.h"
+
+#include "json.h"
 namespace jsonrpc {
 
 
@@ -37,19 +38,16 @@ struct Request {
 	natural version;
 	///Name of the method
 	/** the name is carried as ConstValue which always contains a string. */
-	JSON::ConstValue methodName;
+	JValue methodName;
 	///parameters
 	/** the parameters are carried as ConstValue which always contains an array */
-	JSON::ConstValue params;
+	JValue params;
 	///Client side identification. If this is null-value (not null-pointer), the call is probably notification only
 	/** the ID can be anything, it is object created by caller and must be returned to the caller
 	 */
-	JSON::ConstValue id;
+	JValue id;
 	///context passed with the call
-	JSON::ConstValue context;
-	///json builder to build result
-	/** For convience, this builder can be used to easly create JSON response */
-	JSON::Builder json;
+	JValue context;
 	///true if call is notification. However the call still must resolve the promise
 	/** In most cases, isNotification will be true, while id is set to null.
 	 * Even if notifications has no return value, the method itself should resolve
@@ -84,29 +82,26 @@ struct Request {
 /** Note Errors are passed as rejection of the promise or as an exception */
 struct Response {
 	///contains result
-	const JSON::ConstValue result;
+	const JValue result;
 	///contains update of the context, can be null if not applied
-	const JSON::ConstValue context;
+	const JValue context;
 	///contains data to be logged into rpclog, can be null if not applied
 	/** Method can log different result than returned to the caller. In most of
 	 * cases, methods will log only errors. However it is possible to log result
 	 *  or something else. It must be json.
 	 */
-	const JSON::ConstValue logOutput;
+	const JValue logOutput;
 
 	///construct only response
-	Response(JSON::ConstValue result)
+	Response(JValue result)
 		:result(result) {}
 	///construct response with context
-	Response(JSON::ConstValue result,JSON::ConstValue context)
+	Response(JValue result,JValue context)
 		:result(result),context(context) {}
 	///construct response with context and log data
-	Response(JSON::ConstValue result,JSON::ConstValue context,JSON::ConstValue logOutput)
+	Response(JValue result,JValue context,JValue logOutput)
 		:result(result),context(context),logOutput(logOutput) {}
 
-	Response getMt() const {
-		return Response(result.getMT(), context.getMT(), logOutput.getMT());
-	}
 };
 
 
@@ -165,8 +160,7 @@ public:
      * @param request http request if available (NULL, if not)
      * @return Future variable resolved or unresolved yet
      */
-    virtual Future<JSON::ConstValue> dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-    		const JSON::Builder &json, const WeakRef<IPeer> &peer) throw()= 0;
+    virtual Future<JValue> dispatchMessage(const JValue jsonrpcmsg,const WeakRef<IPeer> &peer) throw()= 0;
 
 };
 

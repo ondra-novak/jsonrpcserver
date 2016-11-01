@@ -17,20 +17,16 @@
 
 #include "lightspeed/base/containers/map.h"
 #include "../httpclient/webSocketsClient.h"
-#include "rpcerror.h"
-
-using jsonsrv::RpcError;
-
+#include "../jsonrpc/json.h"
+#include "ipeer.h"
+#include "lightspeed/base/memory/weakref.h"
+#include "rpcnotify.h"
 namespace BredyHttpSrv {
 	class IJobScheduler;
 	class IHttpRequestInfo;
 	class IHttpMapper;
 }
 
-namespace jsonsrv {
-	class IJsonRpcLogObject;
-	class IJsonRpc;
-}
 
 namespace LightSpeed {
 	class IExecutor;
@@ -40,6 +36,8 @@ namespace jsonrpc {
 
 class IRpcNotify;
 class PreparedNotify;
+class IDispatcher;
+class ILog;
 
 
 
@@ -52,7 +50,7 @@ class PreparedNotify;
  * It require at least running thread or registration on NetworkEventListener
  *
  * */
-class ClientWS: public IClient, public BredyHttpClient::WebSocketsClient {
+class ClientWS: public IClient, public BredyHttpClient::WebSocketsClient, public IPeer, public IRpcNotify {
 public:
 
 	///When IHttpRequest explored for the http-method, this string will be returned. You can determine, that connection is in client mode
@@ -105,10 +103,10 @@ public:
 		Pointer<IExecutor> executor;
 		/// Pointer to jsonrpc dispatcher
 		/** if set to non-null, every method or notification is passed to the dispatcher. Set to null to prevent this */
-		Pointer<jsonsrv::IJsonRpc> dispatcher;
+		Pointer<IDispatcher> dispatcher;
 		/// Pointer to jsonrpc's logging object
 		/** if set to null,  logging is disabled */
-		Pointer<jsonsrv::IJsonRpcLogObject> logObject;
+		Pointer<ILog> logObject;
 
 		/// Method called through the dispatcher when connection is established.
 		StringA connectMethod;
@@ -136,7 +134,7 @@ public:
 	};
 
 
-	///Connects the websockets interface
+	///Connects the websockets interface0
 	/**
 	 *
 	 * @param lst pointer to event listener to register to receive notifications
@@ -166,7 +164,7 @@ public:
 	 *
 	 *
 	 */
-	Future<Result> callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0);
+	Future<Result> callAsync(ConstStrA method, JValue params, JValue context = JValue());
 
 	///Perform RPC call synchronously
 	/**
@@ -178,11 +176,11 @@ public:
 	 * @note because function blocks current thread, it must not be combined with callAsync (response is
 	 * received in response thread, which should not be blocked).
 	 */
-	Result call(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0);
+	Result call(ConstStrA method, JValue params, JValue context = 0);
 
-	void sendNotify(ConstStrA method, const JSON::ConstValue &params);
+	void sendNotify(ConstStrA method, const JValue &params);
 	void sendNotify(const PreparedNotify &preparedNotify);
-	PreparedNotify prepareNotify(ConstStrA method, const JSON::ConstValue &params);
+	PreparedNotify prepareNotify(ConstStrA method, const JValue &params);
 
 protected:
 
@@ -196,7 +194,7 @@ protected:
 	 *
 	 * @note notification has no return, there is no response to the caller, because you have no id associated with the call
 	 */
-	virtual void onNotify(ConstStrA method, const JSON::Value &params, const JSON::Value &context);
+	virtual void onNotify(ConstStrA method, const JValue &params, const JValue &context);
 
 	///Called when there is error while receiving from websockets.
 	/**
@@ -210,7 +208,7 @@ protected:
 	virtual void onParseError(ConstStrA msg) {
 		(void)msg;
 	}
-	virtual void onDispatchError(JSON::Value v) {
+	virtual void onDispatchError(JValue v) {
 		(void)v;
 	}
 
@@ -226,7 +224,7 @@ protected:
 	 * To return value, function must call sendResponse() with apropriate ID. It can be done in different thread
 	 */
 
-	virtual void onIncomeRPC(ConstStrA method, const JSON::Value &params, const JSON::Value &context, const JSON::Value &id );
+	virtual void onIncomeRPC(JValue wholeMsg);
 
 	///Called when connection has been established
 	/**
@@ -238,7 +236,6 @@ protected:
 
 
 
-	JSON::PFactory jsonFactory;
 	StringA cfgurl;
 
 
@@ -252,18 +249,10 @@ protected:
 	virtual void onTextMessage(ConstStrA msg);
 
 	///Processes JSON message, identifies its type and call aproproate handler */
-	virtual void processMessage(JSON::Value msg);
+	virtual void processMessage(JValue msg);
 
-	///Formats and sends a response
-	/**
-	 *
-	 * @param id id of the request which response is being send
-	 * @param result result
-	 * @param error error message
-	 *
-	 * @note if result is defined, error must be json-null and vice versa
-	 */
-	virtual void sendResponse(JSON::ConstValue id, JSON::ConstValue result, JSON::ConstValue error);
+	///sends JSON  response
+	virtual void sendResponse(JValue resp);
 
 
 	virtual void onLostConnection(natural);
@@ -273,9 +262,9 @@ protected:
 	natural reconnectDelay;
 
 	Pointer<BredyHttpSrv::IJobScheduler> scheduler;
-	Pointer<jsonsrv::IJsonRpc> dispatcher;
-	Pointer<jsonsrv::IJsonRpcLogObject> logObject;
-	Pointer<jsonsrv::IExecutor> executor;
+	Pointer<IDispatcher> dispatcher;
+	Pointer<ILog> logObject;
+	Pointer<LightSpeed::IExecutor> executor;
 	StringA connectMethod;
 
 
@@ -292,6 +281,20 @@ protected:
 	RefCntPtr<BredyHttpSrv::IHttpRequestInfo> fakeRequest;
 
 	class ClientFakeRequest;
+
+	ContextVar ctxVar;
+
+	virtual BredyHttpSrv::IHttpRequestInfo *getHttpRequest() const;
+	virtual ConstStrA getName() const;
+	virtual natural getPortIndex() const;
+	virtual IRpcNotify *getNotifySvc() const;
+	virtual void setContext(Context *ctx);
+	virtual Context *getContext() const ;
+	virtual IClient *getClient() const;
+	virtual natural getVersion() const;
+
+	WeakRefTarget<IPeer> mepeer;;
+	AutoArray<char> buffer;
 
 };
 } /* namespace snapytap */

@@ -12,6 +12,7 @@
 
 #include "lightspeed/base/containers/string.h"
 
+#include "json.h"
 namespace jsonrpc {
 
 using namespace LightSpeed;
@@ -20,7 +21,7 @@ using namespace LightSpeed;
 	public:
 		RpcException():LightSpeed::Exception(THISLOCATION) {}
 
-		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const = 0;
+		virtual JValue getJSON() const = 0;
 	};
 
 
@@ -36,7 +37,7 @@ using namespace LightSpeed;
 		StringA prototype;
 
 		void message(ExceptionMsg &msg) const;
-		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const;
+		virtual JValue getJSON() const;
 	};
 
 	class ParseException: public RpcException {
@@ -51,7 +52,7 @@ using namespace LightSpeed;
 		StringA description;
 
 		void message(ExceptionMsg &msg) const;
-		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const;
+		virtual JValue getJSON() const;
 	};
 
 	class MethodException: public RpcException {
@@ -66,14 +67,14 @@ using namespace LightSpeed;
 		StringA statusMessage;
 
 		void message(ExceptionMsg &msg) const;
-		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const;
+		virtual JValue getJSON() const;
 	};
 
 	class UncauchException: public MethodException {
 	public:
 		LIGHTSPEED_EXCEPTIONFINAL;
 		UncauchException(const ProgramLocation &loc, const Exception &e);
-		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const;
+		virtual JValue getJSON() const;
 
 	protected:
 
@@ -84,12 +85,12 @@ using namespace LightSpeed;
 	class RemoteException: public RpcException {
 	public:
 		LIGHTSPEED_EXCEPTIONFINAL;
-		RemoteException(const ProgramLocation &loc, const JSON::ConstValue &data);
-		virtual JSON::ConstValue getJSON(const JSON::Builder &json) const ;
+		RemoteException(const ProgramLocation &loc, const JValue &data);
+		virtual JValue getJSON() const ;
 		~RemoteException() throw() {}
 	protected:
 		void message(ExceptionMsg &msg) const;
-		JSON::ConstValue data;
+		JValue data;
 	};
 
 

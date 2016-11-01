@@ -58,12 +58,12 @@ void SrvMain::onLogRotate()
 	rpc->logRotate();
 }
 
-JSON::Value SrvMain::rpcHelloWorld( const Request &r )
+JValue SrvMain::rpcHelloWorld( const Request &r )
 {
 	return r.json("Hello, World!");
 }
 
-JSON::Value SrvMain::rpcNumberSum(const Request &r )
+JValue SrvMain::rpcNumberSum(const Request &r )
 {
 	double sum = 0;
 	natural count = 0;
@@ -78,7 +78,7 @@ JSON::Value SrvMain::rpcNumberSum(const Request &r )
 		("avg",sum/count);
 }
 
-JSON::Value SrvMain::rpcReverse(const Request &r )
+JValue SrvMain::rpcReverse(const Request &r )
 {
 	ConstStrA txt = r.params[0].getStringA();
 	return r.json(StringA(txt.reverse()));

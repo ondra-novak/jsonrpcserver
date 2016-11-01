@@ -35,8 +35,7 @@ public:
     virtual void setLogObject(ILog *logObject);
     virtual Future<Response> callMethod(const Request &req) throw();
     virtual Future<Response> dispatchException(const Request &req, const PException &exception) throw();
-    virtual Future<JSON::ConstValue> dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-        		const JSON::Builder &json,const WeakRef<IPeer> &peer) throw();
+    virtual Future<JValue> dispatchMessage(const JValue jsonrpcmsg,const WeakRef<IPeer> &peer) throw();
     virtual Future<Response> dispatchException(const Request &req,
     				Future<Response> result) throw();
 	virtual void regExceptionHandler(ConstStrA name, IExceptionHandler *fn);
@@ -86,7 +85,7 @@ protected:
 
 
     template<typename Container>
-    static void createPrototype(ConstStrA methodName, JSON::ConstValue params, Container &container);
+    static void createPrototype(ConstStrA methodName, JValue params, Container &container);
 
     class ResultObserver;
     class ExceptionTranslateObserver;

@@ -8,6 +8,8 @@
 #include "lightspeed/base/namedEnum.tcc"
 #include "lightspeed/utils/json/jsonparser.tcc"
 #include <lightspeed/base/interface.tcc>
+#include "../jsonrpc/json.h"
+#include <immujson/parser.h>
 
 
 namespace BredyHttpSrv {
@@ -107,9 +109,9 @@ namespace BredyHttpSrv {
 			char c = fiter.peek();
 			if (!isspace(c)) {
 				if (c == '"') {
-					JSON::Value nd = JSON::parse(fiter, JSON::create());
+					jsonrpc::JValue nd = jsonrpc::JValue::parse([&](){return fiter.getNext();});
 					iskw = false;
-					return nd->getStringUtf8();
+					return nd.getStringA();
 				} else {
 					AutoArrayStream<char, SmallAlloc<256> > strBuilder;
 					fiter.skip();

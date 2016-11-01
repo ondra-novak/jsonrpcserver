@@ -10,6 +10,7 @@
 #include "lightspeed/base/exceptions/httpStatusException.h"
 #include "lightspeed/base/actions/promise.tcc"
 
+#include "errors.h"
 namespace jsonrpc {
 
 Client::Client(const ClientConfig& cfg)
@@ -19,19 +20,17 @@ Client::Client(const ClientConfig& cfg)
 
 }
 
-Future<Client::Result> Client::callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context) {
+Future<Client::Result> Client::callAsync(ConstStrA method, JValue params, JValue context) {
 	//lock batches, to avoid conflicts during access
 	Synchronized<FastLock> _(batchAccess);
-	//acquire json factory and create builder
-	JSON::Builder json(jsonFactory);
 
 	//build request
-	JSON::Builder::CObject obj = json("id", preparedList.length())
-			.container()
+	JObject obj;
+	obj("id", preparedList.length())
 			("method",method)
 			("params",params);
 	//if context is set, add to request
-	if (context != nil) {
+	if (context.defined()) {
 		obj("context",context);
 	}
 
@@ -53,7 +52,7 @@ Future<Client::Result> Client::callAsync(ConstStrA method, JSON::ConstValue para
 	return res;
 }
 
-Client::Result Client::call(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context) {
+Client::Result Client::call(ConstStrA method, JValue params, JValue context) {
 	return callAsync(method,params,context).getValue();
 }
 
@@ -112,7 +111,7 @@ void Client::runBatch() {
 
 		//build request to memory
 		for (PreparedList::Iterator iter = processing.getFwIter(); iter.hasItems();) {
-			jsonFactory->toStream(*iter.getNext().request, body);
+			iter.getNext().request.serialize([&](char c){body.write(c);});
 		}
 
 		SeqFileInput response = http.send();
@@ -122,19 +121,19 @@ void Client::runBatch() {
 
 			//process all requests
 			for (natural i = 0; i < processing.length(); i++) {
-				JSON::Value r;
+				JValue r;
 				//parse response
 				{
 					Synchronized<FastLock> _(batchAccess);
-					r = jsonFactory->fromStream(response);
+					r = JValue::parse([&](){return response.getNext();});
 				}
 				//pick "id"
-				JSON::ConstValue vid = r["id"];
+				JValue vid = r["id"];
 				//id is equal to index
 				//if id is not defined, this is strange situation, ignore response
 				if (vid!= nil) {
 					//pick id
-					natural id = vid->getUInt();
+					natural id = vid.getUInt();
 					//check whether id in range
 					if (id < processing.length()) {
 						//pick request
@@ -144,15 +143,15 @@ void Client::runBatch() {
 							//mark it done
 							itm.done = true;
 							//pick result
-							JSON::Value result = r["result"];
+							JValue result = r["result"];
 							//pick error
-							JSON::Value error = r["error"];
+							JValue error = r["error"];
 							//pick context
-							JSON::Value context = r["context"];
+							JValue context = r["context"];
 							//if error
-							if (error != nil && !error->isNull()) {
+							if (error.defined() && !error.isNull()) {
 								//reject promise
-								itm.result.reject(RpcError(THISLOCATION,static_cast<JSON::Value &>(error)));
+								itm.result.reject(RemoteException(THISLOCATION,error));
 							} else {
 								//otherwise resolve promise
 								itm.result.resolve(Result(result,context));
@@ -190,11 +189,11 @@ void Client::runBatch() {
 	}
 }
 
-Future<Client::Result> Client::Batch::call(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context) {
+Future<Client::Result> Client::Batch::call(ConstStrA method, JValue params, JValue context) {
 	return client.callAsync(method,params,context);
 }
 
-Client::PreparedItem::PreparedItem(const JSON::ConstValue &request,Promise<Result> result):request(request),result(result),done(false) {}
+Client::PreparedItem::PreparedItem(const JValue &request,Promise<Result> result):request(request),result(result),done(false) {}
 Client::PreparedItem::~PreparedItem() {}
 
 

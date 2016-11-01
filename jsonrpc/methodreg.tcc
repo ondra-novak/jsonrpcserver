@@ -12,7 +12,7 @@
 
 namespace jsonrpc {
 
-static inline Future<Response> returnValueToResponse(const JSON::ConstValue &result) {
+static inline Future<Response> returnValueToResponse(const JValue &result) {
 	Future<Response> f;
 	f.getPromise().resolve(result);
 	return f;
@@ -24,15 +24,7 @@ static inline Future<Response> returnValueToResponse(const Response &result) {
 	return f;
 }
 
-static inline Future<Response> returnValueToResponse(const Future<JSON::ConstValue> &result) {
-	return Future<Response>::transform(result);
-}
-
-static inline Future<Response> returnValueToResponse(const Future<JSON::Container> &result) {
-	return Future<Response>::transform(result);
-}
-
-static inline Future<Response> returnValueToResponse(const Future<JSON::Value> &result) {
+static inline Future<Response> returnValueToResponse(const Future<JValue> &result) {
 	return Future<Response>::transform(result);
 }
 
@@ -42,19 +34,19 @@ static inline Future<Response> returnValueToResponse(const Future<Response> &res
 
 static inline Future<Response> returnValueToResponse(bool b) {
 	Future<Response> f;
-	f.getPromise().resolve(Response(JSON::getConstant(b?JSON::constTrue:JSON::constFalse)));
+	f.getPromise().resolve(Response(JValue(b)));
 	return f;
 }
 
 
 static inline Future<Response> returnValueToResponse(Void) {
 	Future<Response> f;
-	f.getPromise().resolve(Response(JSON::getConstant(JSON::constTrue)));
+	f.getPromise().resolve(Response(JValue(true)));
 	return f;
 }
 static inline Future<Response> returnValueToResponse(NullType) {
 	Future<Response> f;
-	f.getPromise().resolve(Response(JSON::getConstant(JSON::constTrue)));
+	f.getPromise().resolve(Response(JValue(true)));
 	return f;
 }
 

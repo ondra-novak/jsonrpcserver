@@ -13,6 +13,7 @@
 
 #include "lightspeed/base/actions/promise.tcc"
 
+#include "ilog.h"
 #include "ipeer.h"
 #include "methodreg.tcc"
 namespace jsonrpc {
@@ -26,21 +27,19 @@ Dispatcher::~Dispatcher() {
 }
 
 template<typename Container>
-inline void Dispatcher::createPrototype(ConstStrA methodName, JSON::ConstValue params, Container& container) {
+inline void Dispatcher::createPrototype(ConstStrA methodName, JValue params, Container& container) {
 
 	container.append(methodName);
 	container.add(':');
-	for (natural i = 0, cnt = params.length();i < cnt; i++) {
-		JSON::ConstValue v = params[i];
+	for (auto &&v:params) {
 		char c;
-		switch (v->getType()) {
-			case JSON::ndArray: c = 'a';break;
-			case JSON::ndBool: c = 'b';break;
-			case JSON::ndObject: c= 'c';break;
-			case JSON::ndFloat:
-			case JSON::ndInt: c = 'n';break;
-			case JSON::ndNull: c= 'x';break;
-			case JSON::ndString: c = 's';break;
+		switch (v.type()) {
+			case json::array: c = 'a';break;
+			case json::boolean: c = 'b';break;
+			case json::object: c= 'c';break;
+			case json::number: c = 'n';break;
+			case json::null: c= 'x';break;
+			case json::string: c = 's';break;
 			default: c = 'u';break;
 		}
 		container.add(c);
@@ -146,13 +145,14 @@ bool Dispatcher::CmpMethodPrototype::operator ()(const Key &sa, const Key &sb) c
 
 class Dispatcher::ResultObserver: public Future<Response>::IObserver, public Request, public DynObject {
 public:
-	ResultObserver(Promise<JSON::ConstValue> result, WeakRef<ILog> logService):outres(result),logService(logService) {}
+	ResultObserver(Promise<JValue> result, WeakRef<ILog> logService):outres(result),logService(logService) {}
 	virtual void resolve(const Response &result) throw() {
 
 		try {
-			JSON::Builder::CObject r = json("id",this->id)
-					("result",result.result)
-					("error",JSON::getConstant(JSON::constNull));
+			JObject r;
+			r("id",this->id)
+				("result",result.result)
+				("error",JValue(nullptr));
 			if (result.context != null) {
 				r("context",result.context);
 			}
@@ -171,17 +171,18 @@ public:
 	}
 	virtual void resolve(const PException &e) throw() {
 		try {
-			JSON::ConstValue exceptionObj;
+			JValue exceptionObj;
 			RpcException *rpce = dynamic_cast<RpcException *>(e.get());
 			if (rpce) {
-				exceptionObj = rpce->getJSON(json);
+				exceptionObj = rpce->getJSON();
 			} else {
-				exceptionObj = UncauchException(THISLOCATION,*e).getJSON(json);
+				exceptionObj = UncauchException(THISLOCATION,*e).getJSON();
 			}
 
-			JSON::Builder::CObject r = json("id",this->id)
+			JObject r;
+			r("id",this->id)
 					("error",exceptionObj)
-					("result",JSON::getConstant(JSON::constNull));
+					("result",JValue(nullptr));
 			{
 				WeakRefPtr<IPeer> peer(this->peer);
 				WeakRefPtr<ILog> log(logService);
@@ -198,7 +199,7 @@ public:
 	}
 
 protected:
-	Promise<JSON::ConstValue> outres;
+	Promise<JValue> outres;
 	WeakRef<ILog> logService;
 
 };
@@ -228,25 +229,23 @@ protected:
 
 };
 
-Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue jsonrpcmsg,
-		const JSON::Builder &json, const WeakRef<IPeer> &peer) throw()
+Future<JValue> Dispatcher::dispatchMessage(const JValue jsonrpcmsg,const WeakRef<IPeer> &peer) throw()
  {
 
 
-	JSON::ConstValue id = jsonrpcmsg["id"];
-	JSON::ConstValue method = jsonrpcmsg["method"];
-	JSON::ConstValue params = jsonrpcmsg["params"];
-	JSON::ConstValue context = jsonrpcmsg["context"];
+	JValue id = jsonrpcmsg["id"];
+	JValue method = jsonrpcmsg["method"];
+	JValue params = jsonrpcmsg["params"];
+	JValue context = jsonrpcmsg["context"];
 
 	//Request is initialized as ResultObserver which will later create result JSON
-	Future<JSON::ConstValue> result;
+	Future<JValue> result;
 	AllocPointer<ResultObserver> r = new(IPromiseControl::getAllocator()) ResultObserver(result.getPromise(), getLogObject());
 	r->context = context;
 	r->dispatcher = me;
 	r->peer = peer;
 	r->id = id;
-	r->isNotification = id == null || id->isNull();
-	r->json = json;
+	r->isNotification = !id.defined() || id.isNull();
 	r->methodName = method;
 	r->params = params;
 	r->version = peer.lock()->getVersion();
@@ -255,13 +254,13 @@ Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue json
 	try {
 		if (method == null) {
 			throw ParseException(THISLOCATION,"Missing 'method'");
-		} else if (!method->isString()) {
+		} else if (method.type() != json::string) {
 			throw ParseException(THISLOCATION,"Method must be string");
-		} else if (params == null) {
+		} else if (!params.defined()) {
 			throw ParseException(THISLOCATION, "Missing 'params'");
 		} else {
-			if (!params->isArray()) {
-				params = json << params;
+			if (params.type() != json::array) {
+				params = JValue({params});
 			}
 
 
@@ -271,7 +270,7 @@ Future<JSON::ConstValue> Dispatcher::dispatchMessage(const JSON::ConstValue json
 			//function can return Future(null) to emit "false" as result
 			if (!resp.hasPromise()) {
 				resp.clear();
-				resp.getPromise().resolve(JSON::getConstant(JSON::constFalse));
+				resp.getPromise().resolve(JValue(false));
 			}
 
 			//If value is ready now, we can make shortcut

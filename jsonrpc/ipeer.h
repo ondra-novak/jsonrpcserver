@@ -7,6 +7,7 @@
 
 #ifndef JSONRPC_JSONSERVER_IPEER_H_
 #define JSONRPC_JSONSERVER_IPEER_H_
+#include "../httpserver/httprequest.h"
 
 
 namespace jsonrpc {

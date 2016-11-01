@@ -134,7 +134,7 @@ public:
 	 *  connection will be removed and closed.
 	 */
 	template<typename Fn>
-	void forEach(const Fn &fn, ConstStrA method, JSON::ConstValue params) ;
+	void forEach(const Fn &fn, ConstStrA method, JValue params) ;
 
 	///Prepares a notification and broadcast the message to all or some connections using executor
 	/**
@@ -148,7 +148,7 @@ public:
 	 * @param executor pointer to executor
 	 */
 	template<typename Fn>
-	void forEach(const Fn &fn, ConstStrA method, JSON::ConstValue params, IExecutor *executor) ;
+	void forEach(const Fn &fn, ConstStrA method, JValue params, IExecutor *executor) ;
 
 
 	///Picks one connections, locks the collector and calls the function

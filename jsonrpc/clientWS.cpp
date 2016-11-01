@@ -22,26 +22,31 @@
 #include "../httpserver/IJobScheduler.h"
 #include "rpcnotify.h"
 #include "../httpserver/httpServer.h"
-#include "ijsonrpc.h"
+#include "errors.h"
+#include "idispatch.h"
 namespace jsonrpc {
 
-ClientWS::ClientWS(const ClientConfig& cfg):WebSocketsClient(cfg),idcounter(1),reconnectMsg(0),reconnectDelay(1) {
-	if (cfg.jsonFactory == null) jsonFactory = JSON::create();
-	else jsonFactory = cfg.jsonFactory;
+ClientWS::ClientWS(const ClientConfig& cfg):WebSocketsClient(cfg),idcounter(1),reconnectMsg(0),reconnectDelay(1),mepeer(this) {
 
 	cfgurl = cfg.url;
 }
 
 
-void ClientWS::onIncomeRPC(ConstStrA msg,
-		const JSON::Value &params, const JSON::Value &context, const JSON::Value &id) {
+void ClientWS::onIncomeRPC(JValue wholeMsg) {
 
 	if (dispatcher) {
-		jsonsrv::IJsonRpc::CallResult res =  dispatcher->callMethod(fakeRequest,msg,params,context,id);
-		if (logObject) logObject->logMethod(cfgurl,msg,params,context,res.logOutput);
-		sendResponse(id,res.result,res.error);
+		WeakRef<IPeer> peer = mepeer;
+		Future<JValue> res = dispatcher->dispatchMessage(wholeMsg,peer);
+		res >> [peer](JValue res) {
+			WeakRefPtr<IPeer> p(peer);
+			if (p != null) {
+				ClientWS *me = static_cast<ClientWS *>(p.get());
+				me->sendResponse(res);
+			}
+		};
+
 	} else {
-		throw jsonsrv::RpcCallError(THISLOCATION,404,"Method not found");
+		throw LookupException(THISLOCATION,"Client doesn't support dispatching");
 	}
 }
 
@@ -86,18 +91,12 @@ void ClientWS::connect(const ConnectConfig &config) {
 
 }
 
-void ClientWS::sendResponse(JSON::ConstValue id, JSON::ConstValue result,
-		JSON::ConstValue error) {
+void ClientWS::sendResponse(JValue resp) {
 
 	Synchronized<FastLockR> _(lock);
-	JSON::Builder bld(jsonFactory);
-	JSON::Builder::CObject req = bld("id",id)
-			("result",result)
-			("error",error);
-
-	ConstStrA msg = jsonFactory->toString(*req);
-
-	sendTextMessage(msg);
+	buffer.clear();
+	resp.serialize([&](char c){buffer.add(c);});
+	sendTextMessage(buffer);
 }
 
 
@@ -105,52 +104,52 @@ void ClientWS::connect(PNetworkEventListener listener) {
 	Super::connect(cfgurl,listener);
 }
 
-Future<IClient::Result> ClientWS::callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context) {
+Future<IClient::Result> ClientWS::callAsync(ConstStrA method, JValue params, JValue context) {
 	Synchronized<FastLockR> _(lock);
 
 	if (params == null) {
-		params = jsonFactory->array();
-	} else if (!params->isArray()) {
-		params = JSON::Container(jsonFactory->array()).add(params);
+		params = JValue(json::array);
+	} else if (params.type()!=json::array) {
+		params = JValue({params});
 	}
 
-	JSON::Builder bld(jsonFactory);
 	natural thisid = idcounter++;
-	JSON::Builder::CObject req = bld("id",thisid)
-			.container()
-			("method",method)
-			("params",params);
-	if (context != null) {
+	JObject req;
+	req("id",thisid)
+		("method",method)
+		("params",params);
+	if (context.defined()) {
 		req("context",context);
 	}
 
-
-
-	ConstStrA msg = jsonFactory->toString(*req);
+	buffer.clear();
+	JValue(req).serialize([&](char c){buffer.add(c);});
+	sendTextMessage(buffer);
 	Future<Result> f;
-	sendTextMessage(msg);
 	waitingResults.insert(thisid,f.getPromise());
+
+
 
 	return f;
 
 }
 
-IClient::Result ClientWS::call(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context) {
+IClient::Result ClientWS::call(ConstStrA method, JValue params, JValue context) {
 	return callAsync(method,params,context).getValue();
 }
 
-void ClientWS::processMessage(JSON::Value v) {
+void ClientWS::processMessage(JValue v) {
 	try {
-		JSON::Value result = v["result"];
-		JSON::Value error = v["error"];
-		JSON::Value context = v["context"];
-		JSON::Value method = v["method"];
-		JSON::Value id = v["id"];
-		JSON::Value params = v["params"];
-		if (result != null || error != null) {
-			if (id != null && !id->isNull()) {
+		JValue result = v["result"];
+		JValue error = v["error"];
+		JValue context = v["context"];
+		JValue method = v["method"];
+		JValue id = v["id"];
+		JValue params = v["params"];
+		if (result.defined() || error.defined()) {
+			if (id.defined() && !id.isNull()) {
 
-				natural reqid = id->getUInt();
+				natural reqid = id.getUInt();
 				const Promise<Result> *p = waitingResults.find(reqid);
 				if (p == 0)
 					onDispatchError(v);
@@ -158,10 +157,10 @@ void ClientWS::processMessage(JSON::Value v) {
 					Promise<Result> q = *p;
 					waitingResults.erase(reqid);
 					if (p) {
-						if (error == null || error->isNull()) {
+						if (!error.defined()|| error.isNull()) {
 							q.resolve(Result(result,context));
 						} else {
-							q.reject(RpcError(THISLOCATION,error));
+							q.reject(RemoteException(THISLOCATION,error));
 						}
 					}
 				}
@@ -169,25 +168,11 @@ void ClientWS::processMessage(JSON::Value v) {
 			else {
 				onDispatchError(v);
 			}
-		} else if (method != null && params != null) {
-			if (id == null || id->isNull()) {
-				onNotify(method->getStringUtf8(), params, context);
+		} else if (method.defined() && params.defined()) {
+			if (dispatcher == null) {
+				onNotify(method.getStringA(), params, context);
 			} else {
-				try {
-					onIncomeRPC(method->getStringUtf8(), params,context,id);
-				} catch (const RpcError &e) {
-					sendResponse(id, jsonFactory->newValue(null), e.getError());
-				} catch (const jsonsrv::RpcCallError &c) {
-					RpcError e(THISLOCATION,jsonFactory,c.getStatus(),c.getStatusMessage());
-					sendResponse(id, jsonFactory->newValue(null), e.getError());
-				} catch (const std::exception &s) {
-					RpcError e(THISLOCATION,jsonFactory,500,s.what());
-					sendResponse(id, jsonFactory->newValue(null), e.getError());
-				} catch (...) {
-					RpcError e(THISLOCATION,jsonFactory,500,"fatal");
-					sendResponse(id, jsonFactory->newValue(null), e.getError());
-				}
-
+				onIncomeRPC(v);
 			}
 		}
 
@@ -198,9 +183,9 @@ void ClientWS::processMessage(JSON::Value v) {
 }
 
 void ClientWS::onTextMessage(ConstStrA msg) {
-	JSON::Value v;
+	JValue v;
 	try {
-		v = jsonFactory->fromString(msg);
+		v = JValue::fromString(msg);
 	} catch (...) {
 		onParseError(msg);
 	}
@@ -210,7 +195,7 @@ void ClientWS::onTextMessage(ConstStrA msg) {
 
 void ClientWS::onConnect() {
 	if (dispatcher!=null && !connectMethod.empty()) {
-		onNotify(connectMethod,jsonFactory->array(),null);
+		onNotify(connectMethod,JValue(json::array),JValue());
 	}
 	Super::onConnect();
 }
@@ -223,18 +208,18 @@ void ClientWS::onLostConnection(natural) {
 }
 
 
-void ClientWS::sendNotify(ConstStrA method, const JSON::ConstValue& params) {
+void ClientWS::sendNotify(ConstStrA method, const JValue& params) {
 	Synchronized<FastLockR> _(lock);
-	sendNotify(PreparedNotify(method,params,jsonFactory));
+	sendNotify(PreparedNotify(method,params));
 }
 
 void ClientWS::sendNotify(const PreparedNotify& preparedNotify) {
 	sendTextMessage(preparedNotify.content);
 }
 
-PreparedNotify ClientWS::prepareNotify(ConstStrA method, const JSON::ConstValue& params) {
+PreparedNotify ClientWS::prepareNotify(ConstStrA method, const JValue& params) {
 	Synchronized<FastLockR> _(lock);
-	return PreparedNotify(method,params,jsonFactory);
+	return PreparedNotify(method,params);
 }
 
 void ClientWS::disconnect(natural reason) {
@@ -250,6 +235,7 @@ void ClientWS::disconnect(natural reason) {
 
 ClientWS::~ClientWS() {
 	disconnect();
+	mepeer.setNull();
 }
 
 bool ClientWS::reconnect() {
@@ -317,15 +303,42 @@ void ClientWS::super_wakeUp(natural reason) throw () {
 	inExecutor.unlock();
 }
 
-void ClientWS::onNotify(ConstStrA method, const JSON::Value& params, const JSON::Value& context) {
-	if (dispatcher) {
-		jsonsrv::IJsonRpc::CallResult res =  dispatcher->callMethod(fakeRequest,method,params,context,JSON::getConstant(JSON::constNull));
-		if (logObject) logObject->logMethod(cfgurl,method,params,context,res.logOutput);
-	}
+void ClientWS::onNotify(ConstStrA , const JValue& , const JValue& ) {
 
 }
 
+BredyHttpSrv::IHttpRequestInfo* ClientWS::getHttpRequest() const {
+	return fakeRequest;
+}
 
+ConstStrA ClientWS::getName() const {
+	return url;
+}
+
+natural ClientWS::getPortIndex() const {
+	return 0;
+}
+
+IRpcNotify* ClientWS::getNotifySvc() const {
+	return const_cast<ClientWS *>(this);
+
+}
+
+void ClientWS::setContext(Context* ctx) {
+	ctxVar = ctx;
+}
+
+Context* ClientWS::getContext() const {
+	return ctxVar;
+}
+
+IClient* ClientWS::getClient() const {
+	return const_cast<ClientWS *>(this);
+}
+
+natural ClientWS::getVersion() const {
+	return 0;
+}
 
 }
 

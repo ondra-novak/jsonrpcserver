@@ -217,9 +217,10 @@ Future<void> WebSocketsClient::onReconnect() {
 	return r;
 }
 
-template class  BredyHttpSrv::AbstractWebSocketConnection<BredyHttpClient::WebSocketsClient, false>;
 
 
 
 }
+
+template class  BredyHttpSrv::AbstractWebSocketConnection<BredyHttpClient::WebSocketsClient, false>;
 

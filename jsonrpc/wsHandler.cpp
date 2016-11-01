@@ -14,7 +14,6 @@
 #include "errors.h"
 #include "idispatch.h"
 #include "lightspeed/base/actions/promise.tcc"
-#include "rpcerror.h"
 #include "rpcnotify.h"
 
 #include <lightspeed/utils/json/jsonserializer.tcc>
@@ -32,10 +31,7 @@ WSHandler::WSHandler(IDispatcher& dispatcher)
 
 }
 
-WSHandler::WSHandler(IDispatcher& dispatcher,const JSON::Builder& json)
-	:dispatcher(dispatcher),events(0), json(json)
-{
-}
+
 
 void WSHandler::setListener(IWSHandlerEvents* handler) {
 	events = handler;
@@ -48,7 +44,7 @@ WeakRef<IWSHandlerEvents> WSHandler::getListener() const {
 
 class WSConnection: public BredyHttpSrv::WebSocketConnection, public IRpcNotify, public IClient, public IPeer {
 public:
-	WSConnection(JSON::Builder json, IDispatcher &dispatcher,
+	WSConnection(IDispatcher &dispatcher,
 			BredyHttpSrv::IHttpRequest&request, WeakRef<IWSHandlerEvents> events, natural version);
 	~WSConnection();
 	virtual void onConnect();
@@ -57,14 +53,14 @@ public:
 	virtual void onCloseOutput(natural code);
 	virtual void onPong(ConstBin msg);
 
-	virtual PreparedNotify prepare(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments);
+	virtual PreparedNotify prepare(LightSpeed::ConstStrA name, JValue arguments);
 	virtual void sendPrepared(const PreparedNotify &prepared, TimeoutControl tmControl = shortTimeout);
-	virtual void sendNotification(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments, TimeoutControl tmControl = standardTimeout);
+	virtual void sendNotification(LightSpeed::ConstStrA name, JValue arguments, TimeoutControl tmControl = standardTimeout);
 	virtual void dropConnection();
 	virtual void closeConnection(natural code);
 	virtual Future<void> onClose();
 
-	virtual Future<Result> callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0);
+	virtual Future<Result> callAsync(ConstStrA method, JValue params, JValue context = 0);
 
 	virtual BredyHttpSrv::IHttpRequestInfo *getHttpRequest() const;
 	virtual ConstStrA getName() const;
@@ -75,12 +71,11 @@ public:
 	virtual IClient *getClient() const;
 	virtual natural getVersion() const {return version;}
 
-	void processResponse(const JSON::ConstValue &req);
-	void processRequest(const JSON::ConstValue &req);
-	void sendResponse(const JSON::ConstValue &req);
-	static void sendResponseAsync(const JSON::ConstValue &req, const WeakRef<IPeer> &peer);
+	void processResponse(const JValue &req);
+	void processRequest(const JValue &req);
+	void sendResponse(const JValue &req);
+	static void sendResponseAsync(const JValue &req, const WeakRef<IPeer> &peer);
 
-	JSON::Builder json;
 	IDispatcher &dispatcher;
 	BredyHttpSrv::IHttpRequestInfo &request;
 	WeakRefTarget<IPeer> myPeer;
@@ -109,19 +104,18 @@ BredyHttpSrv::WebSocketConnection* WSHandler::onNewConnection(
 
 	natural ver = HttpHandler::getVersionFromReq(request, vpath);
 
-	return new(alloc) WSConnection(json, dispatcher,request, events, ver);
+	return new(alloc) WSConnection(dispatcher,request, events, ver);
 
 }
 
 
 
-WSConnection::WSConnection(JSON::Builder json,
+WSConnection::WSConnection(
 		IDispatcher &dispatcher,
 		BredyHttpSrv::IHttpRequest& request,
 		WeakRef<IWSHandlerEvents> events, natural version)
 
-:WebSocketConnection(request),
- json(json)
+:WebSocketConnection(request)
 ,dispatcher(dispatcher)
 ,request(request)
 ,myPeer(this)
@@ -159,7 +153,8 @@ void WSConnection::onConnect() {
 
 void WSConnection::onTextMessage(ConstStrA msg) {
 
-	JSON::ConstValue req = json.factory->fromString(msg);
+
+	JValue req = JValue::fromString(msg);
 	if (req["result"] != null) {
 		processResponse(req);
 	} else {
@@ -177,8 +172,7 @@ void WSConnection::onCloseOutput(natural) {
 void WSConnection::onPong(ConstBin) {
 }
 
-PreparedNotify WSConnection::prepare(LightSpeed::ConstStrA name,
-		LightSpeed::JSON::ConstValue arguments) {
+PreparedNotify WSConnection::prepare(LightSpeed::ConstStrA name,JValue arguments) {
 
 	class P: public PreparedNotify {
 	public:
@@ -187,11 +181,11 @@ PreparedNotify WSConnection::prepare(LightSpeed::ConstStrA name,
 
 	Synchronized<MicroLock> _(bufferLock);
 	buffer.clear();
-	JSON::ConstValue req = json("method", name)
+	JValue req = JObject("method", name)
 			("params", arguments)
-			("id",JSON::getConstant(JSON::constNull));
+			("id",nullptr);
 
-	JSON::serialize(req,buffer,true);
+	req.serialize([&](char c){buffer.write(c);});
 	return P(StringA(buffer.getArray()));
 
 
@@ -217,8 +211,7 @@ void WSConnection::sendPrepared(const PreparedNotify& prepared, TimeoutControl t
 	sendTextMessage(prepared.content,true);
 }
 
-void WSConnection::sendNotification(LightSpeed::ConstStrA name,
-		LightSpeed::JSON::ConstValue arguments, TimeoutControl tmControl) {
+void WSConnection::sendNotification(LightSpeed::ConstStrA name,JValue arguments, TimeoutControl tmControl) {
 	sendPrepared(prepare(name,arguments),tmControl);
 }
 
@@ -241,10 +234,11 @@ Future<void> WSConnection::onClose() {
 }
 
 Future<IClient::Result> WSConnection::callAsync(ConstStrA method,
-					JSON::ConstValue params, JSON::ConstValue context) {
+					JValue params, JValue context) {
 
 	atomicValue promiseId = lockInc(nextPromiseId);
-	JSON::Builder::CObject req = json.container("method",method)
+	JObject req;
+	req("method",method)
 			("params",params)
 			("id",ToString<atomicValue>(promiseId));
 
@@ -294,8 +288,8 @@ IClient* WSConnection::getClient() const {
 	return const_cast<IClient *>(static_cast<const IClient *>(this));
 }
 
-void WSConnection::processResponse(const JSON::ConstValue& req) {
-	natural id = req["id"]->getUInt();
+void WSConnection::processResponse(const JValue& req) {
+	natural id = req["id"].getUInt();
 	Optional<Promise<Result> > p;
 	{
 		Synchronized<MicroLock> _(bufferLock);
@@ -304,7 +298,7 @@ void WSConnection::processResponse(const JSON::ConstValue& req) {
 		p = *pres;
 		waitingPromises.erase(id);
 	}
-	if (req["error"]->isNull()) {
+	if (req["error"].isNull()) {
 		Result res(req["result"],req["context"]);
 		p->resolve(res);
 	}
@@ -313,25 +307,25 @@ void WSConnection::processResponse(const JSON::ConstValue& req) {
 
 }
 
-void WSConnection::processRequest(const JSON::ConstValue& req) {
-	Future<JSON::ConstValue> resp = dispatcher.dispatchMessage(req,json,myPeer);
-	const JSON::ConstValue *js = resp.tryGetValue();
+void WSConnection::processRequest(const JValue& req) {
+	Future<JValue> resp = dispatcher.dispatchMessage(req,myPeer);
+	const JValue *js = resp.tryGetValue();
 	if (js) {
 		sendResponse(*js);
 	} else {
 		resp.thenCall(
-				Message<void, JSON::ConstValue, void>::create(&WSConnection::sendResponseAsync,WeakRef<IPeer>(myPeer)));
+				Message<void, JValue, void>::create(&WSConnection::sendResponseAsync,WeakRef<IPeer>(myPeer)));
 	}
 }
 
-void WSConnection::sendResponse(const JSON::ConstValue& req) {
+void WSConnection::sendResponse(const JValue& req) {
 	Synchronized<MicroLock> _(bufferLock);
 	buffer.clear();
-	JSON::serialize(req,buffer,true);
+	req.serialize([&](char c){buffer.write(c);});
 	this->sendTextMessage(buffer.getArray(),true);
 }
 
-void WSConnection::sendResponseAsync(const JSON::ConstValue& req, const WeakRef<IPeer>& peer) {
+void WSConnection::sendResponseAsync(const JValue& req, const WeakRef<IPeer>& peer) {
 	WeakRefPtr<IPeer> ptr(peer);
 	if (ptr != null) {
 		ptr->getIfc<WSConnection>().sendResponse(req);

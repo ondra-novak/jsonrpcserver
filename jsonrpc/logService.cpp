@@ -24,8 +24,8 @@ LogService::LogService()
 }
 
 void LogService::logMethod(BredyHttpSrv::IHttpRequestInfo& invoker, ConstStrA methodName,
-		const JSON::ConstValue& params, const JSON::ConstValue& context,
-		const JSON::ConstValue& logOutput) {
+		const JValue& params, const JValue& context,
+		const JValue& logOutput) {
 
 	BredyHttpSrv::IHttpPeerInfo &pinfo = invoker.getIfc<BredyHttpSrv::IHttpPeerInfo>();
 	ConstStrA peerAddr = pinfo.getPeerRealAddr();
@@ -35,8 +35,8 @@ void LogService::logMethod(BredyHttpSrv::IHttpRequestInfo& invoker, ConstStrA me
 
 
 void LogService::logMethod(ConstStrA source, ConstStrA methodName,
-		const JSON::ConstValue& params, const JSON::ConstValue& context,
-		const JSON::ConstValue& logOutput) {
+		const JValue& params, const JValue& context,
+		const JValue& logOutput) {
 
 	POutputStream lgf = logfile;
 
@@ -61,16 +61,31 @@ void LogService::logMethod(ConstStrA source, ConstStrA methodName,
 		<< tms.hour << tms.min << tms.sec;
 
 	print("[");
-	JSON::Serializer<Stream::InvokeClassType> ser(stream,false);
-	ser.serializeString(source);
+	auto wrfn=[&](char c){stream.write(c);};
+	typedef decltype(wrfn) WrFn;
+
+	class MySer: public json::Serializer<WrFn> {
+	public:
+		using json::Serializer<WrFn>::Serializer;
+		using json::Serializer<WrFn>::writeString;
+		void writeString(ConstStrA x) {
+			writeString(json::StringView<char>(x.data(),x.length()));
+		}
+		void writeUndef() {
+			write("null");
+		}
+
+	};
+	MySer ser(wrfn);
+	ser.writeString(source);
 	stream.write(',');
-	ser.serializeString(methodName);
+	ser.writeString(methodName);
 	stream.write(',');
-	if (params != null) ser.serialize(params);else ser.serialize(JSON::getConstant(JSON::constNull));
+	if (params.defined()) ser.serialize(params);else ser.writeUndef();
 	stream.write(',');
-	if (context!= null) ser.serialize(context);else ser.serialize(JSON::getConstant(JSON::constNull));
+	if (context.defined()) ser.serialize(context);else ser.writeUndef();
 	stream.write(',');
-	if (logOutput!= null) ser.serialize(logOutput);else ser.serialize(JSON::getConstant(JSON::constNull));
+	if (logOutput.defined()) ser.serialize(logOutput);else ser.writeUndef();
 	print("]\n");
 
 	if (lgf != null) {

@@ -3,6 +3,7 @@ LIBINCLUDES:=
 with_dbhelpers ?= 0
 SEARCHPATHS="./ ../ ../../ /usr/include/ /usr/local/include/"
 CXX=clang++
+CXXFLAGS=-std=c++11
 
 selectpath=$(abspath $(firstword $(foreach dir,$(1),$(wildcard $(dir)$(2)))))
 

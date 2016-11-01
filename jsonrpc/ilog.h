@@ -9,8 +9,8 @@
 #define JSONRPC_JSONSERVER_ILOG_H_
 #include <lightspeed/base/interface.h>
 #include "lightspeed/base/containers/constStr.h"
-#include <lightspeed/utils/json/json.h>
 
+#include "json.h"
 namespace BredyHttpSrv {
 	class IHttpRequestInfo;
 }
@@ -33,7 +33,7 @@ namespace jsonrpc {
 		 * @param context context of the call (optional)
 		 * @param logOutput output of the call (optional)
 		 */
-		virtual void logMethod(BredyHttpSrv::IHttpRequestInfo &invoker, LightSpeed::ConstStrA methodName, const LightSpeed::JSON::ConstValue &params, const LightSpeed::JSON::ConstValue &context, const LightSpeed::JSON::ConstValue &logOutput) = 0;
+		virtual void logMethod(BredyHttpSrv::IHttpRequestInfo &invoker, LightSpeed::ConstStrA methodName, const JValue &params, const JValue &context, const JValue &logOutput) = 0;
 		///More general loging of the method, especially when they came from a different source, that http.
 		/**
 		 * @param source source. In original interface there is IP address of the caller. However, you can now specify different source.
@@ -42,7 +42,7 @@ namespace jsonrpc {
 		 * @param context context of the call (optional)
 		 * @param logOutput output of the call (optional)
 		 */
-		virtual void logMethod(LightSpeed::ConstStrA source, LightSpeed::ConstStrA methodName, const LightSpeed::JSON::ConstValue &params, const LightSpeed::JSON::ConstValue &context, const LightSpeed::JSON::ConstValue &logOutput) = 0;
+		virtual void logMethod(LightSpeed::ConstStrA source, LightSpeed::ConstStrA methodName, const JValue &params, const JValue &context, const JValue &logOutput) = 0;
 	};
 
 

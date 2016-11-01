@@ -110,7 +110,7 @@ bool WsCollector<UserData>::isMember(RpcRequest* req) const {
 template<typename UserData>
 template<typename Fn>
 void WsCollector<UserData>::forEach(const Fn& fn,
-		ConstStrA method, JSON::ConstValue params) {
+		ConstStrA method, JValue params) {
 	AutoArray<IRpcNotify *, SmallAlloc<8> > toRemove;
 	{
 
@@ -139,7 +139,7 @@ void WsCollector<UserData>::forEach(const Fn& fn,
 template<typename UserData>
 template<typename Fn>
 void WsCollector<UserData>::forEach(const Fn& fn,
-		ConstStrA method, JSON::ConstValue params, IExecutor *exec) {
+		ConstStrA method, JValue params, IExecutor *exec) {
 	AutoArray<IRpcNotify *, SmallAlloc<8> > toRemove;
 	FastLock toRemoveLock;
 

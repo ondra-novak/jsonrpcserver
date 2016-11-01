@@ -21,10 +21,10 @@ void LookupException::message(ExceptionMsg& msg) const {
 	msg("Method not found: %1") << prototype;
 }
 
-JSON::ConstValue LookupException::getJSON( const JSON::Builder& json) const {
-	return json("class","lookupException")
-			("message","Method not found.")
-			("method",prototype);
+JValue LookupException::getJSON() const {
+	return JObject("class",JValue("lookupException"))
+			("message",JValue("Method not found."))
+			("method",JValue(prototype));
 
 }
 
@@ -33,18 +33,21 @@ void MethodException::message(ExceptionMsg& msg) const {
 }
 
 
-JSON::ConstValue MethodException::getJSON(const JSON::Builder& json) const {
-	return json("class","methodException")
-			("status",statusCode)
-			("statusMessage",statusMessage);
+JValue MethodException::getJSON() const {
+	return JObject("class",JValue("methodException"))
+			("status",JValue(statusCode))
+			("statusMessage",JValue(statusMessage));
 }
 
 
 void ParseException::message(ExceptionMsg& msg) const {
+	msg("Parse exception: %1") << this->description;
 }
 
-JSON::ConstValue ParseException::getJSON(
-		const JSON::Builder& json) const {
+JValue ParseException::getJSON() const {
+	return JObject("class",JValue("ParseException"))
+			("status",JValue(400))
+			("statusMessage",JValue(description));
 }
 
 UncauchException::UncauchException(const ProgramLocation& loc,
@@ -55,28 +58,28 @@ UncauchException::UncauchException(const ProgramLocation& loc,
 {
 }
 
-JSON::ConstValue UncauchException::getJSON(const JSON::Builder& json) const {
-	return json("class","uncaughException")
-			("status",statusCode)
-			("statusMessage",statusMessage)
-			("type",type.name());
+JValue UncauchException::getJSON() const {
+	return JObject("class",JValue("uncaughException"))
+			("status",JValue(statusCode))
+			("statusMessage",JValue(statusMessage))
+			("type",JValue(type.name()));
 
 }
 
 
 RemoteException::RemoteException(const ProgramLocation& loc,
-			const JSON::ConstValue& data):Exception(loc),data(data)
+			const JValue& data):Exception(loc),data(data)
 
 {
 }
 
-JSON::ConstValue RemoteException::getJSON(const JSON::Builder&) const {
+JValue RemoteException::getJSON() const {
 	return data;
 }
 
 void RemoteException::message(ExceptionMsg& msg) const {
 	AutoArrayStream<char, SmallAlloc<1024> > buffer;
-	JSON::serialize(data, buffer, false);
+	data.serialize([&](char c) {buffer.write(c);});
 	msg("Remote server exception: %1") << buffer.getArray();
 }
 

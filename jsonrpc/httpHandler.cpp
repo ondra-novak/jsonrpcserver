@@ -46,12 +46,12 @@ public:
 protected:
 	IHttpRequest &request;
 	HttpHandler &owner;
-	Future<JSON::ConstValue> result;
+	Future<JValue> result;
 	ContextVar requestContext;
 	WeakRefTarget<IPeer> me;
 	natural version;
 
-	void wakeUpConnection(const JSON::ConstValue &);
+	void wakeUpConnection(const JValue &);
 
 	virtual BredyHttpSrv::IHttpRequestInfo *getHttpRequest() const {
 		return &request;
@@ -85,8 +85,6 @@ protected:
 HttpHandler::HttpHandler(IDispatcher& dispatcher):dispatcher(dispatcher) {
 }
 
-HttpHandler::HttpHandler(IDispatcher& dispatcher,const JSON::Builder &json):dispatcher(dispatcher),json(json) {
-}
 
 natural HttpHandler::onRequest(IHttpRequest& request, ConstStrA vpath) {
 	if (request.getMethod() == "GET") return onGET(request, vpath);
@@ -115,14 +113,14 @@ natural HttpHandler::onPOST(IHttpRequest& request, ConstStrA vpath) {
 }
 
 natural HttpHandler::RpcContext::sendResponse() {
-const JSON::ConstValue *res = result.tryGetValue();
+const JValue *res = result.tryGetValue();
 if (res) {
 	SeqFileOutput output(&request);
-	owner.json.factory->toStream(*(*res),output);
+	res->serialize([&](char c){output.write(c);});
 	result.clear();
 	return stContinue;
 } else {
-	result.thenCall(Message<void,JSON::ConstValue,void>::create(this, &HttpHandler::RpcContext::wakeUpConnection));
+	result.thenCall(Message<void,JValue,void>::create(this, &HttpHandler::RpcContext::wakeUpConnection));
 	return stSleep;
 }
 }
@@ -134,19 +132,19 @@ natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 	case IHttpRequest::evUserWakeup: return sendResponse();
 	case IHttpRequest::evEndOfStream: return stOK;
 	case IHttpRequest::evDataReady: {
-			JSON::ConstValue val;
+			JValue val;
 			try {
 				SeqFileInput input(&request);
-				val = owner.json.factory->fromStream(input);
+				val = JValue::parse([&](){return input.getNext();});
 			} catch (std::exception &e) {
 				request.errorPage(400,ConstStrA(),e.what());
 			}
 
-			JSON::ConstValue v = val["method"];
+			JValue v = val["method"];
 			if (v != null) request.setRequestName(v.getStringA());
 			request.sendHeaders();
 
-			result = owner.dispatcher.dispatchMessage(val,owner.json,me);
+			result = owner.dispatcher.dispatchMessage(val,me);
 			return sendResponse();
 		}
 	default: return stInternalError;
@@ -199,36 +197,34 @@ natural HttpHandler::dumpMethods(ConstStrA name, natural version, IHttpRequest& 
 	}
 
 
-	JSON::PFactory fact = JSON::create();
-	JSON::Value arr = fact->array();
+	JArray arr;
 	ConstStrA prevMethod;
 
 	IMethodRegister &mreg = dispatcher.getIfc<IMethodRegister>();
 
 	class MethodReceiver: public IMethodRegister::IMethodEnum {
 	public:
-		MethodReceiver(JSON::Value &arr, JSON::PFactory &fact):arr(arr),fact(fact) {}
+		MethodReceiver(JArray &arr):arr(arr) {}
 		virtual void operator()(ConstStrA prototype) const {
 			ConstStrA baseName = prototype.split(':').getNext();
 			if (baseName == prevMethod) return;
-			arr->add(fact->newValue(baseName));
+			arr.add(JValue(baseName));
 		}
 
-		JSON::Value &arr;
-		JSON::PFactory &fact;
+		JArray &arr;
 		ConstStrA prevMethod;
 	};
 
-	mreg.enumMethods(MethodReceiver(arr,fact), version);
+	mreg.enumMethods(MethodReceiver(arr), version);
 
-	ConstStrA jsonstr = fact->toString(*arr);
+	JString jsonstr = JValue(arr).stringify();
 	HashMD5<char> hash;
-	hash.blockWrite(jsonstr,true);
+	hash.blockWrite(ConstStrA(jsonstr),true);
 	hash.finish();
 	StringA digest = hash.hexdigest();
 	methodListTag = digest.getMT();
 	StringA etag = methodListTag;
-	StringA result = ConstStrA("var ") + varname + ConstStrA("=") + jsonstr + ConstStrA(";\r\n");
+	StringA result = ConstStrA("var ") + varname + ConstStrA("=") + ConstStrA(jsonstr) + ConstStrA(";\r\n");
 
 	request.header(IHttpRequest::fldContentType,"application/javascript");
 	request.header(IHttpRequest::fldContentLength,ToString<natural>(result.length()));
@@ -258,7 +254,7 @@ natural HttpHandler::sendWsClientJs(IHttpRequest& request) {
 }
 
 
-void HttpHandler::RpcContext::wakeUpConnection(const JSON::ConstValue &) {
+void HttpHandler::RpcContext::wakeUpConnection(const JValue &) {
 	request.wakeUp(0);
 }
 

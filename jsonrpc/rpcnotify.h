@@ -25,7 +25,7 @@ namespace jsonrpc {
 	public:
 		const StringA content;
 
-		PreparedNotify(ConstStrA notifyName, JSON::ConstValue params, const JSON::Builder &json);
+		PreparedNotify(ConstStrA notifyName, JValue params);
 	protected:
 		PreparedNotify(const StringA &content):content(content) {}
 	};
@@ -71,7 +71,7 @@ namespace jsonrpc {
 		 * handle this situation.
 		 *
 		 */
-		virtual PreparedNotify prepare(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments) = 0;
+		virtual PreparedNotify prepare(LightSpeed::ConstStrA name, JValue arguments) = 0;
 
 
 		///Send prepared notification
@@ -90,7 +90,7 @@ namespace jsonrpc {
 		 *
 		 * notification is prepared and send.
 		 */
-		virtual void sendNotification(LightSpeed::ConstStrA name, LightSpeed::JSON::ConstValue arguments, TimeoutControl tmControl = standardTimeout) = 0;
+		virtual void sendNotification(LightSpeed::ConstStrA name, JValue arguments, TimeoutControl tmControl = standardTimeout) = 0;
 
 
 

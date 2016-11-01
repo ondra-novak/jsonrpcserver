@@ -12,6 +12,7 @@
 #include "../httpclient/httpClient.h"
 #include "lightspeed/base/actions/promise.h"
 
+#include "json.h"
 namespace jsonrpc {
 
 using namespace LightSpeed;
@@ -19,10 +20,10 @@ using namespace LightSpeed;
 class IClient {
 public:
 
-	class Result: public JSON::ConstValue {
+	class Result: public JValue {
 	public:
-		Result(JSON::ConstValue result, JSON::ConstValue context): JSON::ConstValue(result),context(context) {}
-		JSON::ConstValue context;
+		Result(JValue result, JValue context): JValue(result),context(context) {}
+		JValue context;
 	};
 	virtual ~IClient() {}
 
@@ -38,7 +39,7 @@ public:
 	 *
 	 *
 	 */
-	virtual Future<Result> callAsync(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0) = 0;
+	virtual Future<Result> callAsync(ConstStrA method, JValue params, JValue context = JValue()) = 0;
 
 
 	///Performs RPC call synchronously
@@ -47,9 +48,9 @@ public:
 	 * @param method method to call
 	 * @param params arguments of the method
 	 * @param context context (optional)
-	 * @return result can be convertible to JSON::ConstValue however it contains a context if returned
+	 * @return result can be convertible to JValue however it contains a context if returned
 	 */
-	virtual Result call(ConstStrA method, JSON::ConstValue params, JSON::ConstValue context = 0) {
+	virtual Result call(ConstStrA method, JValue params, JValue context = 0) {
 		return callAsync(method, params, context).getValue();
 	}
 

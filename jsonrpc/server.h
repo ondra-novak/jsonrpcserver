@@ -53,45 +53,6 @@ public:
 //	virtual natural onRequest(BredyHttpSrv::IHttpRequest& request, ConstStrA vpath);
 
 
-
-
-    class OldAPI: public jsonsrv::IJsonRpc {
-    public:
-		///old interface - emulate it
-		virtual void registerMethod(ConstStrA methodName, const jsonsrv::IRpcCall & method, ConstStrA help = ConstStrA());
-		///old interface - emulate it
-		virtual void eraseMethod(ConstStrA methodName);
-		///old interface - not implemented
-		virtual void registerGlobalHandler(ConstStrA methodUID, const jsonsrv::IRpcCall & method);
-		///old interface - not implemented
-		virtual void eraseGlobalHandler(ConstStrA methodUID);
-		///old interface - not implemented
-		virtual void registerMethodObsolete(ConstStrA methodName);
-		///old interface - emulate it
-		virtual void registerStatHandler(ConstStrA handlerName, const jsonsrv::IRpcCall & method);
-		///old interface - emulate it
-		virtual void eraseStatHandler(ConstStrA handlerName);
-		///old interface - not implemented
-		virtual void setRequestMaxSize(natural bytes);
-		///old interface - emulate it
-		virtual CallResult callMethod(BredyHttpSrv::IHttpRequestInfo *httpRequest, ConstStrA methodName, const JSON::Value &args, const JSON::Value &context, const JSON::Value &id);
-		///old interface - not implemented - return null
-		virtual Optional<bool> isAllowedOrigin(ConstStrA origin) ;
-
-	    virtual void setLogObject(jsonsrv::IJsonRpcLogObject *logObject) {owner.setLogObject(logObject);}
-
-
-		OldAPI(Server &owner, natural version):owner(owner),version(version) {}
-
-		Server &owner;
-		const natural version;
-
-    };
-
-    OldAPI getOldApi(natural version = naturalNull) {
-    	return OldAPI(*this,version);
-    }
-
 	WeakRef<IDispatcher> getDispatcherWeakRef();
 
 
