@@ -60,28 +60,33 @@ void SrvMain::onLogRotate()
 
 JValue SrvMain::rpcHelloWorld( const Request &r )
 {
-	return r.json("Hello, World!");
+	return "Hello, World!";
 }
 
 JValue SrvMain::rpcNumberSum(const Request &r )
 {
 	double sum = 0;
 	natural count = 0;
-	JSON::ConstIterator iter = r.params->getFwIter();
-	while (iter.hasItems()) {
-		double c = iter.getNext().getNumber();
-		sum += c;
+
+	for(auto &&v : r.params) {
+		sum += v.getNumber();
 		count++;
 	}
-	return r.json
+	return JObject
 		("sum",sum)
 		("avg",sum/count);
 }
 
 JValue SrvMain::rpcReverse(const Request &r )
 {
-	ConstStrA txt = r.params[0].getStringA();
-	return r.json(StringA(txt.reverse()));
+	ConstStrA txt = JValue(r.params[0]).getStringA();
+	return JString(txt.length(),[&](char *c){
+		txt.reverse().forEach([&](char z) {
+			*c++ = z;
+			return false;
+		});
+		return txt.length();
+	});
 }
 
 } /* namespace qrpass */

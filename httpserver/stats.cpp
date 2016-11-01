@@ -21,13 +21,12 @@ using LightSpeed::IInterface;
 namespace BredyHttpSrv {
 
 natural StatHandler::onRequest(IHttpRequest& request, ConstStrA ) {
-	JSON::PFactory f = JSON::create();
-	JSON::PNode x = getStatsJSON(&request,f);
+	json::var x = getStatsJSON(&request);
 	SeqFileOutput out(&request);
 	request.header(IHttpRequest::fldContentType,"application/json");
 	request.header(IHttpRequest::fldCacheControl,"no-cache, no-store, must-revalidate");
 	request.header(IHttpRequest::fldExpires,"0");
-	f->toStream(*x,out);
+	x.serialize([&](char c){request.write(&c,1);});
 	return 0;
 }
 
@@ -37,48 +36,45 @@ natural StatHandler::onData(IHttpRequest& ) {
 
 namespace {
 template<typename T>
-JSON::PNode avgField( const StatBuffer<T> &b, JSON::IFactory *f, natural cnt )
+json::Value avgField( const StatBuffer<T> &b,  natural cnt )
 {
 	T c = b.getAvg(cnt);
-	if (c.isDefined()) return f->newValue(c.getValue());
-	else return f->newNullNode();
+	if (c.isDefined()) return json::Value(c.getValue());
+	else return nullptr;
 }
 
 template<typename T>
-JSON::PNode minField( const StatBuffer<T> &b, JSON::IFactory *f, natural cnt )
+json::Value minField( const StatBuffer<T> &b, natural cnt )
 {
 	T c = b.getMin(cnt);
-	if (c.isDefined()) return f->newValue(c.getValue());
-	else return f->newNullNode();
+	if (c.isDefined()) return json::Value(c.getValue());
+	else return nullptr;
 }
 
 template<typename T>
-JSON::PNode maxField( const StatBuffer<T> &b, JSON::IFactory *f, natural cnt )
+json::Value maxField( const StatBuffer<T> &b, natural cnt )
 {
 	T c = b.getMax(cnt);
-	if (c.isDefined()) return f->newValue(c.getValue());
-	else return f->newNullNode();
+	if (c.isDefined()) return json::Value(c.getValue());
+	else return nullptr;
 }
 
 template<typename T>
-JSON::PNode statFields( const StatBuffer<T> &b, JSON::IFactory *f )
+json::Object statFields( const StatBuffer<T> &b)
 {
-	/*
-	JSON::Builder_del json(f);
-	return json
-			("avg006",avgField(b,f,6))
-			("avg030",avgField(b,f,30))
-			("avg060",avgField(b,f,60))
-			("avg300",avgField(b,f,300))
-			("min006",minField(b,f,6))
-			("min030",minField(b,f,30))
-			("min060",minField(b,f,60))
-			("min300",minField(b,f,300))
-			("max006",maxField(b,f,6))
-			("max030",maxField(b,f,30))
-			("max060",maxField(b,f,60))
-			("max300",maxField(b,f,300));
-*/
+	return json::Object
+			("avg006",avgField(b,6))
+			("avg030",avgField(b,30))
+			("avg060",avgField(b,60))
+			("avg300",avgField(b,300))
+			("min006",minField(b,6))
+			("min030",minField(b,30))
+			("min060",minField(b,60))
+			("min300",minField(b,300))
+			("max006",maxField(b,6))
+			("max030",maxField(b,30))
+			("max060",maxField(b,60))
+			("max300",maxField(b,300));
 }
 
 
@@ -91,31 +87,33 @@ AutoArray<char,StaticAlloc<19> > getTimeAsStr(natural seconds) {
 		<< (seconds % 60);
 	return out.write();
 }
+
+json::StringView<char> convToStr(const ConstStrA &x) {
+	return json::StringView<char>(x.data(),x.length());
 }
 
-JSON::PNode BredyHttpSrv::StatHandler::getStatsJSON(
-		IHttpRequestInfo *rq,
-		JSON::IFactory* f) {
-	/*
+}
+
+json::Value StatHandler::getStatsJSON( IHttpRequestInfo *rq) {
+
 	const HttpServer &server = rq->getIfc<HttpServer>();
 	const HttpStats &st = server.getStats();
-	JSON::Builder_del json(f);
-	JSON::Builder_del::Object out = json.object();
-	out("request", statFields(st.requests,f))
-		("threads", statFields(st.threads,f))
-		("threadsIdle", statFields(st.idleThreads,f))
-		("connections", statFields(st.connections,f))
-		("latency", statFields(st.latency,f))
-		("worktime", statFields(st.worktime,f));
+	json::Object out;
+	out("request", statFields(st.requests))
+		("threads", statFields(st.threads))
+		("threadsIdle", statFields(st.idleThreads))
+		("connections", statFields(st.connections))
+		("latency", statFields(st.latency))
+		("worktime", statFields(st.worktime));
 
 	TimeStamp waketime = TimeStamp::fromUnix(ProgInstance::getUpTime(false));
 
 		out("crashCount",ProgInstance::getRestartCounts());
 		out("crashesPerDay", ProgInstance::getRestartCounts()/waketime.getFloat());
-		out("upTime",json("total",ConstStrA(getTimeAsStr(ProgInstance::getUpTime(false))))
-					("fromLastCrash",ConstStrA(getTimeAsStr(ProgInstance::getUpTime(true)))));
+		out("upTime",json::Object("total",convToStr(getTimeAsStr(ProgInstance::getUpTime(false))))
+					("fromLastCrash",convToStr(getTimeAsStr(ProgInstance::getUpTime(true)))));
 
-	return out;*/
+	return out;
 }
 
 StatHandler::~StatHandler() {
@@ -154,6 +152,13 @@ void StatHandler::stopDumpJob() {
 StatHandler::StatHandler():dumpJob(0),scheduler(0) {
 }
 
+static inline ConstStrA operator ~(const json::Value &a) {
+	json::StringView<char> z = a.getString();
+	ConstStrA zz(z.data,z.length);
+	return zz;
+
+}
+
 void StatHandler::dumpNow(DumpArgs args) {
 	TimeStamp d = TimeStamp::now();
 	bool header = !IFileIOServices::getIOServices().canOpenFile(args.dumpPath,IFileIOServices::fileOpenWrite);
@@ -170,27 +175,26 @@ void StatHandler::dumpNow(DumpArgs args) {
 	}
 
 	const HttpStats &st = args.server->getStats();
-	JSON::PFactory f = JSON::createFast();
 
 	print("%1,") << d.getFloat()+25569;
-	print("%1,%2,%3,") << avgField(st.requests,f,300)->getStringUtf8()
-						<< minField(st.requests,f,300)->getStringUtf8()
-						<< maxField(st.requests,f,300)->getStringUtf8();
-	print("%1,%2,%3,") << avgField(st.threads,f,300)->getStringUtf8()
-						<< minField(st.threads,f,300)->getStringUtf8()
-						<< maxField(st.threads,f,300)->getStringUtf8();
-	print("%1,%2,%3,") << avgField(st.idleThreads,f,300)->getStringUtf8()
-						<< minField(st.idleThreads,f,300)->getStringUtf8()
-						<< maxField(st.idleThreads,f,300)->getStringUtf8();
-	print("%1,%2,%3,") << avgField(st.connections,f,300)->getStringUtf8()
-						<< minField(st.connections,f,300)->getStringUtf8()
-						<< maxField(st.connections,f,300)->getStringUtf8();
-	print("%1,%2,%3,") << avgField(st.latency,f,300)->getStringUtf8()
-						<< minField(st.latency,f,300)->getStringUtf8()
-						<< maxField(st.latency,f,300)->getStringUtf8();
-	print("%1,%2,%3,") << avgField(st.worktime,f,300)->getStringUtf8()
-						<< minField(st.worktime,f,300)->getStringUtf8()
-						<< maxField(st.worktime,f,300)->getStringUtf8();
+	print("%1,%2,%3,") <<~ avgField(st.requests,300)
+						<<~ minField(st.requests,300)
+						<<~ maxField(st.requests,300);
+	print("%1,%2,%3,") <<~ avgField(st.threads,300)
+						<<~ minField(st.threads,300)
+						<<~ maxField(st.threads,300);
+	print("%1,%2,%3,") <<~ avgField(st.idleThreads,300)
+						<<~ minField(st.idleThreads,300)
+						<<~ maxField(st.idleThreads,300);
+	print("%1,%2,%3,") <<~ avgField(st.connections,300)
+						<<~ minField(st.connections,300)
+						<<~ maxField(st.connections,300);
+	print("%1,%2,%3,") <<~ avgField(st.latency,300)
+						<<~ minField(st.latency,300)
+						<<~ maxField(st.latency,300);
+	print("%1,%2,%3,") <<~ avgField(st.worktime,300)
+						<<~ minField(st.worktime,300)
+						<<~ maxField(st.worktime,300);
 
 	natural cputm = ProgInstance::getCPUTime();
 	time_t curTm = d.asUnix();
@@ -203,3 +207,5 @@ void StatHandler::dumpNow(DumpArgs args) {
 }
 
 }
+
+

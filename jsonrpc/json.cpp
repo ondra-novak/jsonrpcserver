@@ -77,7 +77,7 @@ JObject::JObject(const json::Object& other):json::Object(other) {
 
 JObject& JObject::set(const LightSpeed::ConstStrA& name,
 					const JValue& value) {
-	JObject::set(json::StringView<char>(name.data(),name.length()));
+	JObject::set(json::StringView<char>(name.data(),name.length()), value);
 	return *this;
 }
 
@@ -100,5 +100,19 @@ JObject2Object JObject::object(const LightSpeed::ConstStrA& name) {
 JArray2Object JObject::array(const LightSpeed::ConstStrA& name) {
 }
 
+
+JObject::JObject(const char* name, const JValue& value)
+	:json::Object(name,value)
+{
+
 }
 
+JObject& JObject::set(const char* name, const JValue& value) {
+	json::Object::set(name, value); return *this;
+}
+
+JObject& JObject::operator ()(const char* name, const JValue& value) {
+	json::Object::operator ()(name, value); return *this;
+}
+
+}

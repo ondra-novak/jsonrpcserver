@@ -8,8 +8,8 @@
 #ifndef BREDYHTTPSERVER_STATS_H_
 #define BREDYHTTPSERVER_STATS_H_
 #include "../httpserver/httprequest.h"
-#include <lightspeed/utils/json/json.h>
 #include "lightspeed/utils/FilePath.h"
+#include <immujson/json.h>
 
 namespace BredyHttpSrv {
 
@@ -23,7 +23,7 @@ namespace BredyHttpSrv {
 		virtual natural onData(IHttpRequest &request);
 
 
-		static JSON::PNode getStatsJSON(IHttpRequestInfo *rq,JSON::IFactory *jsonFactory);
+		static json::Value getStatsJSON(IHttpRequestInfo *rq);
 
 		void dumpStatsToFile(FilePath fname, HttpServer *server);
 		void stopDumpJob();

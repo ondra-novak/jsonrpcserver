@@ -11,7 +11,6 @@
 //#include "httpserver\httprequest.h"
 #include "httpserver/serverMain.h"
 #include "httpserver/simpleWebSite.h"
-#include "jsonrpc/jsonRpcServer.h"
 #include "jsonrpc/server.h"
 
 
@@ -32,9 +31,9 @@ public:
 
 	AllocPointer<Server> rpc;
 
-	JSON::PNode rpcHelloWorld(const Request &r);
-	JSON::PNode rpcNumberSum(const Request &r);
-	JSON::PNode rpcReverse(const Request &r);
+	JValue rpcHelloWorld(const Request &r);
+	JValue rpcNumberSum(const Request &r);
+	JValue rpcReverse(const Request &r);
 
 };
 
