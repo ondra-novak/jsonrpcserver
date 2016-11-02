@@ -154,8 +154,8 @@ void WSConnection::onConnect() {
 void WSConnection::onTextMessage(ConstStrA msg) {
 
 
-	JValue req = JValue::fromString(msg);
-	if (req["result"] != null) {
+	JValue req = JValue::fromString(~msg);
+	if (req["result"].defined()) {
 		processResponse(req);
 	} else {
 		processRequest(req);
@@ -181,7 +181,7 @@ PreparedNotify WSConnection::prepare(LightSpeed::ConstStrA name,JValue arguments
 
 	Synchronized<MicroLock> _(bufferLock);
 	buffer.clear();
-	JValue req = JObject("method", name)
+	JValue req = JObject("method", ~name)
 			("params", arguments)
 			("id",nullptr);
 
@@ -238,9 +238,9 @@ Future<IClient::Result> WSConnection::callAsync(ConstStrA method,
 
 	atomicValue promiseId = lockInc(nextPromiseId);
 	JObject req;
-	req("method",method)
+	req("method",~method)
 			("params",params)
-			("id",ToString<atomicValue>(promiseId));
+			("id",~ToString<atomicValue>(promiseId));
 
 	if (context != null) {
 		req("context",context);

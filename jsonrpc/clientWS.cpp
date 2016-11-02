@@ -116,7 +116,7 @@ Future<IClient::Result> ClientWS::callAsync(ConstStrA method, JValue params, JVa
 	natural thisid = idcounter++;
 	JObject req;
 	req("id",thisid)
-		("method",method)
+		("method",~method)
 		("params",params);
 	if (context.defined()) {
 		req("context",context);
@@ -170,7 +170,7 @@ void ClientWS::processMessage(JValue v) {
 			}
 		} else if (method.defined() && params.defined()) {
 			if (dispatcher == null) {
-				onNotify(method.getStringA(), params, context);
+				onNotify(~method.getString(), params, context);
 			} else {
 				onIncomeRPC(v);
 			}
@@ -185,7 +185,7 @@ void ClientWS::processMessage(JValue v) {
 void ClientWS::onTextMessage(ConstStrA msg) {
 	JValue v;
 	try {
-		v = JValue::fromString(msg);
+		v = JValue::fromString(~msg);
 	} catch (...) {
 		onParseError(msg);
 	}

@@ -30,8 +30,6 @@ natural SrvMain::onInitServer(const Args& args, SeqFileOutput serr,
 	IniConfig::Section rpccfg = config.openSection("rpc");
 
 	rpc = new jsonrpc::Server(rpccfg);
-//	rpc->init(rpccfg);
-//	wsrpc = new JsonRpcWebsockets(*rpc);
 
 
 	return 0;
@@ -79,14 +77,15 @@ JValue SrvMain::rpcNumberSum(const Request &r )
 
 JValue SrvMain::rpcReverse(const Request &r )
 {
-	ConstStrA txt = JValue(r.params[0]).getStringA();
-	return JString(txt.length(),[&](char *c){
-		txt.reverse().forEach([&](char z) {
-			*c++ = z;
-			return false;
-		});
-		return txt.length();
+	JString txt = r.params[0];
+	auto cnt = txt.length();
+	JString res(cnt,[&](char *buff){
+		for (natural i = 0; i < cnt; i++) {
+			buff[i] = txt[cnt-i-1];
+		}
+		return cnt;
 	});
+	return res;
 }
 
 } /* namespace qrpass */

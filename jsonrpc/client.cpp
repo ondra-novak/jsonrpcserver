@@ -27,7 +27,7 @@ Future<Client::Result> Client::callAsync(ConstStrA method, JValue params, JValue
 	//build request
 	JObject obj;
 	obj("id", preparedList.length())
-			("method",method)
+			("method",~method)
 			("params",params);
 	//if context is set, add to request
 	if (context.defined()) {

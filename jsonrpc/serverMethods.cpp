@@ -53,7 +53,7 @@ JValue ServerMethods::rpcListMethods(const Request& r) {
 		virtual void operator()(ConstStrA prototype) const {
 			if (prototype == prevPrototype) return;
 			prevPrototype = prototype;
-			result.add(JValue(prototype));
+			result.add(JValue(~prototype));
 		}
 
 	};
@@ -88,7 +88,7 @@ public:
 	MakeStatResult( const StringA &name)
 		:name(name) {}
 	JValue operator()(const Response &resp) const {
-		return JObject(name,resp.result);
+		return JObject(~name,resp.result);
 	}
 };
 
@@ -185,7 +185,7 @@ IRpcNotify *IRpcNotify::fromRequest(const Request &r) {
 Void ServerMethods::rpcPingNotify(const Request& r) {
 	IRpcNotify *ntf = IRpcNotify::fromRequest(r);
 	if (ntf == 0) throw MethodException(THISLOCATION,400,"Not available for this connection");
-	ntf->sendNotification(r.methodName.getStringA(),r.params,IRpcNotify::standardTimeout);
+	ntf->sendNotification(~r.methodName.getString(),r.params,IRpcNotify::standardTimeout);
 	return Void();
 }
 

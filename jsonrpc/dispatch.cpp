@@ -51,10 +51,10 @@ Future<Response> Dispatcher::callMethod(const Request& req) throw() {
 	try {
 		AutoArray<char, SmallAlloc<256> > prototype;
 
-		createPrototype(req.methodName.getStringA(),req.params,prototype);
+		createPrototype(~req.methodName.getString(),req.params,prototype);
 		PMethodHandler m1 = findMethod(prototype);
 		if (m1 == null) {
-			m1 = findMethod(req.methodName.getStringA());
+			m1 = findMethod(~req.methodName.getString());
 			if (m1 == null) {
 				throw LookupException(THISLOCATION,prototype);
 			}
@@ -160,7 +160,7 @@ public:
 				WeakRefPtr<IPeer> peer(this->peer);
 				WeakRefPtr<ILog> log(logService);
 				if (peer != null && log != null) {
-					log->logMethod(peer->getName(),this->methodName.getStringA(),this->params,this->context,result.logOutput);
+					log->logMethod(peer->getName(),~this->methodName.getString(),this->params,this->context,result.logOutput);
 				}
 			}
 			outres.resolve(r);
@@ -187,7 +187,7 @@ public:
 				WeakRefPtr<IPeer> peer(this->peer);
 				WeakRefPtr<ILog> log(logService);
 				if (peer != null && log != null) {
-					log->logMethod(peer->getName(),this->methodName.getStringA(),this->params,this->context,exceptionObj);
+					log->logMethod(peer->getName(),~this->methodName.getString(),this->params,this->context,exceptionObj);
 				}
 			}
 

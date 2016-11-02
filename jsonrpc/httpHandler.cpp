@@ -25,6 +25,7 @@
 
 #include "ipeer.h"
 #include "methodreg.h"
+#include "json.h"
 using LightSpeed::parseUnsignedNumber;
 namespace jsonrpc {
 
@@ -141,7 +142,7 @@ natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 			}
 
 			JValue v = val["method"];
-			if (v != null) request.setRequestName(v.getStringA());
+			if (v != null) request.setRequestName(~v.getString());
 			request.sendHeaders();
 
 			result = owner.dispatcher.dispatchMessage(val,me);
@@ -208,7 +209,7 @@ natural HttpHandler::dumpMethods(ConstStrA name, natural version, IHttpRequest& 
 		virtual void operator()(ConstStrA prototype) const {
 			ConstStrA baseName = prototype.split(':').getNext();
 			if (baseName == prevMethod) return;
-			arr.add(JValue(baseName));
+			arr.add(JValue(~baseName));
 		}
 
 		JArray &arr;
@@ -219,12 +220,12 @@ natural HttpHandler::dumpMethods(ConstStrA name, natural version, IHttpRequest& 
 
 	JString jsonstr = JValue(arr).stringify();
 	HashMD5<char> hash;
-	hash.blockWrite(ConstStrA(jsonstr),true);
+	hash.blockWrite(~jsonstr,true);
 	hash.finish();
 	StringA digest = hash.hexdigest();
 	methodListTag = digest.getMT();
 	StringA etag = methodListTag;
-	StringA result = ConstStrA("var ") + varname + ConstStrA("=") + ConstStrA(jsonstr) + ConstStrA(";\r\n");
+	StringA result = ConstStrA("var ") + varname + ConstStrA("=") + ConstStrA(~jsonstr) + ConstStrA(";\r\n");
 
 	request.header(IHttpRequest::fldContentType,"application/javascript");
 	request.header(IHttpRequest::fldContentLength,ToString<natural>(result.length()));

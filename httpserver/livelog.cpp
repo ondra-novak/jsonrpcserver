@@ -111,7 +111,7 @@ namespace BredyHttpSrv {
 				if (c == '"') {
 					jsonrpc::JValue nd = jsonrpc::JValue::parse([&](){return fiter.getNext();});
 					iskw = false;
-					return nd.getStringA();
+					return ~nd.getString();
 				} else {
 					AutoArrayStream<char, SmallAlloc<256> > strBuilder;
 					fiter.skip();
