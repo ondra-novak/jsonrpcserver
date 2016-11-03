@@ -53,14 +53,14 @@ public:
 	virtual void onCloseOutput(natural code);
 	virtual void onPong(ConstBin msg);
 
-	virtual PreparedNotify prepare(LightSpeed::ConstStrA name, JValue arguments);
+	virtual PreparedNotify prepare(StrView name, JValue arguments);
 	virtual void sendPrepared(const PreparedNotify &prepared, TimeoutControl tmControl = shortTimeout);
-	virtual void sendNotification(LightSpeed::ConstStrA name, JValue arguments, TimeoutControl tmControl = standardTimeout);
+	virtual void sendNotification(StrView name, JValue arguments, TimeoutControl tmControl = standardTimeout);
 	virtual void dropConnection();
 	virtual void closeConnection(natural code);
 	virtual Future<void> onClose();
 
-	virtual Future<Result> callAsync(ConstStrA method, JValue params, JValue context = 0);
+	virtual Future<Result> callAsync(StrView method, JValue params, JValue context = 0);
 
 	virtual BredyHttpSrv::IHttpRequestInfo *getHttpRequest() const;
 	virtual ConstStrA getName() const;
@@ -154,7 +154,7 @@ void WSConnection::onConnect() {
 void WSConnection::onTextMessage(ConstStrA msg) {
 
 
-	JValue req = JValue::fromString(~msg);
+	JValue req = JValue::fromString(convStr(msg));
 	if (req["result"].defined()) {
 		processResponse(req);
 	} else {
@@ -172,7 +172,7 @@ void WSConnection::onCloseOutput(natural) {
 void WSConnection::onPong(ConstBin) {
 }
 
-PreparedNotify WSConnection::prepare(LightSpeed::ConstStrA name,JValue arguments) {
+PreparedNotify WSConnection::prepare(StrView name,JValue arguments) {
 
 	class P: public PreparedNotify {
 	public:
@@ -181,7 +181,7 @@ PreparedNotify WSConnection::prepare(LightSpeed::ConstStrA name,JValue arguments
 
 	Synchronized<MicroLock> _(bufferLock);
 	buffer.clear();
-	JValue req = JObject("method", ~name)
+	JValue req = JObject("method", name)
 			("params", arguments)
 			("id",nullptr);
 
@@ -211,7 +211,7 @@ void WSConnection::sendPrepared(const PreparedNotify& prepared, TimeoutControl t
 	sendTextMessage(prepared.content,true);
 }
 
-void WSConnection::sendNotification(LightSpeed::ConstStrA name,JValue arguments, TimeoutControl tmControl) {
+void WSConnection::sendNotification(StrView name,JValue arguments, TimeoutControl tmControl) {
 	sendPrepared(prepare(name,arguments),tmControl);
 }
 
@@ -233,14 +233,15 @@ Future<void> WSConnection::onClose() {
 	return onCloseFuture;
 }
 
-Future<IClient::Result> WSConnection::callAsync(ConstStrA method,
+Future<IClient::Result> WSConnection::callAsync(StrView method,
 					JValue params, JValue context) {
 
 	atomicValue promiseId = lockInc(nextPromiseId);
 	JObject req;
-	req("method",~method)
+	ToString<atomicValue> promiseIdStr(promiseId);
+	req("method",method)
 			("params",params)
-			("id",~ToString<atomicValue>(promiseId));
+			("id",convStr(promiseIdStr));
 
 	if (context != null) {
 		req("context",context);

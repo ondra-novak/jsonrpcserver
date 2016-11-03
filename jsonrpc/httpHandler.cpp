@@ -142,7 +142,7 @@ natural HttpHandler::RpcContext::onData(IHttpRequest& request) {
 			}
 
 			JValue v = val["method"];
-			if (v != null) request.setRequestName(~v.getString());
+			if (v != null) request.setRequestName(convStr(v.getString()));
 			request.sendHeaders();
 
 			result = owner.dispatcher.dispatchMessage(val,me);
@@ -206,10 +206,10 @@ natural HttpHandler::dumpMethods(ConstStrA name, natural version, IHttpRequest& 
 	class MethodReceiver: public IMethodRegister::IMethodEnum {
 	public:
 		MethodReceiver(JArray &arr):arr(arr) {}
-		virtual void operator()(ConstStrA prototype) const {
-			ConstStrA baseName = prototype.split(':').getNext();
-			if (baseName == prevMethod) return;
-			arr.add(JValue(~baseName));
+		virtual void operator()(StrView prototype) const {
+			StrView baseName = prototype.split(':').getNext();
+			if (baseName == StrView(prevMethod)) return;
+			arr.add(JValue(baseName));
 		}
 
 		JArray &arr;
@@ -220,12 +220,12 @@ natural HttpHandler::dumpMethods(ConstStrA name, natural version, IHttpRequest& 
 
 	JString jsonstr = JValue(arr).stringify();
 	HashMD5<char> hash;
-	hash.blockWrite(~jsonstr,true);
+	hash.blockWrite(convStr(jsonstr),true);
 	hash.finish();
 	StringA digest = hash.hexdigest();
 	methodListTag = digest.getMT();
 	StringA etag = methodListTag;
-	StringA result = ConstStrA("var ") + varname + ConstStrA("=") + ConstStrA(~jsonstr) + ConstStrA(";\r\n");
+	StringA result = ConstStrA("var ") + varname + ConstStrA("=") + convStr(jsonstr) + ConstStrA(";\r\n");
 
 	request.header(IHttpRequest::fldContentType,"application/javascript");
 	request.header(IHttpRequest::fldContentLength,ToString<natural>(result.length()));

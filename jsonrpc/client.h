@@ -40,9 +40,9 @@ public:
 	 *
 	 *
 	 */
-	Future<Result> callAsync(ConstStrA method, JValue params, JValue context = JValue());
+	Future<Result> callAsync(StrView method, JValue params, JValue context = JValue());
 
-	Result call(ConstStrA method, JValue params, JValue context = 0);
+	Result call(StrView method, JValue params, JValue context = 0);
 
 	///Starts batch of requests
 	/** When batch is opened, client starts to collect requests without sending anyone to the server. The batch must be

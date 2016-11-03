@@ -18,8 +18,8 @@ class LogService: public ILog {
 public:
 	LogService();
 
-	virtual void logMethod(BredyHttpSrv::IHttpRequestInfo &invoker, ConstStrA methodName, const JValue &params, const JValue &context, const JValue &logOutput);
-	virtual void logMethod(ConstStrA source, ConstStrA methodName, const JValue &params, const JValue &context, const JValue &logOutput) ;
+	virtual void logMethod(BredyHttpSrv::IHttpRequestInfo &invoker, StrView methodName, const JValue &params, const JValue &context, const JValue &logOutput);
+	virtual void logMethod(StrView source, StrView methodName, const JValue &params, const JValue &context, const JValue &logOutput) ;
 
 	///Sets output file
 	void setFile(String fname);

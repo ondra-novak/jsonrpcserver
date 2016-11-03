@@ -27,7 +27,7 @@ Dispatcher::~Dispatcher() {
 }
 
 template<typename Container>
-inline void Dispatcher::createPrototype(ConstStrA methodName, JValue params, Container& container) {
+inline void Dispatcher::createPrototype(StrView methodName, JValue params, Container& container) {
 
 	container.append(methodName);
 	container.add(':');
@@ -51,10 +51,10 @@ Future<Response> Dispatcher::callMethod(const Request& req) throw() {
 	try {
 		AutoArray<char, SmallAlloc<256> > prototype;
 
-		createPrototype(~req.methodName.getString(),req.params,prototype);
+		createPrototype(req.methodName.getString(),req.params,prototype);
 		PMethodHandler m1 = findMethod(prototype);
 		if (m1 == null) {
-			m1 = findMethod(~req.methodName.getString());
+			m1 = findMethod(req.methodName.getString());
 			if (m1 == null) {
 				throw LookupException(THISLOCATION,prototype);
 			}
@@ -71,10 +71,10 @@ Future<Response> Dispatcher::callMethod(const Request& req) throw() {
 }
 
 
-Dispatcher::PMethodHandler Dispatcher::findMethod(ConstStrA prototype, natural version) {
+Dispatcher::PMethodHandler Dispatcher::findMethod(StrView prototype, natural version) {
 	Synchronized<RWLock::ReadLock> _(mapLock);
 
-	const MethodDef *h = methodMap.find(StrKey(prototype));
+	const MethodDef *h = methodMap.find(StrKey(ConstStrA(prototype)));
 	if (h == 0) return null;
 	else {
 		if (h->version < version) return null;
@@ -160,7 +160,7 @@ public:
 				WeakRefPtr<IPeer> peer(this->peer);
 				WeakRefPtr<ILog> log(logService);
 				if (peer != null && log != null) {
-					log->logMethod(peer->getName(),~this->methodName.getString(),this->params,this->context,result.logOutput);
+					log->logMethod(peer->getName(),this->methodName.getString(),this->params,this->context,result.logOutput);
 				}
 			}
 			outres.resolve(r);
@@ -187,7 +187,7 @@ public:
 				WeakRefPtr<IPeer> peer(this->peer);
 				WeakRefPtr<ILog> log(logService);
 				if (peer != null && log != null) {
-					log->logMethod(peer->getName(),~this->methodName.getString(),this->params,this->context,exceptionObj);
+					log->logMethod(peer->getName(),this->methodName.getString(),this->params,this->context,exceptionObj);
 				}
 			}
 

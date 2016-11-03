@@ -20,14 +20,14 @@ Client::Client(const ClientConfig& cfg)
 
 }
 
-Future<Client::Result> Client::callAsync(ConstStrA method, JValue params, JValue context) {
+Future<Client::Result> Client::callAsync(StrView method, JValue params, JValue context) {
 	//lock batches, to avoid conflicts during access
 	Synchronized<FastLock> _(batchAccess);
 
 	//build request
 	JObject obj;
 	obj("id", preparedList.length())
-			("method",~method)
+			("method",method)
 			("params",params);
 	//if context is set, add to request
 	if (context.defined()) {
@@ -52,7 +52,7 @@ Future<Client::Result> Client::callAsync(ConstStrA method, JValue params, JValue
 	return res;
 }
 
-Client::Result Client::call(ConstStrA method, JValue params, JValue context) {
+Client::Result Client::call(StrView method, JValue params, JValue context) {
 	return callAsync(method,params,context).getValue();
 }
 

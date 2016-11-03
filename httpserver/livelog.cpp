@@ -11,6 +11,8 @@
 #include "../jsonrpc/json.h"
 #include <immujson/parser.h>
 
+using jsonrpc::convStr;
+
 
 namespace BredyHttpSrv {
 
@@ -111,7 +113,7 @@ namespace BredyHttpSrv {
 				if (c == '"') {
 					jsonrpc::JValue nd = jsonrpc::JValue::parse([&](){return fiter.getNext();});
 					iskw = false;
-					return ~nd.getString();
+					return convStr(nd.getString());
 				} else {
 					AutoArrayStream<char, SmallAlloc<256> > strBuilder;
 					fiter.skip();

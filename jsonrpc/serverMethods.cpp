@@ -50,10 +50,10 @@ JValue ServerMethods::rpcListMethods(const Request& r) {
 		mutable ConstStrA prevPrototype;
 		natural limitVersion;
 		Enum(JArray &result):result(result) {}
-		virtual void operator()(ConstStrA prototype) const {
-			if (prototype == prevPrototype) return;
-			prevPrototype = prototype;
-			result.add(JValue(~prototype));
+		virtual void operator()(StrView prototype) const {
+			if (prototype == StrView(prevPrototype)) return;
+			prevPrototype = ConstStrA(prototype);
+			result.add(JValue(prototype));
 		}
 
 	};
@@ -88,7 +88,7 @@ public:
 	MakeStatResult( const StringA &name)
 		:name(name) {}
 	JValue operator()(const Response &resp) const {
-		return JObject(~name,resp.result);
+		return JObject(convStr(name),resp.result);
 	}
 };
 
@@ -117,7 +117,7 @@ FResponse ServerMethods::rpcStats(const Request& r) {
 
 	class CollectStats: public IMethodRegister::IMethodEnum {
 	public:
-		virtual void operator()(ConstStrA prototype) const {
+		virtual void operator()(StrView prototype) const {
 
 			Dispatcher::PMethodHandler h = dispatch.findMethod(prototype);
 			if (h == null) return;
@@ -185,7 +185,7 @@ IRpcNotify *IRpcNotify::fromRequest(const Request &r) {
 Void ServerMethods::rpcPingNotify(const Request& r) {
 	IRpcNotify *ntf = IRpcNotify::fromRequest(r);
 	if (ntf == 0) throw MethodException(THISLOCATION,400,"Not available for this connection");
-	ntf->sendNotification(~r.methodName.getString(),r.params,IRpcNotify::standardTimeout);
+	ntf->sendNotification(r.methodName.getString(),r.params,IRpcNotify::standardTimeout);
 	return Void();
 }
 

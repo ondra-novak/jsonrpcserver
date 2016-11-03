@@ -10,6 +10,7 @@
 
 #include <immujson/json.h>
 #include "lightspeed/base/containers/string.h"
+#include <lightspeed/base/text/textOut.h>
 namespace jsonrpc {
 
 
@@ -18,27 +19,58 @@ typedef json::String JString;
 typedef json::Object JObject;
 typedef json::Array JArray;
 
-}
+///Contains string compatible with json::StringView and also LightSpeed::FlatArray which can be used as ConstStrA
+/** class StrView augments json::StringView with operations from LightSpeed including iterators.
+ * It also makes string acceptable by many functions which accepts ConstStrA
+ */
+class StrView: public json::StringView<char>, public LightSpeed::FlatArrayBase<const char, StrView> {
+public:
+
+	///main super class is json::StringView
+	typedef json::StringView<char> Super;
+	using Super::empty;
+	using Super::operator[];
+	using Super::StringView;
+
+	StrView() {}
+	StrView(const json::String &x):Super(x) {}
+	StrView(const StringView<char> &other):json::StringView<char>(other) {}
+	template<typename Impl>
+	StrView(const LightSpeed::FlatArray<char, Impl> &other)
+		:json::StringView<char>(other.data(),other.length()) {}
+	template<typename Impl>
+	StrView(const LightSpeed::FlatArray<const char, Impl> &other)
+		:json::StringView<char>(other.data(),other.length()) {}
+
+	explicit operator std::string () const {
+		return std::string(Super::data, Super::length);
+	}
+//	operator json::String() const {return json::String(*this);}
+	const char *data() const {return Super::data;}
+	LightSpeed::natural length() const {return Super::length;}
+};
+
+
 
 
 template<typename T>
-static inline json::StringView<T> operator~(const LightSpeed::ConstStringT<T> &x) {
+static inline json::StringView<T> convStr(const LightSpeed::ConstStringT<T> &x) {
 	return json::StringView<T>(x.data(),x.length());
 }
 template<typename T>
-static inline json::StringView<T> operator~(const LightSpeed::StringCore<T> &x) {
+static inline json::StringView<T> convStr(const LightSpeed::StringCore<T> &x) {
 	return json::StringView<T>(x.data(),x.length());
 }
 template<typename T>
-static inline LightSpeed::ConstStringT<T> operator~(const json::StringView<T> &x) {
+static inline LightSpeed::ConstStringT<T> convStr(const json::StringView<T> &x) {
 	return LightSpeed::ConstStringT<T>(x.data,x.length);
 }
 
-static inline LightSpeed::ConstStringT<char> operator~(const json::String&x) {
+static inline LightSpeed::ConstStringT<char> convStr(const json::String&x) {
 	json::StringView<char> y = x;
-	return ~y;
+	return convStr(y);
 }
 
-
+}
 
 #endif /* JSONRPCSERVER_JSONRPC_JSON_H_ */

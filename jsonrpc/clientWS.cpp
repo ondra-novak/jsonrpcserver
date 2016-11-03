@@ -104,7 +104,7 @@ void ClientWS::connect(PNetworkEventListener listener) {
 	Super::connect(cfgurl,listener);
 }
 
-Future<IClient::Result> ClientWS::callAsync(ConstStrA method, JValue params, JValue context) {
+Future<IClient::Result> ClientWS::callAsync(StrView method, JValue params, JValue context) {
 	Synchronized<FastLockR> _(lock);
 
 	if (params == null) {
@@ -116,7 +116,7 @@ Future<IClient::Result> ClientWS::callAsync(ConstStrA method, JValue params, JVa
 	natural thisid = idcounter++;
 	JObject req;
 	req("id",thisid)
-		("method",~method)
+		("method",method)
 		("params",params);
 	if (context.defined()) {
 		req("context",context);
@@ -134,7 +134,7 @@ Future<IClient::Result> ClientWS::callAsync(ConstStrA method, JValue params, JVa
 
 }
 
-IClient::Result ClientWS::call(ConstStrA method, JValue params, JValue context) {
+IClient::Result ClientWS::call(StrView method, JValue params, JValue context) {
 	return callAsync(method,params,context).getValue();
 }
 
@@ -170,7 +170,7 @@ void ClientWS::processMessage(JValue v) {
 			}
 		} else if (method.defined() && params.defined()) {
 			if (dispatcher == null) {
-				onNotify(~method.getString(), params, context);
+				onNotify(method.getString(), params, context);
 			} else {
 				onIncomeRPC(v);
 			}
@@ -185,7 +185,7 @@ void ClientWS::processMessage(JValue v) {
 void ClientWS::onTextMessage(ConstStrA msg) {
 	JValue v;
 	try {
-		v = JValue::fromString(~msg);
+		v = JValue::fromString(StrView(msg));
 	} catch (...) {
 		onParseError(msg);
 	}
@@ -208,7 +208,7 @@ void ClientWS::onLostConnection(natural) {
 }
 
 
-void ClientWS::sendNotify(ConstStrA method, const JValue& params) {
+void ClientWS::sendNotify(StrView method, const JValue& params) {
 	Synchronized<FastLockR> _(lock);
 	sendNotify(PreparedNotify(method,params));
 }
@@ -217,7 +217,7 @@ void ClientWS::sendNotify(const PreparedNotify& preparedNotify) {
 	sendTextMessage(preparedNotify.content);
 }
 
-PreparedNotify ClientWS::prepareNotify(ConstStrA method, const JValue& params) {
+PreparedNotify ClientWS::prepareNotify(StrView method, const JValue& params) {
 	Synchronized<FastLockR> _(lock);
 	return PreparedNotify(method,params);
 }
@@ -303,7 +303,7 @@ void ClientWS::super_wakeUp(natural reason) throw () {
 	inExecutor.unlock();
 }
 
-void ClientWS::onNotify(ConstStrA , const JValue& , const JValue& ) {
+void ClientWS::onNotify(StrView , const JValue& , const JValue& ) {
 
 }
 

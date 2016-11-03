@@ -49,7 +49,7 @@ public:
     virtual void enumMethods(const IMethodEnum &enm, natural version) const;
 
 	typedef RefCntPtr<IMethod> PMethodHandler;
-    PMethodHandler findMethod(ConstStrA prototype, natural version = 0);
+    PMethodHandler findMethod(StrView prototype, natural version = 0);
 
 
 
@@ -85,7 +85,7 @@ protected:
 
 
     template<typename Container>
-    static void createPrototype(ConstStrA methodName, JValue params, Container &container);
+    static void createPrototype(StrView methodName, JValue params, Container &container);
 
     class ResultObserver;
     class ExceptionTranslateObserver;
