@@ -16,6 +16,7 @@ class IHttpHandlerContext;
 namespace jsonrpc {
 	struct Request;
 
+	using namespace LightSpeed;
 	///contains prepared notification
 	/** Object has just prepared notification ready to send. Using
 	 * prepared notification increases performance while notification
