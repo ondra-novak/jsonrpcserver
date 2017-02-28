@@ -30,8 +30,8 @@ public:
 	Dispatcher();
 	~Dispatcher();
 
-	virtual void regMethodHandler(natural version, ConstStrA method, IMethod *fn);
-	virtual void unregMethod(ConstStrA method);
+	virtual void regMethodHandler(natural version, StrViewA method, IMethod *fn);
+	virtual void unregMethod(StrViewA method);
     virtual void setLogObject(ILog *logObject);
     virtual Future<Response> callMethod(const Request &req) throw();
     virtual Future<Response> dispatchException(const Request &req, const PException &exception) throw();
@@ -49,7 +49,7 @@ public:
     virtual void enumMethods(const IMethodEnum &enm, natural version) const;
 
 	typedef RefCntPtr<IMethod> PMethodHandler;
-    PMethodHandler findMethod(StrView prototype, natural version = 0);
+    PMethodHandler findMethod(StrViewA prototype, natural version = 0);
 
 
 
@@ -57,24 +57,30 @@ protected:
 
 
 
-	typedef StringKey<StringA> StrKey;
-	typedef StrKey Key;
 
 	struct CmpMethodPrototype {
-		bool operator()(const Key &a, const Key &b) const;
+		bool operator()(const StrViewA &a, const StrViewA &b) const;
 	};
 	typedef RefCntPtr<IExceptionHandler> PExceptionHandler;
 
 	struct MethodDef {
 	public:
+		json::String name;
 		PMethodHandler handler;
 		natural version;
 
-		MethodDef(PMethodHandler handler, natural version):handler(handler),version(version) {}
+		MethodDef(json::String name, PMethodHandler handler, natural version):name(name),handler(handler),version(version) {}
 	};
 
-	typedef Map<Key, MethodDef, CmpMethodPrototype> MethodMap;
-	typedef Map<Key, PExceptionHandler, CmpMethodPrototype> ExceptionMap;
+	struct ExceptionDef {
+		json::String name;
+		PExceptionHandler handler;
+
+		ExceptionDef(json::String name, PExceptionHandler handler):name(name),handler(handler) {}
+	};
+
+	typedef Map<StrViewA, MethodDef, CmpMethodPrototype> MethodMap;
+	typedef Map<StrViewA, PExceptionHandler, CmpMethodPrototype> ExceptionMap;
 
 	MethodMap methodMap;
 	ExceptionMap exceptionMap;
@@ -85,7 +91,7 @@ protected:
 
 
     template<typename Container>
-    static void createPrototype(StrView methodName, JValue params, Container &container);
+    static void createPrototype(StrViewA methodName, JValue params, Container &container);
 
     class ResultObserver;
     class ExceptionTranslateObserver;

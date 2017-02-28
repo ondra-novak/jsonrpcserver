@@ -27,7 +27,7 @@ namespace jsonrpc {
 	public:
 		const StringA content;
 
-		PreparedNotify(StrView notifyName, JValue params);
+		PreparedNotify(StrViewA notifyName, JValue params);
 	protected:
 		PreparedNotify(const StringA &content):content(content) {}
 	};
@@ -73,7 +73,7 @@ namespace jsonrpc {
 		 * handle this situation.
 		 *
 		 */
-		virtual PreparedNotify prepare(StrView name, JValue arguments) = 0;
+		virtual PreparedNotify prepare(StrViewA name, JValue arguments) = 0;
 
 
 		///Send prepared notification
@@ -92,7 +92,7 @@ namespace jsonrpc {
 		 *
 		 * notification is prepared and send.
 		 */
-		virtual void sendNotification(StrView name, JValue arguments, TimeoutControl tmControl = standardTimeout) = 0;
+		virtual void sendNotification(StrViewA name, JValue arguments, TimeoutControl tmControl = standardTimeout) = 0;
 
 
 

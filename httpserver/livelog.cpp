@@ -9,7 +9,7 @@
 #include "lightspeed/utils/json/jsonparser.tcc"
 #include <lightspeed/base/interface.tcc>
 #include "../jsonrpc/json.h"
-#include <immujson/parser.h>
+#include <imtjson/parser.h>
 
 using jsonrpc::convStr;
 

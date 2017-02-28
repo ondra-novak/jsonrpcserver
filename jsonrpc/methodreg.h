@@ -96,7 +96,7 @@ public:
 
     class IMethodEnum {
     public:
-    	virtual void operator()(StrView prototype) const = 0;
+    	virtual void operator()(StrViewA prototype) const = 0;
     };
 
     virtual void enumMethods(const IMethodEnum &enm, natural version) const  = 0;

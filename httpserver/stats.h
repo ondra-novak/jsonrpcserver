@@ -9,7 +9,7 @@
 #define BREDYHTTPSERVER_STATS_H_
 #include "../httpserver/httprequest.h"
 #include "lightspeed/utils/FilePath.h"
-#include <immujson/json.h>
+#include <imtjson/json.h>
 
 namespace BredyHttpSrv {
 

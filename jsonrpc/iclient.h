@@ -39,7 +39,7 @@ public:
 	 *
 	 *
 	 */
-	virtual Future<Result> callAsync(StrView method, JValue params, JValue context = JValue()) = 0;
+	virtual Future<Result> callAsync(StrViewA method, JValue params, JValue context = JValue()) = 0;
 
 
 	///Performs RPC call synchronously
@@ -50,7 +50,7 @@ public:
 	 * @param context context (optional)
 	 * @return result can be convertible to JValue however it contains a context if returned
 	 */
-	virtual Result call(StrView method, JValue params, JValue context = 0) {
+	virtual Result call(StrViewA method, JValue params, JValue context = 0) {
 		return callAsync(method, params, context).getValue();
 	}
 

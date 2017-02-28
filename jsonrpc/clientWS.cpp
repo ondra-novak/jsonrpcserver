@@ -26,6 +26,8 @@
 #include "idispatch.h"
 namespace jsonrpc {
 
+using namespace json;
+
 ClientWS::ClientWS(const ClientConfig& cfg):WebSocketsClient(cfg),idcounter(1),reconnectMsg(0),reconnectDelay(1),mepeer(this) {
 
 	cfgurl = cfg.url;
@@ -104,7 +106,7 @@ void ClientWS::connect(PNetworkEventListener listener) {
 	Super::connect(cfgurl,listener);
 }
 
-Future<IClient::Result> ClientWS::callAsync(StrView method, JValue params, JValue context) {
+Future<IClient::Result> ClientWS::callAsync(StrViewA method, JValue params, JValue context) {
 	Synchronized<FastLockR> _(lock);
 
 	if (params == null) {
@@ -134,7 +136,7 @@ Future<IClient::Result> ClientWS::callAsync(StrView method, JValue params, JValu
 
 }
 
-IClient::Result ClientWS::call(StrView method, JValue params, JValue context) {
+IClient::Result ClientWS::call(StrViewA method, JValue params, JValue context) {
 	return callAsync(method,params,context).getValue();
 }
 
@@ -185,7 +187,7 @@ void ClientWS::processMessage(JValue v) {
 void ClientWS::onTextMessage(ConstStrA msg) {
 	JValue v;
 	try {
-		v = JValue::fromString(StrView(msg));
+		v = JValue::fromString(StrViewA(msg));
 	} catch (...) {
 		onParseError(msg);
 	}
@@ -208,7 +210,7 @@ void ClientWS::onLostConnection(natural) {
 }
 
 
-void ClientWS::sendNotify(StrView method, const JValue& params) {
+void ClientWS::sendNotify(StrViewA method, const JValue& params) {
 	Synchronized<FastLockR> _(lock);
 	sendNotify(PreparedNotify(method,params));
 }
@@ -217,7 +219,7 @@ void ClientWS::sendNotify(const PreparedNotify& preparedNotify) {
 	sendTextMessage(preparedNotify.content);
 }
 
-PreparedNotify ClientWS::prepareNotify(StrView method, const JValue& params) {
+PreparedNotify ClientWS::prepareNotify(StrViewA method, const JValue& params) {
 	Synchronized<FastLockR> _(lock);
 	return PreparedNotify(method,params);
 }
@@ -303,7 +305,7 @@ void ClientWS::super_wakeUp(natural reason) throw () {
 	inExecutor.unlock();
 }
 
-void ClientWS::onNotify(StrView , const JValue& , const JValue& ) {
+void ClientWS::onNotify(StrViewA , const JValue& , const JValue& ) {
 
 }
 

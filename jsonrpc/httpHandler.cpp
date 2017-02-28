@@ -206,9 +206,10 @@ natural HttpHandler::dumpMethods(ConstStrA name, natural version, IHttpRequest& 
 	class MethodReceiver: public IMethodRegister::IMethodEnum {
 	public:
 		MethodReceiver(JArray &arr):arr(arr) {}
-		virtual void operator()(StrView prototype) const {
-			StrView baseName = prototype.split(':').getNext();
-			if (baseName == StrView(prevMethod)) return;
+		virtual void operator()(StrViewA prototype) const {
+			auto splt = prototype.split(":");
+			StrViewA baseName = splt();
+			if (baseName == prevMethod) return;
 			arr.add(JValue(baseName));
 		}
 

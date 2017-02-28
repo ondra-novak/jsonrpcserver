@@ -27,9 +27,9 @@ Dispatcher::~Dispatcher() {
 }
 
 template<typename Container>
-inline void Dispatcher::createPrototype(StrView methodName, JValue params, Container& container) {
+inline void Dispatcher::createPrototype(StrViewA methodName, JValue params, Container& container) {
 
-	container.append(methodName);
+	container.append(convStr(methodName));
 	container.add(':');
 	for (auto &&v:params) {
 		char c;
@@ -52,7 +52,7 @@ Future<Response> Dispatcher::callMethod(const Request& req) throw() {
 		AutoArray<char, SmallAlloc<256> > prototype;
 
 		createPrototype(req.methodName.getString(),req.params,prototype);
-		PMethodHandler m1 = findMethod(prototype);
+		PMethodHandler m1 = findMethod(StrViewA(prototype.data(),prototype.length()));
 		if (m1 == null) {
 			m1 = findMethod(req.methodName.getString());
 			if (m1 == null) {
@@ -71,10 +71,10 @@ Future<Response> Dispatcher::callMethod(const Request& req) throw() {
 }
 
 
-Dispatcher::PMethodHandler Dispatcher::findMethod(StrView prototype, natural version) {
+Dispatcher::PMethodHandler Dispatcher::findMethod(StrViewA prototype, natural version) {
 	Synchronized<RWLock::ReadLock> _(mapLock);
 
-	const MethodDef *h = methodMap.find(StrKey(ConstStrA(prototype)));
+	const MethodDef *h = methodMap.find(prototype);
 	if (h == 0) return null;
 	else {
 		if (h->version < version) return null;
@@ -91,12 +91,12 @@ Dispatcher::PMethodHandler Dispatcher::findMethod(StrView prototype, natural ver
 
 }
 
-bool Dispatcher::CmpMethodPrototype::operator ()(const Key &sa, const Key &sb) const {
-	ConstStrA a(sa);
-	ConstStrA b(sb);
+bool Dispatcher::CmpMethodPrototype::operator ()(const StrViewA &sa, const StrViewA &sb) const {
+	StrViewA a(sa);
+	StrViewA b(sb);
 
-	natural l1 = a.length();
-	natural l2 = b.length();
+	natural l1 = a.length;
+	natural l2 = b.length;
 	natural p1 = 0;
 	natural p2 = 0;
 	while (p1 < l1 && p2 < l2) {
@@ -160,7 +160,7 @@ public:
 				WeakRefPtr<IPeer> peer(this->peer);
 				WeakRefPtr<ILog> log(logService);
 				if (peer != null && log != null) {
-					log->logMethod(peer->getName(),this->methodName.getString(),this->params,this->context,result.logOutput);
+					log->logMethod(convStr(peer->getName()),this->methodName.getString(),this->params,this->context,result.logOutput);
 				}
 			}
 			outres.resolve(r);
@@ -187,7 +187,7 @@ public:
 				WeakRefPtr<IPeer> peer(this->peer);
 				WeakRefPtr<ILog> log(logService);
 				if (peer != null && log != null) {
-					log->logMethod(peer->getName(),this->methodName.getString(),this->params,this->context,exceptionObj);
+					log->logMethod(convStr(peer->getName()),this->methodName.getString(),this->params,this->context,exceptionObj);
 				}
 			}
 
@@ -299,15 +299,16 @@ Future<JValue> Dispatcher::dispatchMessage(const JValue jsonrpcmsg,const WeakRef
 	}
 }
 
-void Dispatcher::regMethodHandler(natural version, ConstStrA method, IMethod* fn) {
+void Dispatcher::regMethodHandler(natural version, StrViewA method, IMethod* fn) {
+	MethodDef def(method,fn,version);
 	Synchronized<RWLock::WriteLock> _(mapLock);
-	methodMap.insert(StrKey(StringA(method)),MethodDef(fn,version));
+	methodMap.insert(def.name,def);
 
 }
 
-void Dispatcher::unregMethod(ConstStrA method) {
+void Dispatcher::unregMethod(StrViewA method) {
 	Synchronized<RWLock::WriteLock> _(mapLock);
-	methodMap.erase(StrKey(method));
+	methodMap.erase(method);
 
 }
 

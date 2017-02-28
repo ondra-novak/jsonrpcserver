@@ -23,7 +23,7 @@ LogService::LogService()
 
 }
 
-void LogService::logMethod(BredyHttpSrv::IHttpRequestInfo& invoker, StrView methodName,
+void LogService::logMethod(BredyHttpSrv::IHttpRequestInfo& invoker, StrViewA methodName,
 		const JValue& params, const JValue& context,
 		const JValue& logOutput) {
 
@@ -34,7 +34,7 @@ void LogService::logMethod(BredyHttpSrv::IHttpRequestInfo& invoker, StrView meth
 }
 
 
-void LogService::logMethod(StrView source, StrView methodName,
+void LogService::logMethod(StrViewA source, StrViewA methodName,
 		const JValue& params, const JValue& context,
 		const JValue& logOutput) {
 

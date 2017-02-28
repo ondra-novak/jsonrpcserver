@@ -20,7 +20,7 @@ Client::Client(const ClientConfig& cfg)
 
 }
 
-Future<Client::Result> Client::callAsync(StrView method, JValue params, JValue context) {
+Future<Client::Result> Client::callAsync(StrViewA method, JValue params, JValue context) {
 	//lock batches, to avoid conflicts during access
 	Synchronized<FastLock> _(batchAccess);
 
@@ -52,7 +52,7 @@ Future<Client::Result> Client::callAsync(StrView method, JValue params, JValue c
 	return res;
 }
 
-Client::Result Client::call(StrView method, JValue params, JValue context) {
+Client::Result Client::call(StrViewA method, JValue params, JValue context) {
 	return callAsync(method,params,context).getValue();
 }
 

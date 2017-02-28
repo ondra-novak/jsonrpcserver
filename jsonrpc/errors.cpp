@@ -24,7 +24,7 @@ void LookupException::message(ExceptionMsg& msg) const {
 JValue LookupException::getJSON() const {
 	return JObject("class",JValue("lookupException"))
 			("message",JValue("Method not found."))
-			("method",JValue(StrView(prototype)));
+			("method",JValue(convStr(prototype)));
 
 }
 
@@ -36,7 +36,7 @@ void MethodException::message(ExceptionMsg& msg) const {
 JValue MethodException::getJSON() const {
 	return JObject("class",JValue("methodException"))
 			("status",JValue(statusCode))
-			("statusMessage",JValue(StrView(statusMessage)));
+			("statusMessage",JValue(convStr(statusMessage)));
 }
 
 
@@ -47,7 +47,7 @@ void ParseException::message(ExceptionMsg& msg) const {
 JValue ParseException::getJSON() const {
 	return JObject("class",JValue("ParseException"))
 			("status",JValue(400))
-			("statusMessage",JValue(StrView(description)));
+			("statusMessage",JValue(convStr(description)));
 }
 
 UncauchException::UncauchException(const ProgramLocation& loc,
@@ -61,7 +61,7 @@ UncauchException::UncauchException(const ProgramLocation& loc,
 JValue UncauchException::getJSON() const {
 	return JObject("class",JValue("uncaughException"))
 			("status",JValue(statusCode))
-			("statusMessage",JValue(StrView(statusMessage)))
+			("statusMessage",JValue(convStr(statusMessage)))
 			("type",JValue(type.name()));
 
 }

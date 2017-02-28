@@ -8,7 +8,7 @@
 #ifndef JSONRPCSERVER_JSONRPC_JSON_H_
 #define JSONRPCSERVER_JSONRPC_JSON_H_
 
-#include <immujson/json.h>
+#include <imtjson/json.h>
 #include "lightspeed/base/containers/string.h"
 #include <lightspeed/base/text/textOut.h>
 namespace jsonrpc {
@@ -18,12 +18,15 @@ typedef json::Value JValue;
 typedef json::String JString;
 typedef json::Object JObject;
 typedef json::Array JArray;
+using json::StrViewA;
+using json::BinaryView;
+using json::StrViewW;
 
 ///Contains string compatible with json::StringView and also LightSpeed::FlatArray which can be used as ConstStrA
-/** class StrView augments json::StringView with operations from LightSpeed including iterators.
+/** class StrViewA augments json::StringView with operations from LightSpeed including iterators.
  * It also makes string acceptable by many functions which accepts ConstStrA
  */
-class StrView: public json::StringView<char>, public LightSpeed::FlatArrayBase<const char, StrView> {
+/*class StrViewA: public json::StringView<char>, public LightSpeed::FlatArrayBase<const char, StrViewA> {
 public:
 
 	///main super class is json::StringView
@@ -32,14 +35,14 @@ public:
 	using Super::operator[];
 	using Super::StringView;
 
-	StrView() {}
-	StrView(const json::String &x):Super(x) {}
-	StrView(const StringView<char> &other):json::StringView<char>(other) {}
+	StrViewA() {}
+	StrViewA(const json::String &x):Super(x) {}
+	StrViewA(const StringView<char> &other):json::StringView<char>(other) {}
 	template<typename Impl>
-	StrView(const LightSpeed::FlatArray<char, Impl> &other)
+	StrViewA(const LightSpeed::FlatArray<char, Impl> &other)
 		:json::StringView<char>(other.data(),other.length()) {}
 	template<typename Impl>
-	StrView(const LightSpeed::FlatArray<const char, Impl> &other)
+	StrViewA(const LightSpeed::FlatArray<const char, Impl> &other)
 		:json::StringView<char>(other.data(),other.length()) {}
 
 	explicit operator std::string () const {
@@ -48,10 +51,11 @@ public:
 //	operator json::String() const {return json::String(*this);}
 	const char *data() const {return Super::data;}
 	LightSpeed::natural length() const {return Super::length;}
+	using json::StringView<char>::split;
 };
 
 
-
+*/
 
 template<typename T>
 static inline json::StringView<T> convStr(const LightSpeed::ConstStringT<T> &x) {

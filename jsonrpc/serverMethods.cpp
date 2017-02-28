@@ -47,12 +47,12 @@ JValue ServerMethods::rpcListMethods(const Request& r) {
 	class Enum: public IMethodRegister::IMethodEnum {
 	public:
 		JArray &result;
-		mutable ConstStrA prevPrototype;
+		mutable StrViewA prevPrototype;
 		natural limitVersion;
 		Enum(JArray &result):result(result) {}
-		virtual void operator()(StrView prototype) const {
-			if (prototype == StrView(prevPrototype)) return;
-			prevPrototype = ConstStrA(prototype);
+		virtual void operator()(StrViewA prototype) const {
+			if (prototype == prevPrototype) return;
+			prevPrototype = prototype;
 			result.add(JValue(prototype));
 		}
 
@@ -83,12 +83,12 @@ FResponse ServerMethods::rpcMulticall(const Request& r) {
 
 class MakeStatResult {
 public:
-	StringA name;
+	json::String name;
 
-	MakeStatResult( const StringA &name)
+	MakeStatResult( const json::String &name)
 		:name(name) {}
 	JValue operator()(const Response &resp) const {
-		return JObject(convStr(name),resp.result);
+		return JObject(name,resp.result);
 	}
 };
 
@@ -117,7 +117,7 @@ FResponse ServerMethods::rpcStats(const Request& r) {
 
 	class CollectStats: public IMethodRegister::IMethodEnum {
 	public:
-		virtual void operator()(StrView prototype) const {
+		virtual void operator()(StrViewA prototype) const {
 
 			Dispatcher::PMethodHandler h = dispatch.findMethod(prototype);
 			if (h == null) return;

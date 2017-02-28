@@ -164,7 +164,7 @@ public:
 	 *
 	 *
 	 */
-	Future<Result> callAsync(StrView method, JValue params, JValue context = JValue());
+	Future<Result> callAsync(StrViewA method, JValue params, JValue context = JValue());
 
 	///Perform RPC call synchronously
 	/**
@@ -176,11 +176,11 @@ public:
 	 * @note because function blocks current thread, it must not be combined with callAsync (response is
 	 * received in response thread, which should not be blocked).
 	 */
-	Result call(StrView method, JValue params, JValue context = 0);
+	Result call(StrViewA method, JValue params, JValue context = 0);
 
-	void sendNotify(StrView method, const JValue &params);
+	void sendNotify(StrViewA method, const JValue &params);
 	void sendNotify(const PreparedNotify &preparedNotify);
-	PreparedNotify prepareNotify(StrView method, const JValue &params);
+	PreparedNotify prepareNotify(StrViewA method, const JValue &params);
 
 protected:
 
@@ -194,7 +194,7 @@ protected:
 	 *
 	 * @note notification has no return, there is no response to the caller, because you have no id associated with the call
 	 */
-	virtual void onNotify(StrView method, const JValue &params, const JValue &context);
+	virtual void onNotify(StrViewA method, const JValue &params, const JValue &context);
 
 	///Called when there is error while receiving from websockets.
 	/**
@@ -205,7 +205,7 @@ protected:
 	 * default implementation closes connection
 	 */
 
-	virtual void onParseError(StrView msg) {
+	virtual void onParseError(StrViewA msg) {
 		(void)msg;
 	}
 	virtual void onDispatchError(JValue v) {

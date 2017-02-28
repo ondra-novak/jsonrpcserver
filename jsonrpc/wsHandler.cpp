@@ -53,14 +53,14 @@ public:
 	virtual void onCloseOutput(natural code);
 	virtual void onPong(ConstBin msg);
 
-	virtual PreparedNotify prepare(StrView name, JValue arguments);
+	virtual PreparedNotify prepare(StrViewA name, JValue arguments);
 	virtual void sendPrepared(const PreparedNotify &prepared, TimeoutControl tmControl = shortTimeout);
-	virtual void sendNotification(StrView name, JValue arguments, TimeoutControl tmControl = standardTimeout);
+	virtual void sendNotification(StrViewA name, JValue arguments, TimeoutControl tmControl = standardTimeout);
 	virtual void dropConnection();
 	virtual void closeConnection(natural code);
 	virtual Future<void> onClose();
 
-	virtual Future<Result> callAsync(StrView method, JValue params, JValue context = 0);
+	virtual Future<Result> callAsync(StrViewA method, JValue params, JValue context = 0);
 
 	virtual BredyHttpSrv::IHttpRequestInfo *getHttpRequest() const;
 	virtual ConstStrA getName() const;
@@ -172,7 +172,7 @@ void WSConnection::onCloseOutput(natural) {
 void WSConnection::onPong(ConstBin) {
 }
 
-PreparedNotify WSConnection::prepare(StrView name,JValue arguments) {
+PreparedNotify WSConnection::prepare(StrViewA name,JValue arguments) {
 
 	class P: public PreparedNotify {
 	public:
@@ -211,7 +211,7 @@ void WSConnection::sendPrepared(const PreparedNotify& prepared, TimeoutControl t
 	sendTextMessage(prepared.content,true);
 }
 
-void WSConnection::sendNotification(StrView name,JValue arguments, TimeoutControl tmControl) {
+void WSConnection::sendNotification(StrViewA name,JValue arguments, TimeoutControl tmControl) {
 	sendPrepared(prepare(name,arguments),tmControl);
 }
 
@@ -233,7 +233,7 @@ Future<void> WSConnection::onClose() {
 	return onCloseFuture;
 }
 
-Future<IClient::Result> WSConnection::callAsync(StrView method,
+Future<IClient::Result> WSConnection::callAsync(StrViewA method,
 					JValue params, JValue context) {
 
 	atomicValue promiseId = lockInc(nextPromiseId);

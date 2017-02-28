@@ -33,7 +33,7 @@ namespace jsonrpc {
 		 * @param context context of the call (optional)
 		 * @param logOutput output of the call (optional)
 		 */
-		virtual void logMethod(BredyHttpSrv::IHttpRequestInfo &invoker,StrView methodName, const JValue &params, const JValue &context, const JValue &logOutput) = 0;
+		virtual void logMethod(BredyHttpSrv::IHttpRequestInfo &invoker,StrViewA methodName, const JValue &params, const JValue &context, const JValue &logOutput) = 0;
 		///More general loging of the method, especially when they came from a different source, that http.
 		/**
 		 * @param source source. In original interface there is IP address of the caller. However, you can now specify different source.
@@ -42,7 +42,7 @@ namespace jsonrpc {
 		 * @param context context of the call (optional)
 		 * @param logOutput output of the call (optional)
 		 */
-		virtual void logMethod(StrView source, StrView methodName, const JValue &params, const JValue &context, const JValue &logOutput) = 0;
+		virtual void logMethod(StrViewA source, StrViewA methodName, const JValue &params, const JValue &context, const JValue &logOutput) = 0;
 	};
 
 
